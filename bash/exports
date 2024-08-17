@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+
+# shellcheck disable=1091
+export LANG="en_US.UTF-8"
+export LC_CTYPE="$LANG"
+export LC_ALL="$LANG"
+export COLORTERM=truecolor
+
+# XDG directories
+export XDG_CONFIG_HOME="$HOME/.config"
+export  XDG_CACHE_HOME="$HOME/.cache"
+export   XDG_DATA_HOME="$HOME/.local/share"
+export  XDG_STATE_HOME="$HOME/.local/state"
+
+[ -d "$XDG_CONFIG_HOME" ] || mkdir -m 0750 "$XDG_CONFIG_HOME"
+[ -d "$XDG_CACHE_HOME" ]  || mkdir -m 0750 "$XDG_CACHE_HOME"
+[ -d "$XDG_DATA_HOME" ]   || mkdir -m 0750 "$XDG_DATA_HOME"
+[ -d "$XDG_STATE_HOME" ]  || mkdir -m 0750 "$XDG_STATE_HOME"
+
+# Local bin
+PATH="$HOME/.local/bin:$PATH:bin"
+
+# History settings
+export HISTSIZE=20000
+if [ "$BASH" ]; then
+	export HISTFILE="$XDG_CACHE_HOME/bash_history"
+	export HISTFILESIZE=15000000
+	export HISTTIMEFORMAT="%F %T "
+	export HISTIGNORE='pwd:jobs:ls:history:clear:r:ranger'
+	export HISTCONTROL=ignoreboth
+fi
+
+# https://www.gnu.org/software/bash/manual/html_node/Readline-Init-File.html
+export INPUTRC="$XDG_CONFIG_HOME/bash/inputrc"
+
+# Editor and pager
+EDITOR=vim
+SELECTED_EDITOR=vim
+MANPAGER='vim +Man!'
+if hash nvim 2>/dev/null; then
+  EDITOR=nvim
+  SELECTED_EDITOR=nvim
+	MANPAGER='nvim +Man!'
+fi
+export EDITOR
+export SELECTED_EDITOR
+export VISUAL="$EDITOR"
+export MANPAGER
+
+# pager
+export PAGER=less
+export LESS="-FiQMXRwJ --incsearch --no-vbell --status-col-width 1"
+export LESSQUIET=1
+export LESSCHARSET="UTF-8"
+export LESSHISTFILE="$XDG_CACHE_HOME/less_history"
+
+# lf bin to PATH
+PATH="$XDG_CONFIG_HOME/lf/bin:$PATH"
+
+# cargo
+if hash cargo 2>/dev/null; then
+	export RUSTUP_HOME="$XDG_DATA_HOME/rustup"
+	export CARGO_HOME="$XDG_DATA_HOME/cargo"
+	PATH="$XDG_DATA_HOME/cargo/bin:$PATH"
+fi
+
+# python
+if hash pipx 2>/dev/null; then
+	export PIPX_HOME="$XDG_DATA_HOME/python/pipx"
+	export PIPX_BIN_DIR="$XDG_DATA_HOME/python/pipx/bin"
+	PATH="${PIPX_BIN_DIR}:${PATH}"
+fi
+
+# node version manager
+if hash npm 2>/dev/null; then
+	export NPM_CONFIG_USERCONFIG="$XDG_CONFIG_HOME/npm/npmrc"
+	export NVM_DIR="$XDG_DATA_HOME/node"
+fi
+
+# yarn builder
+if hash yarn 2>/dev/null; then
+	PATH="$XDG_DATA_HOME/yarn/global/node_modules/.bin/:$PATH"
+	export YARN_ENABLE_TELEMETRY=0
+fi
+
+# php builder
+if hash composer 2>/dev/null; then
+  export COMPOSER_HOME="$XDG_CACHE_HOME/composer"
+fi
+
+# Java stuff
+if hash java 2>/dev/null; then
+	# Java XWayland blank screens fix
+	export _JAVA_AWT_WM_NONREPARENTING=1
+	# java prefs
+	export _JAVA_OPTIONS=-Djava.util.prefs.userRoot="$XDG_CONFIG_HOME"/java
+	export _JAVA_OPTIONS='-Dawt.useSystemAAFontSettings=on -Dswing.aatext=true'
+	# gradle builder
+	export GRADLE_USER_HOME="$XDG_DATA_HOME/gradle"
+	# java version manager
+	export SDKMAN_DIR="$XDG_DATA_HOME/sdkman"
+fi
+
+# common lisp stuff
+export ROSWELL_HOME="$XDG_DATA_HOME/roswell"
+export PATH="$ROSWELL_HOME/impls/x86-64/linux/sbcl/2.4.7/bin/:$PATH"
+
+# Export the final PATH
+export PATH
+
+# vim: set ft=sh ts=2 sw=2 tw=80 noet :

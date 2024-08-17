@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+# Load env exports
+# shellcheck disable=1091
+source "$HOME/.config/bash/exports"
+
+# Load shell settings and utilities
+source "$XDG_CONFIG_HOME/bash/functions"
+source "$XDG_CONFIG_HOME/bash/completion"
+source "$XDG_CONFIG_HOME/bash/alias"
+source "$XDG_CONFIG_HOME/bash/theme"
+
+# Print match path when jumping via 'z'.
+if hash zoxide 2>/dev/null; then
+  export _ZO_ECHO=1
+  export _ZO_DATA_DIR="$XDG_CACHE_HOME/zoxide"
+  eval "$(zoxide init bash)"
+fi
+
+# Use keychain to persist ssh keys
+# https://github.com/funtoo/keychain
+if hash keychain 2>/dev/null; then
+  eval "$(keychain --eval --quiet --noask --agents ssh id_ed25519 id_rsa)"
+fi

@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+
+# cd to current dir on lf quit
+lf() {
+  export LF_CD_FILE=/var/tmp/.lfcd-$$
+  command lf "${@}"
+  if [ -s "$LF_CD_FILE" ]; then
+    local DIR
+    DIR="$(realpath "$(cat "$LF_CD_FILE")")"
+    if [ "$DIR" != "$PWD" ]; then
+      # echo "cd to $DIR"
+      cd "$DIR" || exit
+    fi
+    rm "$LF_CD_FILE"
+  fi
+  unset LF_CD_FILE
+}
+
+# fetches dir
+get_dir() {
+  printf "%s" "$(pwd | sed "s:$HOME:~:")"
+}
+
+# fetches commit
+get_sha() {
+  git rev-parse --short HEAD 2>/dev/null
+}
+
+# note ./here
+nh() {
+  filename="$(date +%U-%y%m%d-%H%M)"
+  "${EDITOR}" "${filename}.md"
+}
+
+# single-thread compiler-runer
+cr() {
+  # clear;
+  if [ -f "$1" ]; then
+    filename=${1%*.?}
+    gcc -Wall -g "$1" -lm -o "${filename}"
+    # clang -Wall -g $1 -lm -o ${filename};
+  else
+    echo "No .c file found"
+  fi
+}
+
+# multi-thread compiler-runer
+crt() {
+  # clear;
+  if [ -f "$1" ]; then
+    filename=${1%*.?}
+    gcc -pthread -Wall -g "$1" -lm -o "${filename}"
+  else
+    echo "No .c file found"
+  fi
+}
+
+# single-thread sdl compiler-runer
+crs() {
+  # clear;
+  if [ -f "$1" ]; then
+    filename=${1%*.?}
+    clang -Wall -g "$1" -lm -o "${filename}" "$(sdl2-config --cflags --libs)"
+  else
+    echo "No .c file found"
+  fi
+}
+
+# java compiler
+jc() {
+  if [[ -d "./src/${1}" ]]; then
+    dirpath="./src/${1}"
+    javac -d ./bin "${dirpath}"/*.java
+  else
+    echo "No directory name \"./src/${1}\" found"
+  fi
+}
+
+# java runner
+jr() {
+  if [[ -d "./bin/${1}" ]]; then
+    dirname="${1}"
+    java -cp ./bin "${dirname}".Program
+  else
+    echo "No directory name \"./bin/${1}\" found"
+  fi
+}

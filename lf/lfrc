@@ -1,0 +1,244 @@
+set shell bash
+set shellopts '-eu'
+set ifs "\n"
+set icons
+set hidden
+set drawbox
+set incsearch
+set scrolloff 2
+set tabstop 2
+set smartcase
+set dircounts
+set info size
+set sortby natural
+set ratios '1:2:3'
+set period 1
+set relativenumber
+set preview
+set sixel
+
+set previewer ~/.config/lf/preview
+set cleaner ~/.config/lf/clean
+
+set cursorpreviewfmt ""
+set cursorparentfmt "\033[7m"
+set numberfmt "\033[38;5;8m"
+
+
+#### mappings
+
+# remove defaults
+map y
+map p
+map d
+map r
+map f
+map w
+map sa
+map sc
+map se
+
+
+map C reload-conf
+map q quit-and-cd
+map . set hidden!
+
+map yy copy
+map yn copy-filename
+map yP copy-absolute-path
+
+map pp paste
+map pP new-folder-with-selection
+
+map dD delete
+map dd cut
+map dt trash
+
+map i pager
+map I rename
+
+map e open
+map E $$EDITOR $f
+
+map o &mimeopen $f
+map O push :openwith<space>
+
+map ff filter
+# fuzzy-find a file
+map fF $lf -remote "send $id select $(fzf)"
+
+map xx extract
+# enter name and compress to name.zip
+map xX push :zip<space>
+
+# jump-dir w\ zoxide
+map zz push :z<space>
+
+# sort files
+map sn :{{ set sortby natural; set info size; set preview; }}
+map ss :{{ set sortby size; set info size; set preview; }}
+map st :{{ set sortby time; set info time; set preview; }}
+map sx :{{ set sortby ext; set info size; set preview; }}
+
+cmap <tab> cmd-menu-complete
+cmap <backtab> cmd-menu-complete-back
+
+# show documentation
+map g? $lf -doc | less
+
+# put lf on the background
+map <c-z> $ kill -STOP $PPID
+
+
+# Tmux?
+map ah &tmux split-window -h lf
+map av &tmux split-window -v lf
+
+# Open the directory in Finder on macOS
+# map fm &if [[ -d $f ]]; then open $f; fi
+
+# beyond compare selected files/directories
+map = &bcompare $fx
+
+
+#### commands
+
+# Pager command
+cmd pager ${{
+
+  cols=$(tput cols)
+  lines=$(tput lines)
+  if [[ cols -gt 115 ]]; then
+    cols=105
+  else
+    declare -i cols=$cols-10
+  fi
+
+	if [[ $f = *.md  ]]; then
+    bash -c "glow -w ${cols} -p $fx"
+	else
+    bash -c "bat $fx \
+                --number --theme=TwoDark --color=always --paging=always \
+                --style=plain --terminal-width ${cols} --line-range :${lines} \
+                --pager='less -iWQMRX~ --no-vbell'"
+  fi
+}}
+
+# Implement trash command
+cmd trash ${{
+	set -f
+	if hash trash-put 2>/dev/null; then
+		trash-put -v -- $fx
+	else
+		mkdir -p "$HOME"/.trash
+		mv -vi $fx "$HOME"/.trash
+	fi
+}}
+
+# Replace open command with robust selection of openers
+cmd open ${{
+	case $(file --dereference --mime-type $f -b) in
+		inode/x-empty) $EDITOR $fx ;;
+		text/*) $EDITOR $fx;;
+		video/*) nohup mpv $fx > /dev/null & ;;
+		audio/*) nohup mpv $fx > /dev/null & ;;
+		audio/midi) timidity $fx ;;
+		application/epub+zip) nohup FBReader $f > /dev/null & ;;
+		application/pdf) nohup zathura $f > /dev/null & ;;
+		*) for f in $fx; do $OPENER $f > /dev/null 2> /dev/null & done;;
+	esac
+}}
+
+cmd new-folder-with-selection ${{
+  set -f
+  echo "Directory name: "
+  read newd
+  mkdir -- "$newd"
+  mv -- $fx "$newd"
+}}
+
+# compress current file or selected files with zip
+cmd zip ${{
+    set -f
+    mkdir $1
+    cp -r $fx $1
+    zip -r $1.zip $1
+    rm -rf $1
+}}
+
+# extract compressed files
+cmd extract ${{
+    set -f
+        case $f in
+        *.tar.bz|*.tar.bz2|*.tbz|*.tbz2) tar xjvf $f;;
+        *.tar.gz|*.tgz) tar xzvf $f;;
+        *.tar.xz|*.txz) tar xJvf $f;;
+        *.zip) unzip -O gbk $f;;
+        *.rar) unrar x $f;;
+        *.7z) 7z x $f;;
+    esac
+}}
+
+# cd into recent directories w\ zoxide
+cmd z ${{
+	set +u
+	dest=''
+	prefix=''
+	if hash zoxide 2>/dev/null; then
+		dest="$(zoxide query "$@")"
+	fi
+
+	if test -n "${dest}"; then
+		lf -remote "send $id cd '${dest}'"
+	else
+		lf -remote "send $id echo 'Invalid directory ${dest}'"
+	fi
+}}
+
+cmd fzf_z ${{
+	sel="$(zoxide query -l | fzf +s)"
+	[ -d "$sel" ] && lf -remote "send $id cd \"$sel\""
+}}
+
+cmd clear_trash %trash-empty
+
+# helper to cd to curr dir on quit
+cmd quit-and-cd &{{
+	pwd > $LF_CD_FILE
+	lf -remote "send $id quit"
+}}
+
+cmd reload-conf ${{
+  lf -remote "send $id source ~/.config/lf/lfrc"
+}}
+
+# cmd on-quit ${{
+#   i=$(tput lines)
+#   until [ "${i}" -le 1 ]; do
+#     printf '\n'
+#     i=$((i-1))
+#   done
+#   tput -x clear
+# }}
+
+#### prompt
+
+set promptfmt "
+\033[38;5;8m\033[48;5;236m %u@%h \033[38;5;236m\033[48;5;234m
+\033[34;40;1m\033[48;5;234m %w/%f \033[0m\033[38;5;234m\033[0m
+"
+# git branch prompt
+cmd on-cd &{{
+    # display git repository status in your prompt
+    source /usr/share/git/completion/git-prompt.sh
+    # GIT_PS1_SHOWDIRTYSTATE=auto
+    # GIT_PS1_SHOWSTASHSTATE=auto
+    # GIT_PS1_SHOWUNTRACKEDFILES=auto
+    # GIT_PS1_SHOWUPSTREAM=auto
+    # GIT_PS1_COMPRESSSPARSESTATE=auto
+    git=$(__git_ps1 "%s* ") || true
+    fmt="\033[38;5;8m\033[48;5;236m %u@%h \033[38;5;236m\033[48;5;234m \033[33;49;1m\033[48;5;234m$git\033[34;40;1m\033[48;5;234m%w/%f \033[0m\033[38;5;234m\033[0m"
+    lf -remote "send $id set promptfmt \"$fmt\""
+}}
+
+# vim: ft=conf

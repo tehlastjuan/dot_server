@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+# https://codeberg.org/dnkl/foot/wiki#how-do-i-make-ctrl-l-scroll-the-content-instead-of-erasing-it
+i=$(tput lines)
+until [ "${i}" -le 1 ]; do
+  printf '\n'
+  i=$((i - 1))
+done
+tput -x clear

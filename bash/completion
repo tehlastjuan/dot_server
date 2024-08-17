@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+
+if [ -f /usr/share/bash-completion/bash_completion ]; then
+  . /usr/share/bash-completion/bash_completion
+elif [ -f /etc/bash_completion ]; then
+  . /etc/bash_completion.d/000_bash_completion_compat.bash
+fi
+
+# complete alias plugin
+if [[ -e "$XDG_CONFIG_HOME/bash/plugins.d/complete-alias/complete_alias" ]]; then
+  . "$XDG_CONFIG_HOME/bash/plugins.d/complete-alias/complete_alias"
+fi
+
+# bash completion
+if [[ -e "$XDG_CONFIG_HOME/bash/completion.d/git-completion.sh" ]]; then
+  . "$XDG_CONFIG_HOME/bash/completion.d/git-completion.sh"
+fi
+
+# git completion
+if [[ -s "$XDG_CONFIG_HOME/bash/completion.d/git-prompt.sh" ]]; then
+  . "$XDG_CONFIG_HOME/bash/completion.d/git-prompt.sh"
+fi
+
+# docker completion
+if [[ -s "$XDG_CONFIG_HOME/bash/completion.d/docker-completion.sh" ]]; then
+  . "$XDG_CONFIG_HOME/bash/completion.d/docker-completion.sh"
+fi
+
+# node version manager completion
+if [[ -s "$NVM_DIR/nvm.sh" ]]; then
+  . "$NVM_DIR/nvm.sh"
+fi
+if [[ -s "$NVM_DIR/bash_completion" ]]; then
+  . "$NVM_DIR/bash_completion"
+fi
+
+# gradle completion
+if [[ -s "$XDG_CONFIG_HOME/bash/completion.d/gradle-completion.bash" ]]; then
+  . "$XDG_CONFIG_HOME/bash/completion.d/gradle-completion.bash"
+fi
+
+# java version manager completion
+if [[ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]]; then
+  . "$SDKMAN_DIR/bin/sdkman-init.sh"
+fi
+if [[ -s "$SDKMAN_DIR/contrib/completion/bash/sdk" ]]; then
+  . "$SDKMAN_DIR/contrib/completion/bash/sdk"
+fi

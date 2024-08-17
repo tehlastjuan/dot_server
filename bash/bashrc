@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+# If not running interactively, don't do anything
+# [[ $- != *i* ]] && return
+
+# or
+case $- in
+  *i*) ;;
+  *) return ;;
+esac
+
+# history
+shopt -s cmdhist         # Save multi-line commands in history as single line
+shopt -s histreedit      # Add failed commands to the bash history
+shopt -s histappend      # Append each session's history to $HISTFILE
+shopt -s histverify      # Edit a recalled history line before executing
+
+# prompt
+stty stop undef          # Remove the ^Q mapping
+stty start undef         # Remove the ^S mapping (See all: stty -a)
+shopt -s cdspell         # Auto-corrects cd misspellings
+shopt -s dotglob         # Include dotfiles in pathname expansion
+shopt -s expand_aliases  # Expand aliases
+shopt -s extglob         # Enable extended pattern-matching features
+[[ $DISPLAY ]] && \
+  shopt -s checkwinsize  # Update LINES and COLUMNS after each command
+
+# shellcheck disable=1091
+source "$HOME/.config/bash/profile"
+
+# enable vi mode
+set -o vi
