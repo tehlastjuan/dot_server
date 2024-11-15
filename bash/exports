@@ -34,17 +34,21 @@ fi
 export INPUTRC="$XDG_CONFIG_HOME/bash/inputrc"
 
 # Editor and pager
-EDITOR=vim
-SELECTED_EDITOR=vim
-MANPAGER='vim +Man!'
+EDITOR=/usr/bin/vim
+SUDO_EDITOR="$EDITOR"
+SELECTED_EDITOR="$EDITOR"
+MANWIDTH=999
+MANPAGER=less
 if hash nvim 2>/dev/null; then
-  EDITOR=nvim
-  SELECTED_EDITOR=nvim
+	EDITOR=/usr/bin/nvim
+	SELECTED_EDITOR="$EDITOR"
 	MANPAGER='nvim +Man!'
 fi
 export EDITOR
+export SUDO_EDITOR
 export SELECTED_EDITOR
 export VISUAL="$EDITOR"
+export MANWIDTH
 export MANPAGER
 
 # pager
@@ -56,6 +60,11 @@ export LESSHISTFILE="$XDG_CACHE_HOME/less_history"
 
 # lf bin to PATH
 PATH="$XDG_CONFIG_HOME/lf/bin:$PATH"
+
+# docker config
+if hash docker 2>/dev/null; then
+	export DOCKER_CONFIG="${XDG_CONFIG_HOME}"/docker
+fi
 
 # cargo
 if hash cargo 2>/dev/null; then
@@ -72,9 +81,13 @@ if hash pipx 2>/dev/null; then
 fi
 
 # node version manager
+if [[ -s "$XDG_DATA_HOME/node/nvm.sh" ]]; then
+	export NVM_DIR="$XDG_DATA_HOME/node"
+  . "$NVM_DIR/nvm.sh"
+fi
+
 if hash npm 2>/dev/null; then
 	export NPM_CONFIG_USERCONFIG="$XDG_CONFIG_HOME/npm/npmrc"
-	export NVM_DIR="$XDG_DATA_HOME/node"
 fi
 
 # yarn builder
@@ -88,6 +101,12 @@ if hash composer 2>/dev/null; then
   export COMPOSER_HOME="$XDG_CACHE_HOME/composer"
 fi
 
+# java, kotlin, gradle version manager
+if [[ -s "$XDG_DATA_HOME/sdkman/bin/sdkman-init.sh" ]]; then
+	export SDKMAN_DIR="$XDG_DATA_HOME/sdkman"
+  . "$SDKMAN_DIR/bin/sdkman-init.sh"
+fi
+
 # Java stuff
 if hash java 2>/dev/null; then
 	# Java XWayland blank screens fix
@@ -97,11 +116,9 @@ if hash java 2>/dev/null; then
 	export _JAVA_OPTIONS='-Dawt.useSystemAAFontSettings=on -Dswing.aatext=true'
 	# gradle builder
 	export GRADLE_USER_HOME="$XDG_DATA_HOME/gradle"
-	# java version manager
-	export SDKMAN_DIR="$XDG_DATA_HOME/sdkman"
 fi
 
-# common lisp stuff
+# Common lisp stuff
 export ROSWELL_HOME="$XDG_DATA_HOME/roswell"
 export PATH="$ROSWELL_HOME/impls/x86-64/linux/sbcl/2.4.7/bin/:$PATH"
 

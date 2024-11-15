@@ -7,7 +7,7 @@
 " - https://github.com/noahfrederick/vim-noctu/blob/master/colors/noctu.vim
 
 
-" GENERAL ------------------------------------------------------------------ {{{{
+" GENERAL {
 
 " Disable vi compatibility, if for some reason it's on.
 if &compatible
@@ -22,36 +22,36 @@ set langmenu=en
 set fenc=utf-8
 set encoding=utf-8
 set termencoding=utf-8
-
-" Sync w/ system clipboard
-set clipboard=unnamed
+scriptencoding utf-8
 
 if $TERM ==# "foot"
-  " Enable native mouse support
-  set mouse=a
-  set ttymouse=sgr
-
   " Workaround bug in vim, where it incorrectly thinks modifyOtherKeys level 2 is
   " enabled, even when it's not. The snippets below ensure modifyOtherKeys=2 is
   " enabled. https://github.com/vim/vim/issues/9014
   let &t_TI = "\<Esc>[>4;2m"
   let &t_TE = "\<Esc>[>4;m"
-else
-  " Enable mouse
-  set mouse=nv
 endif
 
-" }}}}
+" Enable native mouse support
+if has('mouse')
+  set mouse=a
+  set mousemodel=popup
+endif
+
+" Do not load tohtml.vim
+let g:loaded_2html_plugin = 1
+
+" }
 
 
-" FILES ------------------------------------------------------------------- {{{{
+" FILES {
 
 " Enable type file detection.
 " Vim will be able to try to detect the type of file in use.
 filetype on
 
 " Enable plugins and load plugin for the detected file type.
-filetype plugin on
+filetype plugin on 
 
 " Load an indent file for the detected file type.
 filetype indent on
@@ -73,16 +73,27 @@ autocmd BufReadPost *
       \ exe "normal! g`\"" | endif
 
 "Keep undo history across sessions, by storing in file.
-if has('persistent_undo') && isdirectory(expand('~').'/.vim/backups')
-  silent !mkdir ~/.vim/backups > /dev/null 2>&1
-  set undodir=~/.vim/backups
-  set undofile
+if has('persistent_undo')
+  if !isdirectory(expand('~') . '/.local/state/vim/undo')
+    call mkdir($HOME . '/.local/state/vim/undo', 'p', 0700)
+  else
+    set undodir=~/.local/state/vim/undo
+    set undofile
+  endif
 endif
 
-" }}}}
+" less clutter at $HOME
+set viminfo+=n~/.local/state/vim/viminfo
+
+" Persist g:UPPERCASE variables, used by some plugins, in .viminfo.
+if !empty(&viminfo)
+  set viminfo^=!
+endif
+
+" }
 
 
-" EDITOR ------------------------------------------------------------------ {{{{
+" EDITOR {
 
 " Allow backspace in insert mode
 set backspace=indent,eol,start
@@ -92,15 +103,10 @@ set backspace=indent,eol,start
 set notimeout
 set ttimeout
 set ttimeoutlen=10
-set timeoutlen=500              "By default timeoutlen is 1000 ms
+set timeoutlen=800              "By default timeoutlen is 1000 ms
 
 " Max num of open tabs
 set tabpagemax=50
-
-" Persist g:UPPERCASE variables, used by some plugins, in .viminfo.
-if !empty(&viminfo)
-  set viminfo^=!
-endif
 
 " Saving options in session and view files causes more problems than it
 " solves, so disable it.
@@ -108,12 +114,18 @@ set sessionoptions-=options
 set viewoptions-=options
 
 "	List all matches without completing, then each full match >vim
-set wildmode=list,full
+set wildmode=list:full
 
 " Enhanced command-line completion mode w\ popup menu
 set wildmenu
-set wildoptions+=pum
 set pumheight=8
+
+" Ignore certain files and folders when globbing
+set wildignore+=*.o,*.obj,*.bin,*.dll,*.exe
+set wildignore+=*/.git/*,*/.svn/*,*/__pycache__/*,*/build/**
+set wildignore+=*.pyc
+set wildignore+=*.DS_Store
+set wildignore+=*.aux,*.bbl,*.blg,*.brf,*.fls,*.fdb_latexmk,*.synctex.gz,*.pdf
 
 " Wild menu will ignore files with these extensions.
 set wildignore=*.docx,*.jpg,*.png,*.gif,*.pdf,*.pyc,*.exe,*.flv,*.img,*.xlsx
@@ -121,6 +133,11 @@ set wildignore=*.docx,*.jpg,*.png,*.gif,*.pdf,*.pyc,*.exe,*.flv,*.img,*.xlsx
 " Delete comment character when joining commented lines.
 set formatoptions+=tcqj
 
+" Correctly break multi-byte characters such as CJK,
+" see https://stackoverflow.com/q/32669814/6064933
+set formatoptions+=mM
+
+" enable fast tty support
 set ttyfast
 
 " For regular expressions backwards comp
@@ -138,6 +155,17 @@ set hidden
 "dont show epic message for swapfiles
 "Use :recover when we actually need to recover from swapfile
 set shortmess+=A
+
+" Do not add two spaces after a period when joining lines or formatting texts,
+" see https://stackoverflow.com/q/4760428/6064933
+set nojoinspaces
+
+"Specify the behavior when switching between buffers
+" try
+"   set switchbuf=useopen,usetab,newtab
+"   set stal=2
+" catch
+" endtry
 
 " Disable a legacy behavior that can break plugin maps.
 if has('langmap') && exists('+langremap') && &langremap
@@ -158,17 +186,17 @@ endif
 command! -nargs=* -complete=help Help vertical belowright help <args>
 autocmd FileType help wincmd L
 
-"Specify the behavior when switching between buffers
-try
-  set switchbuf=useopen,usetab,newtab
-  set stal=2
-catch
-endtry
+" Remove trailing white space, see https://vi.stackexchange.com/a/456/15292
+function! StripTrailingWhitespaces() abort
+  let l:save = winsaveview()
+  keeppatterns %s/\v\s+$//e
+  call winrestview(l:save)
+endfunction
 
-" }}}}
+" }
 
 
-" INDENTATION ------------------------------------------------------------- {{{{
+" INDENTATION {
 
 " Disable autoindentation
 set noautoindent
@@ -185,8 +213,6 @@ set tabstop=2
 " Spaces a tab counts while editing
 set softtabstop=2
 
-set formatoptions=qrn1
-
 " Use space characters instead of tabs.
 set expandtab
 
@@ -194,7 +220,7 @@ set expandtab
 set smarttab
 
 " Do not let cursor scroll below or above N number of lines when scrolling.
-set scrolloff=1
+set scrolloff=8
 
 " Do not wrap lines. Allow long lines to extend as far as the line goes.
 set nowrap
@@ -205,26 +231,47 @@ set nowrap
 
 " Wrap lines at convenient points
 set linebreak
+set showbreak=~W>"
 
 "Display tabs and trailing spaces visually
-set listchars=tab:\|\ ,trail:-,extends:>,precedes:<,nbsp:+
+set list listchars=tab:\|\ ,trail:-,extends:>,precedes:<,nbsp:+
 
-" function! ToggleIndentGuides()
-" if exists('b:indent_guides')
-"   call matchdelete(b:indent_guides)
-"   unlet b:indent_guides
-" else
-"   let pos = range(1, &l:textwidth, &l:shiftwidth)
-"   call map(pos, '"\\%" . v:val . "v"')
-"   let pat = '\%(\_^\s*\)\@<=\%(' . join(pos, '\|') . '\)\s'
-"   let b:indent_guides = matchadd('CursorLine', pat)
-" endif
-" endfunction
+augroup vimfile_setting
+  autocmd!
+    autocmd FileType vim setlocal foldmethod=expr foldlevel=0 foldlevelstart=-1
+      \ foldexpr=VimFolds(v:lnum) foldtext=MyFoldText()
+      \ keywordprg=:help formatoptions-=o formatoptions-=r
+augroup END
 
-" }}}}
+" }
 
 
-" UI ---------------------------------------------------------------------- {{{{
+" TERMINAL {
+
+" Do not use smart case in command line mode,
+" extracted from https://vi.stackexchange.com/q/16509/15292
+if exists('##CmdLineEnter')
+  augroup dynamic_smartcase
+    autocmd!
+    autocmd CmdLineEnter : set nosmartcase
+    autocmd CmdLineLeave : set smartcase
+  augroup END
+endif
+
+if exists('##TermOpen')
+  augroup term_settings
+    autocmd!
+    " Do not use number and relative number for terminal inside vim
+    autocmd TermOpen * setlocal norelativenumber nonumber
+    " Go to insert mode by default to start typing command
+    autocmd TermOpen * startinsert
+  augroup END
+ endif
+
+" }
+
+
+" UI {
 
 " Show partial command you type in the last line of the screen.
 set showcmd
@@ -247,17 +294,19 @@ set nocursorcolumn
 " Disable line highlight
 set nocursorline
 
-" Cursor modes
-" Normal - Insert
-let &t_SI= "\e[5 q"
-let &t_EI= "\e[2 q"
+" Cursor modes: Normal - Insert
+let &t_SI = "\<esc>[6 q"
+let &t_EI = "\<esc>[2 q"
+if exists('&t_SR')
+  let &t_SR = "\<esc>[4 q"
+endif
 
 " https://stackoverflow.com/questions/6488683/how-to-change-the-cursor-between-normal-and-insert-modes-in-vim
 " reset the cursor on start (for older versions of vim, usually not required)
-augroup myCmds
-  au!
-  autocmd VimEnter * silent !echo -ne "\e[2 q"
-augroup END
+" augroup myCmds
+"   au!
+"   autocmd VimEnter * silent !echo -ne "\e[2 q"
+" augroup END
 
 " Disable bells
 set noerrorbells
@@ -287,18 +336,13 @@ set display+=truncate
 set signcolumn=yes
 set invlist
 
-" Allow color schemes to do bright colors without forcing bold.
-if !empty(&t_Co)
-  set t_Co=16
-endif
+" hide tabltine
+set showtabline=0
 
-colorscheme default
-set background=dark
-
-" }}}}
+" }
 
 
-" SEARCH ------------------------------------------------------------------- {{{{
+" SEARCH {
 
 " While searching though a file incrementally highlight
 " matching characters as you type.
@@ -318,12 +362,12 @@ set showmatch
 set hlsearch
 
 " Set the commands to save in history default number is 20.
-set history=1000
+set history=10000
 
-" }}}}
+" }
 
 
-" COMPLETION --------------------------------------------------------------- {{{{
+" COMPLETION {
 
 " Disable completing keywords in included files (e.g., #include in C).
 " When configured properly, this can result in the slow, recursive scanning of
@@ -331,12 +375,28 @@ set history=1000
 set complete-=i
 
 " Enable Spelling Suggestions for Auto-Completion
-set complete+=k
-set completefunc=menu,menuone,noinsert
+" set complete+=k
+
+" Scan files given by `dictionary` option
+" set completefunc=menu,menuone,noinsert
+set complete+=k,kspell complete-=w complete-=b complete-=u complete-=t
 set nrformats-=octal
+
+" Completion behaviour
+set completeopt+=menuone  " Show menu even if there is only one item
+set completeopt-=preview  " Disable the preview window
+
+" spell languages
+set spelllang=en
+
+" Align indent to next multiple value of shiftwidth. For its meaning,
+" see http://vim.1045645.n5.nabble.com/shiftround-option-td5712100.html
+set shiftround
+
+" Virtual edit is useful for visual block edit
 set virtualedit=block
 
-" Enable Omni complete features
+" Enable omni complete features
 set omnifunc=syntaxcomplete#Complete
 set completefunc=syntaxcomplete#Complete
 
@@ -356,22 +416,12 @@ fun! TabComplete()
     endif
 endfun
 
-" }}}}
+" }
 
 
-" MAPPINGS ----------------------------------------------------------------- {{{{
+" MAPPINGS {
 
 let g:mapleader = " "
-
-" Easy mode
-map <down> <nop>
-map <left> <nop>
-map <right> <nop>
-map <up> <nop>
-imap <down> <nop>
-imap <left> <nop>
-imap <right> <nop>
-imap <up> <nop>
 
 " quit
 map <leader>qq :qa<cr>
@@ -387,10 +437,11 @@ verbose inoremap jk <ESC>
 verbose inoremap kj <ESC>
 
 " Resize windows with arrow keys
-nnoremap <C-Down> <C-w>+
-nnoremap <C-Up> <C-w>-
-nnoremap <C-Left> <C-w><
-nnoremap <C-Right>  <C-w>>
+" https://vim.fandom.com/wiki/Fast_window_resizing_with_plus/minus_keys
+nnoremap <silent> <C-Down> <C-w>+
+nnoremap <silent> <C-Up> <C-w>-
+nnoremap <silent> <C-Left> <C-w><
+nnoremap <silent> <C-Right>  <C-w>>
 
 " Smart way to move between windows
 map <C-j> <C-w>j
@@ -400,24 +451,29 @@ map <C-l> <C-w>l
 
 " Close the current buffer
 map <leader>bd :bdelete<cr>
-"map <leader>bd :bdelete<cr>:tabclose<cr>gT
 
-" Buffer prev/next
+" Buffer prev/nexT
 map <leader>j :bprev<cr>
 map <leader>k :bnext<cr>
 nnoremap <C-,> :bnext<CR>
-nnoremap <C-.> :bprev<CR>
+nnoremap <C-.> :bprev<cr>
 
 " Use Alt- numbers to pick the tab you want
-map <silent> <a-1> :tabn 1<CR>
-map <silent> <a-2> :tabn 2<CR>
-map <silent> <a-3> :tabn 3<CR>
-map <silent> <a-4> :tabn 4<CR>
-map <silent> <a-5> :tabn 5<CR>
-map <silent> <a-6> :tabn 6<CR>
-map <silent> <a-7> :tabn 7<CR>
-map <silent> <a-8> :tabn 8<CR>
-map <silent> <a-9> :tabn 9<CR>
+" map <silent> <a-1> :tabn 1<CR>
+" map <silent> <a-2> :tabn 2<CR>
+" map <silent> <a-3> :tabn 3<CR>
+" map <silent> <a-4> :tabn 4<CR>
+" map <silent> <a-5> :tabn 5<CR>
+" map <silent> <a-6> :tabn 6<CR>
+" map <silent> <a-7> :tabn 7<CR>
+" map <silent> <a-8> :tabn 8<CR>
+" map <silent> <a-9> :tabn 9<CR>
+
+" Move the cursor based on physical lines, not the actual lines.
+nnoremap <silent> <expr> j (v:count == 0 ? 'gj' : 'j')
+nnoremap <silent> <expr> k (v:count == 0 ? 'gk' : 'k')
+nnoremap <silent> ^ g^
+nnoremap <silent> 0 g0
 
 " From `:help :DiffOrig`.
 if exists(":DiffOrig") != 2
@@ -454,10 +510,18 @@ noremap <silent> $ g$
 " make Y consistent with C and D
 nnoremap Y y$
 
-" }}}}
+" enable/disable paste mode, allows usign shortcuts like jk
+set pastetoggle=<C-p>
+
+" Continuous visual shifting (does not exit Visual mode), `gv` means
+" to reselect previous visual area, see https://superuser.com/q/310417/736190
+xnoremap < <gv
+xnoremap > >gv
+
+" }
 
 
-" HIGHLIGHTS -------------------------------------------------------------- {{{{
+" HIGHLIGHTS {
 
 " Turn syntax highlighting on.
 syntax on
@@ -466,280 +530,309 @@ syntax sync minlines=256
 set synmaxcol=300
 set re=1
 
-if has('syntax') && !exists('g:syntax_on')
-  syntax enable
-endif
+" if has('syntax') && !exists('g:syntax_on')
+"   syntax enable
+" endif
 
-if exists("syntax_on")
-  syntax reset
-endif
+" if exists("syntax_on")
+"   syntax reset
+" endif
 
 " Correctly highlight $() and other modern affordances in filetype=sh.
 if !exists('g:is_posix') && !exists('g:is_bash') && !exists('g:is_kornshell') && !exists('g:is_dash')
   let g:is_posix = 1
 endif
 
-highlight! clear
+" Allow color schemes to do bright colors without forcing bold.
+" if !empty(&t_Co)
+"   set t_Co=16
+" endif
 
-hi Normal              ctermfg=7
-hi Cursor              ctermfg=NONE  ctermbg=NONE   cterm=inverse
-hi iCursor             ctermfg=NONE  ctermbg=NONE   cterm=inverse
-hi CursorLine          ctermfg=NONE  ctermbg=NONE   cterm=NONE
-hi MatchParen          ctermfg=7     ctermbg=8      cterm=underline
-hi Pmenu               ctermfg=8     ctermbg=NONE
-hi PmenuThumb          ctermfg=8     ctermbg=NONE
-hi PmenuSBar           ctermfg=7     ctermbg=NONE
-hi PmenuSel            ctermfg=4     ctermbg=NONE
-hi ColorColumn                       ctermbg=0
-hi SpellBad            ctermfg=1     ctermbg=NONE  cterm=underline
-hi SpellCap            ctermfg=10    ctermbg=NONE  cterm=underline
-hi SpellRare           ctermfg=11    ctermbg=NONE  cterm=underline
-hi SpellLocal          ctermfg=13    ctermbg=NONE  cterm=underline
-hi NonText             ctermfg=8
-hi LineNr              ctermfg=8     ctermbg=NONE
-hi CursorLineNr        ctermfg=8     ctermbg=NONE  cterm=NONE
-hi Visual              ctermfg=NONE  ctermbg=0     cterm=NONE
-hi IncSearch           ctermfg=0     ctermbg=13    cterm=NONE
-hi Search              ctermfg=0     ctermbg=11
-hi VertSplit           ctermfg=0     ctermbg=0     cterm=NONE
-hi TabLine             ctermfg=0     ctermbg=0     cterm=NONE
-hi TabLineFill         ctermfg=0     ctermbg=0     cterm=NONE
-hi TabLineSel          ctermfg=7     ctermbg=0
-hi Folded              ctermfg=6     ctermbg=0     cterm=bold
-hi Conceal             ctermfg=8     ctermbg=NONE
-hi Directory           ctermfg=4                   cterm=bold
-hi Title               ctermfg=3                   cterm=bold
-hi ErrorMsg            ctermfg=9     ctermbg=NONE
-hi DiffAdd             ctermfg=0     ctermbg=10    cterm=bold
-hi DiffChange          ctermfg=0     ctermbg=11    cterm=bold
-hi DiffDelete          ctermfg=0     ctermbg=9     cterm=bold
-hi DiffText            ctermfg=0     ctermbg=13    cterm=bold
-hi User1               ctermfg=7     ctermbg=0     cterm=NONE
-hi User2               ctermfg=7     ctermbg=8     cterm=NONE
-hi User3               ctermfg=10    ctermbg=8     cterm=NONE
-hi User4               ctermfg=0     ctermbg=2     cterm=bold
-hi User5               ctermfg=3     ctermbg=0     cterm=bold
-hi! link User6  LineNr
+set t_Co=256
 
-hi! link CursorColumn  CursorLine
-hi! link SignColumn    LineNr
-hi! link WildMenu      Visual
-hi! link FoldColumn    SignColumn
-hi! link WarningMsg    ErrorMsg
-hi! link MoreMsg       Title
-hi! link Question      MoreMsg
-hi! link ModeMsg       MoreMsg
-hi! link TabLineFill   VertSplit
-hi! link SpecialKey    NonText
-hi! link WildMenu      Folded
+if !has('gui_running')
+  augroup MyColors
+    autocmd!
+    autocmd ColorScheme * call MyHighlights()
+  augroup END
+else
+  set guioptions-=T
+  set guioptions-=m
+  set guioptions-=r
+  set guioptions-=L
+endif
 
-" Generic syntax
-hi Comment         ctermfg=8  ctermbg=NONE  cterm=italic
-hi Constant        ctermfg=14 ctermbg=NONE  cterm=NONE
-hi String          ctermfg=2  ctermbg=NONE  cterm=NONE
-hi! link Character String
-hi Number          ctermfg=3  ctermbg=NONE  cterm=NONE
-hi! link Boolean Number
-hi! link Float Number
-hi Identifier      ctermfg=7  ctermbg=NONE  cterm=NONE
-hi Function        ctermfg=4  ctermbg=NONE  cterm=NONE
-hi Statement       ctermfg=5  ctermbg=NONE  cterm=NONE
-hi! link Operator Identifier
-hi Keyword         ctermfg=9
-hi PreProc         ctermfg=9  ctermbg=NONE  cterm=NONE
-hi include         ctermfg=5  ctermbg=NONE  cterm=NONE
-hi! link Define Include
-hi! link Macro Include
-hi! link PreCondit Include
-hi Type            ctermfg=3  ctermbg=NONE  cterm=NONE
-hi Special         ctermfg=9  ctermbg=NONE  cterm=NONE
-hi SpecialChar     ctermfg=6  ctermbg=NONE  cterm=NONE
-hi! link Tag Special
-hi! link Delimiter Identifier
-hi SpecialComment  ctermfg=8  ctermbg=0     cterm=italic
-hi Debug           ctermfg=11 ctermbg=NONE  cterm=bold,italic
-hi Underlined      ctermfg=4  ctermbg=NONE  cterm=underline
-hi Ignore          ctermfg=7  ctermbg=NONE  cterm=NONE
-hi! link Error     ErrorMsg
-hi Todo            ctermfg=6  ctermbg=NONE  cterm=bold,italic
+function! MyHighlights() abort
+  "highlight clear
+  highlight! clear
 
-" HTML {{{
-hi htmlTagName              ctermfg=2
-hi htmlTag                  ctermfg=2
-hi htmlArg                  ctermfg=10
-hi htmlH1                   cterm=bold
-hi htmlBold                 cterm=bold
-hi htmlItalic               cterm=underline
-hi htmlUnderline            cterm=underline
-hi htmlBoldItalic           cterm=bold,underline
-hi htmlBoldUnderline        cterm=bold,underline
-hi htmlUnderlineItalic      cterm=underline
-hi htmlBoldUnderlineItalic  cterm=bold,underline
-hi! link htmlLink           Underlined
-hi! link htmlEndTag         htmlTag
+  " status line
+  hi StatusLine      ctermfg=0 ctermbg=0  cterm=NONE
+  hi StatusLineNC    ctermfg=0 ctermbg=0  cterm=italic
+  hi StatusLineTerm  ctermfg=0 ctermbg=0  cterm=NONE
+  hi NormalMode      ctermfg=0 ctermbg=2  cterm=bold
+  hi InsertMode      ctermfg=0 ctermbg=12 cterm=bold
+  hi ReplaceMode     ctermfg=0 ctermbg=11 cterm=bold
+  hi VisualMode      ctermfg=0 ctermbg=5  cterm=bold
+  hi CommandMode     ctermfg=0 ctermbg=2  cterm=bold
+  hi Warnings        ctermfg=8 ctermbg=0  cterm=bold
 
-"}}}
-" XML {{{
-hi xmlTagName       ctermfg=4
-hi xmlTag           ctermfg=12
-hi! link xmlString  xmlTagName
-hi! link xmlAttrib  xmlTag
-hi! link xmlEndTag  xmlTag
-hi! link xmlEqual   xmlTag
+  hi Normal              ctermfg=7     ctermbg=none   cterm=none
+  hi Cursor              ctermfg=none  ctermbg=none   cterm=reverse
+  hi CursorIM            ctermfg=none  ctermbg=none   cterm=reverse
+  hi CursorLine          ctermfg=none  ctermbg=none   cterm=none
+  hi CursorLineNr        ctermfg=8     ctermbg=none   cterm=none
+  hi matchparen          ctermfg=7     ctermbg=8      cterm=underline
+  hi pmenu               ctermfg=8     ctermbg=none
+  hi pmenuthumb          ctermfg=8     ctermbg=none
+  hi pmenusbar           ctermfg=7     ctermbg=none
+  hi pmenusel            ctermfg=4     ctermbg=none
+  hi colorcolumn                       ctermbg=0
+  hi spellbad            ctermfg=1     ctermbg=none  cterm=underline
+  hi spellcap            ctermfg=10    ctermbg=none  cterm=underline
+  hi spellrare           ctermfg=11    ctermbg=none  cterm=underline
+  hi spelllocal          ctermfg=13    ctermbg=none  cterm=underline
+  hi nontext             ctermfg=8
+  hi linenr              ctermfg=8     ctermbg=none
+  hi visual              ctermfg=none  ctermbg=0     cterm=none
+  hi incsearch           ctermfg=0     ctermbg=13    cterm=none
+  hi search              ctermfg=0     ctermbg=11
+  hi vertsplit           ctermfg=0     ctermbg=0     cterm=none
+  hi tabline             ctermfg=0     ctermbg=0     cterm=none
+  hi tablinefill         ctermfg=0     ctermbg=0     cterm=none
+  hi tablinesel          ctermfg=7     ctermbg=0
+  hi folded              ctermfg=6     ctermbg=0     cterm=bold
+  hi conceal             ctermfg=8     ctermbg=none
+  hi directory           ctermfg=4                   cterm=bold
+  hi title               ctermfg=3                   cterm=bold
+  hi errormsg            ctermfg=9     ctermbg=none
+  hi diffadd             ctermfg=0     ctermbg=10    cterm=bold
+  hi diffchange          ctermfg=0     ctermbg=11    cterm=bold
+  hi diffdelete          ctermfg=0     ctermbg=9     cterm=bold
+  hi difftext            ctermfg=0     ctermbg=13    cterm=bold
+  hi user1               ctermfg=7     ctermbg=0     cterm=none
+  hi user2               ctermfg=7     ctermbg=8     cterm=none
+  hi user3               ctermfg=10    ctermbg=8     cterm=none
+  hi user4               ctermfg=0     ctermbg=2     cterm=bold
+  hi user5               ctermfg=3     ctermbg=0     cterm=bold
+  hi! link user6  linenr
 
-"}}}
-" JavaScript {{{
-hi! link javaScript        Normal
-hi! link javaScriptBraces  Delimiter
+  hi! link cursorcolumn  cursorline
+  hi! link signcolumn    linenr
+  hi! link wildmenu      visual
+  hi! link foldcolumn    signcolumn
+  hi! link warningmsg    errormsg
+  hi! link moremsg       title
+  hi! link question      moremsg
+  hi! link modemsg       moremsg
+  hi! link tablinefill   vertsplit
+  hi! link specialkey    nontext
+  hi! link wildmenu      folded
 
-"}}}
-" PHP {{{
-hi phpSpecialFunction    ctermfg=5
-hi phpIdentifier         ctermfg=11
-hi phpParent             ctermfg=8
-hi! link phpVarSelector  phpIdentifier
-hi! link phpHereDoc      String
-hi! link phpDefine       Statement
+  " generic syntax
+  hi comment         ctermfg=8  ctermbg=none  cterm=italic
+  hi constant        ctermfg=14 ctermbg=none  cterm=none
+  hi string          ctermfg=2  ctermbg=none  cterm=none
+  hi! link character string
+  hi number          ctermfg=3  ctermbg=none  cterm=none
+  hi! link boolean number
+  hi! link float number
+  hi identifier      ctermfg=7  ctermbg=none  cterm=none
+  hi function        ctermfg=4  ctermbg=none  cterm=none
+  hi statement       ctermfg=5  ctermbg=none  cterm=none
+  hi! link operator identifier
+  hi keyword         ctermfg=9
+  hi preproc         ctermfg=9  ctermbg=none  cterm=none
+  hi include         ctermfg=5  ctermbg=none  cterm=none
+  hi! link define include
+  hi! link macro include
+  hi! link precondit include
+  hi type            ctermfg=3  ctermbg=none  cterm=none
+  hi special         ctermfg=9  ctermbg=none  cterm=none
+  hi specialchar     ctermfg=6  ctermbg=none  cterm=none
+  hi! link tag special
+  hi! link delimiter identifier
+  hi specialcomment  ctermfg=8  ctermbg=0     cterm=italic
+  hi debug           ctermfg=11 ctermbg=none  cterm=bold,italic
+  hi underlined      ctermfg=4  ctermbg=none  cterm=underline
+  hi ignore          ctermfg=7  ctermbg=none  cterm=none
+  hi! link error     errormsg
+  hi todo            ctermfg=6  ctermbg=none  cterm=bold,italic
 
-"}}}
-" Markdown {{{
-hi! link markdownHeadingRule        NonText
-hi! link markdownHeadingDelimiter   markdownHeadingRule
-hi! link markdownLinkDelimiter      Delimiter
-hi! link markdownURLDelimiter       Delimiter
-hi! link markdownCodeDelimiter      NonText
-hi! link markdownLinkTextDelimiter  markdownLinkDelimiter
-hi! link markdownUrl                markdownLinkText
-hi! link markdownAutomaticLink      markdownLinkText
-hi! link markdownCodeBlock          String
-hi markdownCode                     cterm=bold
-hi markdownBold                     cterm=bold
-hi markdownItalic                   cterm=underline
+  " html
+  hi htmltagname              ctermfg=2
+  hi htmltag                  ctermfg=2
+  hi htmlarg                  ctermfg=10
+  hi htmlh1                   cterm=bold
+  hi htmlbold                 cterm=bold
+  hi htmlitalic               cterm=underline
+  hi htmlunderline            cterm=underline
+  hi htmlbolditalic           cterm=bold,underline
+  hi htmlboldunderline        cterm=bold,underline
+  hi htmlunderlineitalic      cterm=underline
+  hi htmlboldunderlineitalic  cterm=bold,underline
+  hi! link htmllink           underlined
+  hi! link htmlendtag         htmltag
 
-"}}}
-" Ruby {{{
-hi! link rubyDefine                 Statement
-hi! link rubyLocalVariableOrMethod  Identifier
-hi! link rubyConstant               Constant
-hi! link rubyInstanceVariable       Number
-hi! link rubyStringDelimiter        rubyString
+  " xml
+  hi xmltagname       ctermfg=4
+  hi xmltag           ctermfg=12
+  hi! link xmlstring  xmltagname
+  hi! link xmlattrib  xmltag
+  hi! link xmlendtag  xmltag
+  hi! link xmlequal   xmltag
 
-"}}}
-" Git {{{
-hi gitCommitBranch               ctermfg=3
-hi gitCommitSelectedType         ctermfg=10
-hi gitCommitSelectedFile         ctermfg=2
-hi gitCommitUnmergedType         ctermfg=9
-hi gitCommitUnmergedFile         ctermfg=1
-hi! link gitCommitFile           Directory
-hi! link gitCommitUntrackedFile  gitCommitUnmergedFile
-hi! link gitCommitDiscardedType  gitCommitUnmergedType
-hi! link gitCommitDiscardedFile  gitCommitUnmergedFile
+  " javascript
+  hi! link javascript        normal
+  hi! link javascriptbraces  delimiter
 
-"}}}
-" Vim {{{
-hi! link vimSetSep    Delimiter
-hi! link vimContinue  Delimiter
-hi! link vimHiAttrib  Constant
+  " php
+  hi phpspecialfunction    ctermfg=5
+  hi phpidentifier         ctermfg=11
+  hi phpparent             ctermfg=8
+  hi! link phpvarselector  phpidentifier
+  hi! link phpheredoc      string
+  hi! link phpdefine       statement
 
-"}}}
-" LESS {{{
-hi lessVariable             ctermfg=11
-hi! link lessVariableValue  Normal
+  " markdown
+  hi! link markdownheadingrule        nontext
+  hi! link markdownheadingdelimiter   markdownheadingrule
+  hi! link markdownlinkdelimiter      delimiter
+  hi! link markdownurldelimiter       delimiter
+  hi! link markdowncodedelimiter      nontext
+  hi! link markdownlinktextdelimiter  markdownlinkdelimiter
+  hi! link markdownurl                markdownlinktext
+  hi! link markdownautomaticlink      markdownlinktext
+  hi! link markdowncodeblock          string
+  hi markdowncode                     cterm=bold
+  hi markdownbold                     cterm=bold
+  hi markdownitalic                   cterm=underline
 
-"}}}
-" NERDTree {{{
-hi! link NERDTreeHelp      Comment
-hi! link NERDTreeExecFile  String
+  " ruby
+  hi! link rubydefine                 statement
+  hi! link rubylocalvariableormethod  identifier
+  hi! link rubyconstant               constant
+  hi! link rubyinstancevariable       number
+  hi! link rubystringdelimiter        rubystring
 
-"}}}
-" Vimwiki {{{
-hi! link VimwikiHeaderChar  markdownHeadingDelimiter
-hi! link VimwikiList        markdownListMarker
-hi! link VimwikiCode        markdownCode
-hi! link VimwikiCodeChar    markdownCodeDelimiter
+  " git
+  hi gitcommitbranch               ctermfg=3
+  hi gitcommitselectedtype         ctermfg=10
+  hi gitcommitselectedfile         ctermfg=2
+  hi gitcommitunmergedtype         ctermfg=9
+  hi gitcommitunmergedfile         ctermfg=1
+  hi! link gitcommitfile           directory
+  hi! link gitcommituntrackedfile  gitcommitunmergedfile
+  hi! link gitcommitdiscardedtype  gitcommitunmergedtype
+  hi! link gitcommitdiscardedfile  gitcommitunmergedfile
 
-"}}}
-" Help {{{
-hi! link helpExample         String
-hi! link helpHeadline        Title
-hi! link helpSectionDelim    Comment
-hi! link helpHyperTextEntry  Statement
-hi! link helpHyperTextJump   Underlined
-hi! link helpURL             Underlined
+  " vim
+  hi! link vimsetsep    delimiter
+  hi! link vimcontinue  delimiter
+  hi! link vimhiattrib  constant
 
-"}}}
-" CtrlP {{{
-hi! link CtrlPMatch    String
-hi! link CtrlPLinePre  Comment
+  " less
+  hi lessvariable             ctermfg=11
+  hi! link lessvariablevalue  normal
 
-"}}}
-" Mustache {{{
-hi mustacheSection           ctermfg=14  cterm=bold
-hi mustacheMarker            ctermfg=6
-hi mustacheVariable          ctermfg=14
-hi mustacheVariableUnescape  ctermfg=9
-hi mustachePartial           ctermfg=13
+  " nerdtree
+  hi! link nerdtreehelp      comment
+  hi! link nerdtreeexecfile  string
 
-"}}}
-" Shell {{{
-hi shDerefSimple     ctermfg=11
-hi! link shDerefVar  shDerefSimple
+  " vimwiki
+  hi! link vimwikiheaderchar  markdownheadingdelimiter
+  hi! link vimwikilist        markdownlistmarker
+  hi! link vimwikicode        markdowncode
+  hi! link vimwikicodechar    markdowncodedelimiter
 
-"}}}
-" Syntastic {{{
-hi SyntasticWarningSign       ctermfg=3  ctermbg=NONE
-hi SyntasticErrorSign         ctermfg=1  ctermbg=NONE
-hi SyntasticStyleWarningSign  ctermfg=2  ctermbg=NONE
-hi SyntasticStyleErrorSign    ctermfg=4  ctermbg=NONE
+  " help
+  hi! link helpexample         string
+  hi! link helpheadline        title
+  hi! link helpsectiondelim    comment
+  hi! link helphypertextentry  statement
+  hi! link helphypertextjump   underlined
+  hi! link helpurl             underlined
 
-"}}}
-" Netrw {{{
-hi netrwExe       ctermfg=9
-hi netrwClassify  ctermfg=8  cterm=bold
+  " ctrlp
+  hi! link ctrlpmatch    string
+  hi! link ctrlplinepre  comment
 
-"}}}
-" Ledger {{{
-hi ledgerAccount  ctermfg=11
-hi! link ledgerMetadata  Comment
-hi! link ledgerTransactionStatus  Statement
+  " mustache
+  hi mustachesection           ctermfg=14  cterm=bold
+  hi mustachemarker            ctermfg=6
+  hi mustachevariable          ctermfg=14
+  hi mustachevariableunescape  ctermfg=9
+  hi mustachepartial           ctermfg=13
 
-"}}}
-" Diff {{{
-hi diffAdded  ctermfg=2
-hi diffRemoved  ctermfg=1
-hi! link diffFile  PreProc
-hi! link diffLine  Title
+  " shell
+  hi shderefsimple     ctermfg=11
+  hi! link shderefvar  shderefsimple
 
-"}}}
-" Plug {{{
-hi plugSha  ctermfg=3
+  " syntastic
+  hi syntasticwarningsign       ctermfg=3  ctermbg=none
+  hi syntasticerrorsign         ctermfg=1  ctermbg=none
+  hi syntasticstylewarningsign  ctermfg=2  ctermbg=none
+  hi syntasticstyleerrorsign    ctermfg=4  ctermbg=none
 
-"}}}
-" Blade {{{
-hi! link bladeStructure  PreProc
-hi! link bladeParen      phpParent
-hi! link bladeEchoDelim  PreProc
+  " netrw
+  hi netrwexe       ctermfg=9
+  hi netrwclassify  ctermfg=8  cterm=bold
 
-"}}}
+  " ledger
+  hi ledgeraccount  ctermfg=11
+  hi! link ledgermetadata  comment
+  hi! link ledgertransactionstatus  statement
 
-" }}}}
+  " diff
+  hi diffadded  ctermfg=2
+  hi diffremoved  ctermfg=1
+  hi! link difffile  preproc
+  hi! link diffline  title
+
+  " plug
+  hi plugsha  ctermfg=3
+
+  " blade
+  hi! link bladestructure  preproc
+  hi! link bladeparen      phpparent
+  hi! link bladeechodelim  preproc
+
+endfunction
+
+" Highlight trailing white spaces and leading tabs
+if has('gui_running')
+  hi Warnings ctermfg=1 ctermbg=8
+endif
+set background=dark
+colorscheme default
+
+" If we want to use true colors, we must a color scheme which support
+call matchadd("Warnings", '\s\+$')
+call matchadd("Warnings", '^\t\+')
+
+" More accurate syntax highlighting? (see `:h syn-sync`)
+augroup accurate_syn_highlight
+  autocmd!
+  autocmd BufEnter * :syntax sync fromstart
+augroup END
+
+" }
 
 
-" STATUSLINE -------------------------------------------------------------- {{{{
+" STATUSLINE {
 
-hi StatusLine           ctermfg=0   ctermbg=0   cterm=NONE
-hi StatusLineNC         ctermfg=0   ctermbg=0   cterm=italic
-hi StatusLineNormal     ctermfg=0   ctermbg=2   cterm=bold
-hi StatusLineInsert     ctermfg=0   ctermbg=12  cterm=bold
-hi StatusLineReplace    ctermfg=0   ctermbg=11  cterm=bold
-hi StatusLineVisual     ctermfg=0   ctermbg=5   cterm=bold
-hi StatusLineVisualL    ctermfg=0   ctermbg=5   cterm=bold
-hi StatusLineVisualB    ctermfg=0   ctermbg=5   cterm=bold
-hi StatusLineCommand    ctermfg=0   ctermbg=2   cterm=bold
-hi StatusLineSelect     ctermfg=0   ctermbg=4   cterm=bold
-hi StatusLineSelectL    ctermfg=0   ctermbg=4   cterm=bold
-hi StatusLineSelectB    ctermfg=0   ctermbg=4   cterm=bold
+" mode detector
+let g:currentmode={
+      \ 'n'  : 'NORMAL ',
+      \ 'v'  : 'VISUAL ',
+      \ 'V'  : 'V-LINE ',
+      \ "\<C-V>" : 'V-BLOCK ',
+      \ 'i'  : 'INSERT ',
+      \ 'R'  : 'R ',
+      \ 'Rv' : 'V-REPLACE ',
+      \ 'c'  : 'COMMAND ',
+      \ 't'  : 'TERMINAL '
+      \}
 
 " always display statusline
 set laststatus=2
@@ -751,8 +844,7 @@ set statusline=
 set statusline+=%1*\ %n\ 
 
 " add vim mode
-set statusline+=%{%GetCurrentModeColor()%}
-set statusline+=\ %{g:currentmode[mode()]}\ 
+set statusline+=\ %{g:currentmode[mode()]}
 
 " add git branch
 set statusline+=%3*\%{StatuslineGit()}
@@ -761,13 +853,16 @@ set statusline+=%3*\%{StatuslineGit()}
 set statusline+=%5*\%{exists('$SSH_TTY')?'\ \ \@'.hostname().'':''}
 
 " add filename
-set statusline+=%1*\ %{fnamemodify(getcwd(),':~')}\/%<%f
+set statusline+=%1*\ %{fnamemodify(getcwd(),':~')}%<%f
 
 " add file modified/readonly/top-bottom flag
-set statusline+=\ %m%r%w\ 
+set statusline+=\ %m%r%w
 
 " add separation
-set statusline+=%1*\ %=
+set statusline+=\ %1*\ %=
+
+" add paste indicator
+set statusline+=%5*\ \ %{&paste?'[PASTE]\ ':''}
 
 " add file encoding + format + filetype
 set statusline+=%2*\ \ %{&fileencoding?&filencoding:&encoding}
@@ -777,69 +872,13 @@ set statusline+=%3*\ \ %(%{&filetype}%)\ \
 " add row:col
 set statusline+=%4*\ \ %l:%c\ \ 
 
-" mode detector
-let g:currentmode={
-       \ 'n'      : 'NORMAL',
-       \ 'i'      : 'INSERT',
-       \ 'R'      : 'REPLACE',
-       \ 'Rv'     : 'V-REPLACE',
-       \ 'v'      : 'VISUAL',
-       \ 'V'      : 'V-LINE',
-       \ "\<C-V>" : 'V-BLOCK',
-       \ 'c'      : 'COMMAND',
-       \ 's'      : 'SELECT',
-       \ 'S'      : 'S-LINE',
-       \ "\<C-S>" : 'S-BLOCK',
-       \ 't'      : 'TERMINAL',
-       \}
+" add trailing space warning
+set statusline+=%#WarningMsg#
+set statusline+=%{StatuslineTrailingSpaceWarning()}
+set statusline+=%{StatuslineTabWarning()}
 
-" mode color group assign
-let s:statusline_modes_dict = {
-    \ 'n' : {
-      \ 'text'        : 'NORMAL',
-      \ 'color_group' : 'StatusLineNormal'
-    \ },
-    \ 'i' : {
-      \ 'text'        : 'INSERT',
-      \ 'color_group' : 'StatusLineInsert'
-    \ },
-    \ 'R' : {
-      \ 'text'        : 'REPLACE',
-      \ 'color_group' : 'StatusLineReplace'
-    \ },
-    \ 'v' : {
-      \ 'text'        : 'VISUAL',
-      \ 'color_group' : 'StatusLineVisual'
-    \ },
-    \ 'V' : {
-      \ 'text'        : 'V-LINE',
-      \ 'color_group' : 'StatusLineVisualL'
-    \ },
-    \ "\<C-v>" : {
-      \ 'text'        : 'V-BLOCK',
-      \ 'color_group' : 'StatusLineVisualB'
-    \ },
-    \ 'c' : {
-      \ 'text'        : 'COMMAND',
-      \ 'color_group' : 'StatusLineCommand'
-    \ },
-    \ 's' : {
-      \ 'text'        : 'SELECT',
-      \ 'color_group' : 'StatusLineSelect'
-    \ },
-    \ 'S' : {
-      \ 'text'        : 'S-LINE',
-      \ 'color_group' : 'StatusLineSelectL'
-    \ },
-    \ "\<C-s>" : {
-      \ 'text'        : 'S-BLOCK',
-      \ 'color_group' : 'StatusLineSelectB'
-    \ },
-    \ 't' : {
-      \ 'text'        : 'TERMINAL',
-      \ 'color_group' : 'StatusLineTerminal'
-    \ },
-\ }
+
+" Statusline functions
 
 " return git branch
 function! GitBranch()
@@ -852,23 +891,70 @@ function! StatuslineGit()
   return strlen(l:branchname) > 0?'  '.l:branchname.'* ':''
 endfunction
 
-" return mode color
-function! GetCurrentModeColor()
-  let md = mode()
-  if (has_key (s:statusline_modes_dict, md))
-    return "%#" . s:statusline_modes_dict[md]['color_group'] . "#"
-  endif
-  return "%#StatusLine#"
-endfunction
-
 " autocommands to disable statusline for terminal, netwr and help buffers
 augroup statuslines
   autocmd!
-  autocmd TerminalOpen * setlocal statusline=%6*\ 
+  " autocmd TerminalOpen * setlocal statusline=%6*\
   autocmd FileType netrw setlocal statusline=%6*\ 
   autocmd FileType help setlocal statusline=%6*\ 
 augroup end
 
-" }}}}
+" Recalculate the trailing whitespace warning when idle, and after saving.
+augroup check_trailing_space
+  autocmd!
+  autocmd CursorHold,BufWritePost * unlet! b:statusline_trailing_space_warning
+        \ | let &statusline=&statusline
+augroup END
+
+augroup check_mixed_tabs
+  autocmd!
+  autocmd CursorHold,BufWritePost * unlet! b:statusline_tab_warning
+        \ | let &statusline=&statusline
+augroup END
+
+" Find if trailing spaces exist.
+function! StatuslineTrailingSpaceWarning()
+  if !exists('b:statusline_trailing_space_warning')
+    " If the file is unmodifiable, do not warn this.
+    if !&modifiable
+      let b:statusline_trailing_space_warning = ''
+      return b:statusline_trailing_space_warning
+    endif
+
+    let l:line_num = search('\s\+$', 'nw')
+    if l:line_num != 0
+      let b:statusline_trailing_space_warning = ' [' . l:line_num . '] '
+    else
+      let b:statusline_trailing_space_warning = ''
+    endif
+  endif
+  return b:statusline_trailing_space_warning
+endfunction
+
+" Find if they are mixed indentings.
+function! StatuslineTabWarning()
+  if !exists('b:statusline_tab_warning')
+    " If the file is unmodifiable, do not warn this.
+    if !&modifiable
+      let b:statusline_trailing_space_warning = ''
+      return b:statusline_trailing_space_warning
+    endif
+
+    let has_leading_tabs = search('^\t\+', 'nw') != 0
+    let has_leading_spaces = search('^ \+', 'nw') != 0
+
+    if has_leading_tabs && has_leading_spaces
+      let b:statusline_tab_warning = ' [mixed-indenting]'
+    elseif has_leading_tabs
+      let b:statusline_tab_warning = ' [tabbed-indenting]'
+    else
+      let b:statusline_tab_warning = ''
+    endif
+  endif
+
+  return b:statusline_tab_warning
+endfunction
+
+" }
 
 " vim: fdm=marker:sw=2:sts=2:et

@@ -2,7 +2,9 @@
 
 alias sudo='sudo '    # Carry over aliases to the root account when using sudo
 alias watch='watch '  # Make watch work with aliases
-
 alias r='lf'
+
+# shellcheck disable=2139
+alias wget="wget --hsts-file='$XDG_CACHE_HOME/wget-hsts'"
 alias ls="LC_COLLATE=C ls --color=auto --group-directories-first"
 alias grep='grep --color=auto --exclude-dir=.git'

@@ -27,22 +27,16 @@ if [[ -s "$XDG_CONFIG_HOME/bash/completion.d/docker-completion.sh" ]]; then
 fi
 
 # node version manager completion
-if [[ -s "$NVM_DIR/nvm.sh" ]]; then
-  . "$NVM_DIR/nvm.sh"
-fi
 if [[ -s "$NVM_DIR/bash_completion" ]]; then
   . "$NVM_DIR/bash_completion"
+fi
+
+# java version manager completion
+if [[ -s "$SDKMAN_DIR/contrib/completion/bash/sdk" ]]; then
+  . "$SDKMAN_DIR/contrib/completion/bash/sdk"
 fi
 
 # gradle completion
 if [[ -s "$XDG_CONFIG_HOME/bash/completion.d/gradle-completion.bash" ]]; then
   . "$XDG_CONFIG_HOME/bash/completion.d/gradle-completion.bash"
-fi
-
-# java version manager completion
-if [[ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]]; then
-  . "$SDKMAN_DIR/bin/sdkman-init.sh"
-fi
-if [[ -s "$SDKMAN_DIR/contrib/completion/bash/sdk" ]]; then
-  . "$SDKMAN_DIR/contrib/completion/bash/sdk"
 fi
