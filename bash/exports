@@ -4,6 +4,7 @@
 export LANG="en_US.UTF-8"
 export LC_CTYPE="$LANG"
 export LC_ALL="$LANG"
+export TERMINFO_DIRS="$HOME/.config/terminfo"
 export COLORTERM=truecolor
 
 # XDG directories
