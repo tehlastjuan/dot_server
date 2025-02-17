@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-alias sudo='sudo '    # Carry over aliases to the root account when using sudo
-alias watch='watch '  # Make watch work with aliases
 alias r='lf'
 
 # shellcheck disable=2139

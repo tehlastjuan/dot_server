@@ -37,6 +37,9 @@ map w
 map sa
 map sc
 map se
+cmap cmd-word
+cmap cmd-word-yank
+cmap cmd-word-yank
 
 
 map C reload-conf
@@ -54,11 +57,16 @@ map dD delete
 map dd cut
 map dt trash
 
+cmap <c-right> cmd-word
+cmap <c-left> cmd-word-back
+cmap <c-y> cmd-word-yank
+
 map i pager
 map I rename
 
 map e open
 map E $$EDITOR $f
+map S edit-with-sudo
 
 map o &mimeopen $f
 map O push :openwith<space>
@@ -103,9 +111,18 @@ map = &bcompare $fx
 
 #### commands
 
+# edit-with-sudo
+cmd edit-with-sudo ${{
+  set -- $(cat ~/.local/share/lf/files)
+  mode="$1"
+  shift
+  sudo -e "$fx"
+  rm ~/.local/share/lf/files
+  lf -remote "send clear"
+}}
+
 # Pager command
 cmd pager ${{
-
   cols=$(tput cols)
   lines=$(tput lines)
   if [[ cols -gt 115 ]]; then

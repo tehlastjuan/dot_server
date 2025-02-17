@@ -4,7 +4,6 @@
 export LANG="en_US.UTF-8"
 export LC_CTYPE="$LANG"
 export LC_ALL="$LANG"
-export TERMINFO_DIRS="$HOME/.config/terminfo"
 export COLORTERM=truecolor
 
 # XDG directories
@@ -113,15 +112,24 @@ if hash java 2>/dev/null; then
 	# Java XWayland blank screens fix
 	export _JAVA_AWT_WM_NONREPARENTING=1
 	# java prefs
-	export _JAVA_OPTIONS=-Djava.util.prefs.userRoot="$XDG_CONFIG_HOME"/java
-	export _JAVA_OPTIONS='-Dawt.useSystemAAFontSettings=on -Dswing.aatext=true'
+	export JAVA_TOOL_OPTIONS="$JAVA_TOOL_OPTIONS \
+		-Djava.util.prefs.userRoot=$XDG_CONFIG_HOME/java
+    -Dconfig.override_with_env_vars=true \
+    -Djava.net.preferIPv4Stack=true \
+    -Duser.timezone=UTC \
+    -Dquill.macro.log=false \
+    -XX:+PerfDisableSharedMem"
+	export JDK_JAVA_OPTIONS="$JDK_JAVA_OPTIONS \
+		-Dawt.useSystemAAFontSettings=on \
+		-Dswing.aatext=true \
+		-Dswing.defaultlaf=com.sun.java.swing.plaf.gtk.GTKLookAndFeel \
+		-Dswing.crossplatformlaf=com.sun.java.swing.plaf.gtk.GTKLookAndFeel \
+		-Djdk.gtk.version=3 \
+		-Dawt.java2d.uiScale.enabled=true \
+		-Dsun.java2d.opengl=true"
 	# gradle builder
 	export GRADLE_USER_HOME="$XDG_DATA_HOME/gradle"
 fi
-
-# Common lisp stuff
-export ROSWELL_HOME="$XDG_DATA_HOME/roswell"
-export PATH="$ROSWELL_HOME/impls/x86-64/linux/sbcl/2.4.7/bin/:$PATH"
 
 # Export the final PATH
 export PATH
