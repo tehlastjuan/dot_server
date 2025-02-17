@@ -536,12 +536,12 @@ set t_vb=
 set tm=500
 
 " Enable modelines: 1 line top & bottom
-set modelines=1
-set modeline
+" set modelines=1
+" set modeline
 
 " Disable modelines as a security precaution
-"set modelines=0
-"set nomodeline
+set modelines=0
+set nomodeline
 
 " Prefer splitting windows to the right
 set splitright
