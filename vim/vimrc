@@ -316,7 +316,7 @@ set virtualedit=block
 set omnifunc=syntaxcomplete#Complete
 set completefunc=syntaxcomplete#Complete
 
-"	List all matches without completing, then each full match >vim
+" List all matches without completing, then each full match >vim
 set wildmode=list:full
 
 " Enhanced command-line completion mode w\ popup menu
@@ -535,9 +535,13 @@ set novisualbell
 set t_vb=
 set tm=500
 
+" Enable modelines: 1 line top & bottom
+set modelines=1
+set modeline
+
 " Disable modelines as a security precaution
-set modelines=0
-set nomodeline
+"set modelines=0
+"set nomodeline
 
 " Prefer splitting windows to the right
 set splitright
@@ -663,6 +667,7 @@ function! CustomHighlights() abort
   hi CursorIM            ctermfg=none  ctermbg=none   cterm=reverse
   hi CursorLine          ctermfg=none  ctermbg=none   cterm=none
   hi CursorLineNr        ctermfg=6     ctermbg=none   cterm=none
+  hi CursorLineSign      ctermfg=13    ctermbg=none   cterm=none
   hi matchparen          ctermfg=0     ctermbg=none   cterm=underline
   hi pmenu               ctermfg=8     ctermbg=none
   hi pmenuthumb          ctermfg=8     ctermbg=none
