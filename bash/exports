@@ -134,4 +134,4 @@ fi
 # Export the final PATH
 export PATH
 
-# vim: ts=2 sw=2 tw=80 set ft=sh noet :
+# vim: set ts=2 sw=2 tw=80 ft=sh noet :
