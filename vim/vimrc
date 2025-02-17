@@ -81,7 +81,7 @@ endif
 
 " netrw history
 if !isdirectory(expand('~') . '/.local/state/vim/')
-    call mkdir($HOME . '/.local/state/vim/', 'p', 0700)
+  call mkdir($HOME . '/.local/state/vim/', 'p', 0700)
 endif
 let g:netrw_home=(expand('~') . '/.local/state/vim/')
 
@@ -140,15 +140,15 @@ else
   set shell=/bin/sh
 endif
 
-"dont show epic message for swapfiles
-"Use :recover when we actually need to recover from swapfile
+" dont show epic message for swapfiles
+" Use :recover when we actually need to recover from swapfile
 set shortmess+=A
 
 " Do not add two spaces after a period when joining lines or formatting texts,
 " see https://stackoverflow.com/q/4760428/6064933
 set nojoinspaces
 
-"Specify the behavior when switching between buffers
+" Specify the behavior when switching between buffers
 try
   set switchbuf=useopen,usetab,newtab
   set stal=2
@@ -170,7 +170,7 @@ if exists(':Man') != 2 && !exists('g:loaded_man') && &filetype !=? 'man' && !has
   runtime ftplugin/man.vim
 endif
 
-"Open help vertically
+" Open help vertically
 command! -nargs=* -complete=help Help vertical belowright help <args>
 autocmd FileType help wincmd L
 
@@ -213,7 +213,7 @@ set scrolloff=8
 " Do not wrap lines. Allow long lines to extend as far as the line goes.
 " set nowrap
 
-" ALT - Wrap lines at 80chars
+" ALT - Wrap lines at 120chars
 set wrap
 set textwidth=120
 
@@ -437,10 +437,9 @@ let g:netrw_winsize=25
 
 " Open Netrw window
 function! ToggleVExplorer()
-    Lexplore
+  Lexplore
 endfunction
 map <silent> <leader>e :call ToggleVExplorer()<CR>
-"nnoremap <leader>e :Vexplore<CR>
 
 " Open a terminal window
 map <c-/> :ter<CR>
@@ -450,7 +449,6 @@ tnoremap <c-/> exit<CR>
 
 " Esc to make the terminal scrollable and I to input mode
 tnoremap <Esc> <C-\><C-n>
-
 
 " Commenting blocks of code.
 " https: //stackoverflow.com/questions/1676632/whats-a-quick-way-to-comment-uncomment-lines-in-vim
@@ -533,6 +531,9 @@ set cursorlineopt=number
 
 " Disable bells
 set noerrorbells
+set novisualbell
+set t_vb=
+set tm=500
 
 " Disable modelines as a security precaution
 set modelines=0
@@ -548,7 +549,10 @@ set conceallevel=0
 " Command line height
 set cmdheight=1
 
-set scrolloff=1
+" Adds 1 col space left to the numbers
+" set foldcolumn=1
+
+set scrolloff=8
 set sidescroll=1
 set sidescrolloff=2
 set display+=lastline
@@ -557,10 +561,14 @@ set display+=truncate
 " have a fixed column for the diagnostics to appear in
 " this removes the jitter when warnings/errors flow in
 set signcolumn=yes
-set invlist
+" set invlist
 
 " hide tabltine
 set showtabline=0
+
+" https://github.com/amix/vimrc/blob/master/vimrcs/basic.vim
+" Don't redraw while executing macros (good performance config)
+set lazyredraw
 
 " Cursor modes: Normal - Insert
 let &t_SI = "\<esc>[6 q"
@@ -583,6 +591,9 @@ augroup vimfile_setting
         \ foldexpr=VimFolds(v:lnum) foldtext=MyFoldText()
         \ keywordprg=:help formatoptions-=o formatoptions-=r
 augroup END
+
+" Disable auto commenting in a new line
+autocmd Filetype * setlocal formatoptions-=c formatoptions-=r  formatoptions-=o
 
 " }
 
@@ -609,14 +620,14 @@ if !empty(&t_Co)
 endif
 
 " Enable 24-bit colors
-"set termguicolors
-let &t_8f = "\<Esc>[38:2::%lu:%lu:%lum"
-let &t_8b = "\<Esc>[48:2::%lu:%lu:%lum"
+" set termguicolors
+" let &t_8f = "\<Esc>[38:2::%lu:%lu:%lum"
+" let &t_8b = "\<Esc>[48:2::%lu:%lu:%lum"
 
 if !has('gui_running')
   augroup MyColors
     autocmd!
-    autocmd ColorScheme * call MyHighlights()
+    autocmd ColorScheme * call CustomHighlights()
   augroup END
 else
   set guioptions-=T
@@ -625,7 +636,7 @@ else
   set guioptions-=L
 endif
 
-function! MyHighlights() abort
+function! CustomHighlights() abort
   highlight! clear
 
   " custom highlights
@@ -663,7 +674,7 @@ function! MyHighlights() abort
   hi spellrare           ctermfg=11    ctermbg=none   cterm=underline
   hi spelllocal          ctermfg=13    ctermbg=none   cterm=underline
   hi nontext             ctermfg=8
-  hi linenr              ctermfg=8     ctermbg=none
+  hi linenr              ctermfg=8     ctermbg=none   cterm=none
   hi visual              ctermfg=none  ctermbg=0      cterm=none
   hi incsearch           ctermfg=0     ctermbg=13     cterm=none
   hi search              ctermfg=0     ctermbg=11
@@ -916,8 +927,8 @@ function! StatuslineActive()
   set statusline+=\ %m%r%w
   " add separation
   set statusline+=\ %1*\ %=
-    " add paste indicator
-    set statusline+=%5*\ \ %{&paste?'[PASTE]\ ':''}
+  " add paste indicator
+  set statusline+=%5*\ \ %{&paste?'[PASTE]\ ':''}
   " add file encoding + format + filetype
   set statusline+=%2*\ \ %{&fileencoding?&filencoding:&encoding}
   set statusline+=%2*\ \ %(%{&fileformat}%)
