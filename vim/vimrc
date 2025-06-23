@@ -121,6 +121,17 @@ set formatoptions+=tcqj
 " see https://stackoverflow.com/q/32669814/6064933
 set formatoptions+=mM
 
+" folds
+augroup vimfile_setting
+  autocmd!
+  autocmd FileType vim setlocal foldmethod=expr foldlevel=0 foldlevelstart=-1
+        \ foldexpr=VimFolds(v:lnum) foldtext=MyFoldText()
+        \ keywordprg=:help formatoptions-=o formatoptions-=r
+augroup END
+
+" Disable auto commenting in a new line
+autocmd Filetype * setlocal formatoptions-=c formatoptions-=r  formatoptions-=o
+
 " enable fast tty support
 set ttyfast
 
@@ -201,35 +212,27 @@ set tabstop=2
 " Spaces a tab counts while editing
 set softtabstop=2
 
-" Use space characters instead of tabs.
-set expandtab
-
 " Inserts blanks according to shiftwidth
 set smarttab
+
+" Use space characters instead of tabs.
+set expandtab
 
 " Do not let cursor scroll below or above N number of lines when scrolling.
 set scrolloff=8
 
 " Do not wrap lines. Allow long lines to extend as far as the line goes.
-" set nowrap
+set nowrap
 
-" ALT - Wrap lines at 120chars
-set wrap
-set textwidth=120
+" Alt: Wrap lines at convenient points
+" set wrap
+" set textwidth=120 # chars
+" set linebreak
+" set showbreak=~>
 
-" Wrap lines at convenient points
-set linebreak
-set showbreak=~W>"
-
-"Display tabs and trailing spaces visually
-set list listchars=tab:\|\ ,trail:-,extends:>,precedes:<,nbsp:+
-
-augroup vimfile_setting
-  autocmd!
-  autocmd FileType vim setlocal foldmethod=expr foldlevel=0 foldlevelstart=-1
-        \ foldexpr=VimFolds(v:lnum) foldtext=MyFoldText()
-        \ keywordprg=:help formatoptions-=o formatoptions-=r
-augroup END
+" Display tabs and trailing spaces
+set listchars=tab:┆\ ,space:·,trail:-,extends:>,precedes:<,nbsp:␣
+set list " or set invlist
 
 " }
 
@@ -281,6 +284,12 @@ set hlsearch
 " Set the commands to save in history default number is 20
 set history=10000
 
+" a gem found in /usr/share/vim/vimfiles/syntax/lf.vim
+let lfvim = system('! which lf')
+if filereadable(lfvim)
+   execute "source " . lfvim
+endif
+
 " }
 
 
@@ -316,12 +325,12 @@ set virtualedit=block
 set omnifunc=syntaxcomplete#Complete
 set completefunc=syntaxcomplete#Complete
 
-" List all matches without completing, then each full match >vim
-set wildmode=list:full
-
 " Enhanced command-line completion mode w\ popup menu
 set wildmenu
 set pumheight=8
+
+" List all matches without completing, then each full match >vim
+set wildmode=list:longest,full
 
 " Ignore certain files and folders when globbing
 set wildignore+=*.o,*.obj,*.bin,*.dll,*.exe
@@ -397,10 +406,10 @@ xnoremap < <gv
 xnoremap > >gv
 
 " Buffer prev/nexT
-map <leader>j :bprev<cr>
-map <leader>k :bnext<cr>
-nnoremap <C-,> :bnext<CR>
-nnoremap <C-.> :bprev<cr>
+map <silent> <leader>j :bprev<cr>
+map <silent> <leader>k :bnext<cr>
+nnoremap <silent> <C-,> :bnext<CR>
+nnoremap <silent> <C-.> :bprev<cr>
 
 " Move the cursor based on physical lines, not the actual lines.
 nnoremap <silent> <expr> j (v:count == 0 ? 'gj' : 'j')
@@ -449,6 +458,12 @@ tnoremap <c-/> exit<CR>
 
 " Esc to make the terminal scrollable and I to input mode
 tnoremap <Esc> <C-\><C-n>
+
+" lf to navigate files
+nnoremap <leader>l :LF<cr>
+
+" show highlight group
+map <leader>j :call SynStack()<cr>
 
 " Commenting blocks of code.
 " https: //stackoverflow.com/questions/1676632/whats-a-quick-way-to-comment-uncomment-lines-in-vim
@@ -513,10 +528,10 @@ set showcmd
 " Show the mode you are on the last line.
 set noshowmode
 
-" Current line number
+" Show current line number
 set number
 
-" Line numbers
+" Shoe line numbers
 set relativenumber
 
 " Show the cursor position all the time
@@ -554,7 +569,7 @@ set conceallevel=0
 set cmdheight=1
 
 " Adds 1 col space left to the numbers
-" set foldcolumn=1
+set foldcolumn=1
 
 set scrolloff=8
 set sidescroll=1
@@ -565,10 +580,9 @@ set display+=truncate
 " have a fixed column for the diagnostics to appear in
 " this removes the jitter when warnings/errors flow in
 set signcolumn=yes
-" set invlist
 
 " hide tabltine
-set showtabline=0
+set showtabline=1
 
 " https://github.com/amix/vimrc/blob/master/vimrcs/basic.vim
 " Don't redraw while executing macros (good performance config)
@@ -587,17 +601,6 @@ augroup myCmds
   autocmd!
   autocmd VimEnter * silent !echo -ne "\e[2 q"
 augroup END
-
-" folds
-augroup vimfile_setting
-  autocmd!
-  autocmd FileType vim setlocal foldmethod=expr foldlevel=0 foldlevelstart=-1
-        \ foldexpr=VimFolds(v:lnum) foldtext=MyFoldText()
-        \ keywordprg=:help formatoptions-=o formatoptions-=r
-augroup END
-
-" Disable auto commenting in a new line
-autocmd Filetype * setlocal formatoptions-=c formatoptions-=r  formatoptions-=o
 
 " }
 
@@ -652,9 +655,10 @@ function! CustomHighlights() abort
   hi! link user6  linenr
 
   " status line
-  hi StatusLine          ctermfg=0     ctermbg=0      cterm=bold
-  hi StatusLineNC        ctermfg=0     ctermbg=0      cterm=italic
-  hi StatusLineTerm      ctermfg=0     ctermbg=0      cterm=NONE
+  hi StatusLine          ctermfg=0     ctermbg=none   cterm=bold
+  hi StatusLineNC        ctermfg=0     ctermbg=none   cterm=italic
+  hi StatusLineTerm      ctermfg=0     ctermbg=none   cterm=none
+  hi StatusLineTermNC    ctermfg=0     ctermbg=none   cterm=none
   hi NormalMode          ctermfg=0     ctermbg=2      cterm=bold
   hi InsertMode          ctermfg=0     ctermbg=12     cterm=bold
   hi ReplaceMode         ctermfg=0     ctermbg=11     cterm=bold
@@ -668,7 +672,7 @@ function! CustomHighlights() abort
   hi CursorLine          ctermfg=none  ctermbg=none   cterm=none
   hi CursorLineNr        ctermfg=6     ctermbg=none   cterm=none
   hi CursorLineSign      ctermfg=13    ctermbg=none   cterm=none
-  hi matchparen          ctermfg=0     ctermbg=none   cterm=underline
+  hi matchparen          ctermfg=15    ctermbg=none   cterm=underline
   hi pmenu               ctermfg=8     ctermbg=none
   hi pmenuthumb          ctermfg=8     ctermbg=none
   hi pmenusbar           ctermfg=7     ctermbg=none
@@ -684,7 +688,7 @@ function! CustomHighlights() abort
   hi incsearch           ctermfg=0     ctermbg=13     cterm=none
   hi search              ctermfg=0     ctermbg=11
   hi vertsplit           ctermfg=0     ctermbg=none   cterm=none
-  hi tabline             ctermfg=0     ctermbg=0      cterm=none
+  hi tabline             ctermfg=0     ctermbg=none   cterm=none
   hi tablinefill         ctermfg=0     ctermbg=none   cterm=none
   hi tablinesel          ctermfg=7     ctermbg=0
   hi folded              ctermfg=6     ctermbg=0      cterm=bold
@@ -696,18 +700,20 @@ function! CustomHighlights() abort
   hi diffchange          ctermfg=0     ctermbg=11     cterm=bold
   hi diffdelete          ctermfg=0     ctermbg=9      cterm=bold
   hi difftext            ctermfg=0     ctermbg=13     cterm=bold
+  hi wildmenu            ctermfg=6     ctermbg=none   cterm=bold
+  hi EndOfBuffer         ctermfg=0     ctermbg=none   cterm=bold
+  hi TrailingWhitespace  ctermfg=0     ctermbg=none
+  hi ExtraWhitespace     ctermfg=0     ctermbg=none
+  hi Whitespace          ctermfg=0     ctermbg=none
+  hi SpecialKey          ctermfg=0     ctermbg=none
 
   hi! link cursorcolumn  cursorline
   hi! link signcolumn    linenr
-  hi! link wildmenu      visual
   hi! link foldcolumn    signcolumn
   hi! link warningmsg    errormsg
   hi! link moremsg       title
   hi! link question      moremsg
   hi! link modemsg       moremsg
-  hi! link tablinefill   vertsplit
-  hi! link specialkey    nontext
-  hi! link wildmenu      folded
 
   " generic syntax
   hi comment             ctermfg=8     ctermbg=none   cterm=none
@@ -732,7 +738,7 @@ function! CustomHighlights() abort
   hi specialchar         ctermfg=6     ctermbg=none   cterm=none
   hi! link tag special
   hi! link delimiter     identifier
-  hi specialcomment      ctermfg=8     ctermbg=0      cterm=italic
+  hi specialcomment      ctermfg=8     ctermbg=none   cterm=italic
   hi debug               ctermfg=11    ctermbg=none   cterm=bold,italic
   hi underlined          ctermfg=4     ctermbg=none   cterm=underline
   hi ignore              ctermfg=7     ctermbg=none   cterm=none
@@ -889,11 +895,18 @@ colorscheme default
 call matchadd("Warnings", '\s\+$')
 call matchadd("Warnings", '^\t\+')
 
-" More accurate syntax highlighting? (see `:h syn-sync`)
-augroup accurate_syn_highlight
+:autocmd Syntax * syn match ExtraWhitespace /\s\+$\| \+\ze\t/
+
+" disable syntax on large files
+augroup highlight_large_files
   autocmd!
-  autocmd BufEnter * if getfsize(expand('%')) > 500000 | syntax sync minlines=300 | else | syntax sync fromstart | endif
+  autocmd BufReadPre * if getfsize(expand('%')) > 500000 | set syntax=off | endif
 augroup END
+
+function! SynStack()
+  let l:s = synID(line('.'), col('.'), 1)
+  echo synIDattr(l:s, 'name') . ' -> ' . synIDattr(synIDtrans(l:s), 'name')
+endfunc
 
 " }
 
@@ -1002,18 +1015,11 @@ augroup statusline_startup
   autocmd WinEnter,BufWinEnter * call StatuslineLoad('active')
   autocmd WinLeave * call StatuslineLoad('inactive')
   autocmd ModeChanged * call StatuslineMode()
-  "autocmd CmdlineEnter,CmdlineLeave * call StatuslineMode()
   autocmd FileType netrw,help setlocal statusline=%6*
   autocmd FileType netrw set nolist
   autocmd FileType *\(netwr\|help\)\@<! :call StatuslineMode()
 augroup END
 
-" disable syntax on large files
-augroup highlight_large_files
-  autocmd!
-  autocmd BufReadPre * if getfsize(expand('%')) > 500000 | set syntax=off | endif
-augroup END
-
 " }
 
-" vim: fdm=marker:sw=2:sts=2:et
+" vim:et:ts=2:sw=2:fdm=marker:fmr={{{,}}}

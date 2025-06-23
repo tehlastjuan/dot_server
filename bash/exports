@@ -58,12 +58,25 @@ export LESSQUIET=1
 export LESSCHARSET="UTF-8"
 export LESSHISTFILE="$XDG_CACHE_HOME/less_history"
 
-# lf bin to PATH
-PATH="$XDG_CONFIG_HOME/lf/bin:$PATH"
+# wget stuff
+export WGETRC="$XDG_CONFIG_HOME"/wget/wgetrc
+
+##### Utils #####
+
+# adds .config/bin folder to PATH
+PATH="$XDG_CONFIG_HOME/bin:$PATH"
 
 # docker config
-if hash docker 2>/dev/null; then
-	export DOCKER_CONFIG="${XDG_CONFIG_HOME}"/docker
+HAS_ROOTLESS_DOCKER=1
+USER_ID=$(id "$USER" | sed -nr 's/uid=(\w+).*/\1/p')
+
+if [[ $HAS_ROOTLESS_DOCKER -eq 0 ]]; then
+	export DOCKER_HOST=unix:///run/user/$USER_ID/docker.sock
+	export DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS="-p 0.0.0.0:2376:2376/tcp"
+else 
+	if hash docker 2>/dev/null; then
+		export DOCKER_CONFIG="${XDG_CONFIG_HOME}"/docker
+	fi
 fi
 
 # cargo
@@ -74,6 +87,10 @@ if hash cargo 2>/dev/null; then
 fi
 
 # python
+export PYTHON_COLORS=1
+export PYTHONUSERBASE="$XDG_DATA_HOME/python"
+export PYTHON_HISTORY="$XDG_STATE_HOME/python/history"
+export PYTHONPYCACHEPREFIX="$XDG_CACHE_HOME/python"
 if hash pipx 2>/dev/null; then
 	export PIPX_HOME="$XDG_DATA_HOME/python/pipx"
 	export PIPX_BIN_DIR="$XDG_DATA_HOME/python/pipx/bin"
@@ -93,6 +110,8 @@ fi
 # yarn builder
 if hash yarn 2>/dev/null; then
 	PATH="$XDG_DATA_HOME/yarn/global/node_modules/.bin/:$PATH"
+	export YARN_GLOBAL_FOLDER="$XDG_DATA_HOME/yarn/berry"
+	export YARN_CACHE_FOLDER="$XDG_CACHE_HOME/yarn"
 	export YARN_ENABLE_TELEMETRY=0
 fi
 
@@ -119,6 +138,7 @@ if hash java 2>/dev/null; then
     -Duser.timezone=UTC \
     -Dquill.macro.log=false \
     -XX:+PerfDisableSharedMem"
+
 	export JDK_JAVA_OPTIONS="$JDK_JAVA_OPTIONS \
 		-Dawt.useSystemAAFontSettings=on \
 		-Dswing.aatext=true \
@@ -127,6 +147,7 @@ if hash java 2>/dev/null; then
 		-Djdk.gtk.version=3 \
 		-Dawt.java2d.uiScale.enabled=true \
 		-Dsun.java2d.opengl=true"
+
 	# gradle builder
 	export GRADLE_USER_HOME="$XDG_DATA_HOME/gradle"
 fi

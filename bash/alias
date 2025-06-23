@@ -6,3 +6,6 @@ alias r='lf'
 alias wget="wget --hsts-file='$XDG_CACHE_HOME/wget-hsts'"
 alias ls="LC_COLLATE=C ls --color=auto --group-directories-first"
 alias grep='grep --color=auto --exclude-dir=.git'
+alias ip='ip -color=always'
+alias gurl='git remote get-url --no-all ' # usually origin
+alias diff='diff --minimal --color=always '

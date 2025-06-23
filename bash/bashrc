@@ -25,8 +25,50 @@ shopt -s extglob         # Enable extended pattern-matching features
 [[ $DISPLAY ]] && \
   shopt -s checkwinsize  # Update LINES and COLUMNS after each command
 
-# shellcheck disable=1091
-source "$HOME/.config/bash/profile"
-
 # enable vi mode
 set -o vi
+
+# Load env exports
+#
+# shellcheck disable=1091
+source "$HOME/.config/bash/exports"
+
+# Load shell settings and utilities
+source "$XDG_CONFIG_HOME/bash/functions"
+source "$XDG_CONFIG_HOME/bash/completion"
+source "$XDG_CONFIG_HOME/bash/alias"
+source "$XDG_CONFIG_HOME/bash/theme"
+
+# Fuzzy folder jump with $z folder_name
+if hash zoxide 2>/dev/null; then
+  # print match path when jumping
+  export _ZO_ECHO=1
+  export _ZO_DATA_DIR="$XDG_CACHE_HOME/zoxide"
+  eval "$(zoxide init bash)"
+fi
+
+# Use keychain to persist ssh keys
+# https://github.com/funtoo/keychain
+if hash keychain 2>/dev/null; then
+  eval "$(keychain --eval --quiet --ssh-allow-gpg --systemd)"
+fi
+
+# See https://github.com/junegunn/fzf
+if hash fzf 2> /dev/null; then
+  fzf_keymaps=(
+    ctrl-d:half-page-down
+    ctrl-u:half-page-up
+    ctrl-b:preview-half-page-down
+    ctrl-n:preview-half-page-up
+    ctrl-t:toggle-preview-wrap
+    ctrl-y:yank
+    ctrl-k:toggle+up
+    ctrl-j:toggle+down
+  )
+  keymaps="$(printf ",%s" "${fzf_keymaps[@]}")"
+  export FZF_DEFAULT_OPTS="--style=minimal --info=inline-right --separator ━ --height 100% --bind ${keymaps:1}"
+  export FZF_DEFAULT_COMMAND='rg --vimgrep --files --follow --hidden --no-ignore-vcs --smart-case --glob !**/.git/*'
+  unset fzf_keymaps keymaps
+
+  eval "$(fzf --bash)"
+fi
