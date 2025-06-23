@@ -10,19 +10,23 @@ set scrolloff 2
 set tabstop 2
 set smartcase
 set dircounts
-set info size
+set info size:time
 set sortby natural
 set ratios '1:2:3'
 set period 1
 set relativenumber
 set preview
 
+set sixel
 set previewer ~/.config/lf/preview
+set cleaner ~/.config/lf/clean
 
 set cursorpreviewfmt ""
 set cursorparentfmt "\033[7m"
 set numberfmt "\033[38;5;8m"
-
+#set infotimefmtnew "\033[38;5;8m %t \033[0m"
+set infotimefmtnew "[_2 Jan 06]"
+set infotimefmtold "[_2 Jan 06]"
 
 #### mappings
 
@@ -32,16 +36,16 @@ map f
 map F
 map p
 map r
-map w
 map y
+map w
 map sa
 map sc
 map se
 cmap cmd-word
-cmap cmd-word-yank
+cmap cmd-word-back
 cmap cmd-word-yank
 
-# the actual mappings
+
 map C reload-conf
 map q quit-and-cd
 map . set hidden!
@@ -55,6 +59,7 @@ map pP new-folder-with-selection
 
 map dD delete
 map dd cut
+map dt trash
 
 cmap <c-right> cmd-word
 cmap <c-left> cmd-word-back
@@ -72,14 +77,11 @@ map O push :openwith<space>
 
 map ff filter
 
-# fuzzy-find a file
+# fuzzy find a file
 map fF $lf -remote "send $id select $(fzf)"
 
-# fuzzy search
+# fuzzy search in files
 map <c-f> :fzf_search
-
-# jump dirs
-map F :fzf_jump
 
 map xx extract
 
@@ -88,12 +90,13 @@ map xX push :zip<space>
 
 # jump-dir w\ zoxide
 map zz push :z<space>
+map zi :zi
 
 # sort files
 map sn :{{ set sortby natural; set info size; set preview; }}
-map ss :{{ set sortby size; set info size; set preview; }}
-map st :{{ set sortby time; set info time; set preview; }}
-map sx :{{ set sortby ext; set info size; set preview; }}
+map ss :{{ set sortby size; set info size:time; set preview; }}
+map st :{{ set sortby time; set info size:time; set preview; }}
+map sx :{{ set sortby ext; set info size:time; set preview; }}
 
 cmap <tab> cmd-menu-complete
 cmap <backtab> cmd-menu-complete-back
@@ -104,26 +107,36 @@ map g? $lf -doc | less
 # put lf on the background
 map <c-z> $ kill -STOP $PPID
 
+# Tmux?
+# map ah &tmux split-window -h lf
+# map av &tmux split-window -v lf
+
+# Open the directory in Finder on macOS
+# map fm &if [[ -d $f ]]; then open $f; fi
+
+# beyond compare selected files/directories
+# map = &bcompare $fx
+
 
 #### commands
 
 # command autocompletion
 cmap <enter> &{{
-    if [ "$lf_mode" = command ]; then
-        lf -remote "send $id complete-cmd"
-    else
-        lf -remote "send $id cmd-enter"
-    fi
+	if [ "$lf_mode" = command ]; then
+			lf -remote "send $id complete-cmd"
+	else
+			lf -remote "send $id cmd-enter"
+	fi
 }}
 
 cmd complete-cmd :{{
-    # position cursor at the end of the first word
-    cmd-home
-    cmd-word
+	# position cursor at the end of the first word
+	cmd-home
+	cmd-word
 
-    # perform tab completion before running the command
-    cmd-complete
-    cmd-enter
+	# perform tab completion before running the command
+	cmd-complete
+	cmd-enter
 }}
 
 # edit-with-sudo
@@ -146,9 +159,9 @@ cmd pager ${{
     declare -i cols=$cols-10
   fi
 
-  if [[ $f = *.md  ]]; then
+	if [[ $f = *.md  ]]; then
     bash -c "glow -w ${cols} -p $fx"
-  else
+	else
     bash -c "bat $fx \
                 --number --theme=TwoDark --color=always --paging=always \
                 --style=plain --terminal-width ${cols} --line-range :${lines} \
@@ -156,18 +169,31 @@ cmd pager ${{
   fi
 }}
 
+# Implement trash command
+# cmd trash ${{
+# 	set -f
+# 	if hash trash-put 2>/dev/null; then
+# 		trash-put -v -- $fx
+# 	else
+# 		mkdir -p "$HOME"/.trash
+# 		mv -vi $fx "$HOME"/.trash
+# 	fi
+# }}
+
+cmd clear_trash %trash-empty
+
 # Replace open command with robust selection of openers
 cmd open ${{
-  case $(file --dereference --mime-type $f -b) in
-    inode/x-empty) $EDITOR $fx ;;
-    text/*) $EDITOR $fx;;
-    video/*) nohup mpv $fx > /dev/null & ;;
-    audio/*) nohup mpv $fx > /dev/null & ;;
-    audio/midi) timidity $fx ;;
-    application/epub+zip) nohup FBReader $f > /dev/null & ;;
-    application/pdf) nohup zathura $f > /dev/null & ;;
-    *) for f in $fx; do $OPENER $f > /dev/null 2> /dev/null & done;;
-  esac
+	case $(file --dereference --mime-type $f -b) in
+		inode/x-empty) $EDITOR $fx ;;
+		text/*) $EDITOR $fx;;
+		video/*) nohup mpv $fx > /dev/null & ;;
+		audio/*) nohup mpv $fx > /dev/null & ;;
+		audio/midi) timidity $fx ;;
+		application/epub+zip) nohup FBReader $f > /dev/null & ;;
+		application/pdf) nohup zathura $f > /dev/null & ;;
+		*) for f in $fx; do $OPENER $f > /dev/null 2> /dev/null & done;;
+	esac
 }}
 
 cmd new-folder-with-selection ${{
@@ -180,13 +206,11 @@ cmd new-folder-with-selection ${{
 
 # compress current file or selected files with zip
 cmd zip ${{
-	if hash zip 2>/dev/null; then
-		set -f
-		mkdir $1
-		cp -r $fx $1
-		zip -r $1.zip $1
-		rm -rf $1
-	fi
+	set -f
+	mkdir $1
+	cp -r $fx $1
+	zip -r $1.zip $1
+	rm -rf $1
 }}
 
 # extract compressed files
@@ -202,85 +226,68 @@ cmd extract ${{
 	esac
 }}
 
-# cd into recent directories w\ zoxide
-cmd z ${{
-	if hash zoxide 2>/dev/null; then
-		set +u
-		dest=''
-		prefix=''
-		if hash zoxide 2>/dev/null; then
-			dest="$(zoxide query "$@")"
-		fi
-
-		if test -n "${dest}"; then
-			lf -remote "send $id cd '${dest}'"
-		else
-			lf -remote "send $id echo 'Invalid directory ${dest}'"
-		fi
-	fi
+# cd directories w\ zoxide
+cmd z %{{
+	result="$(zoxide query --exclude "$PWD" "$@" | sed 's/\\/\\\\/g;s/"/\\"/g')"
+	lf -remote "send $id cd \"$result\""
 }}
 
-cmd fzf_z ${{
-	if hash zoxide 2>/dev/null; then
-		sel="$(zoxide query -l | fzf +s)"
-		[ -d "$sel" ] && lf -remote "send $id cd \"$sel\""
-	fi
+# cd directories interactively w\ zoxide
+cmd zi ${{
+	result="$(zoxide query -i | sed 's/\\/\\\\/g;s/"/\\"/g')"
+	lf -remote "send $id cd \"$result\""
 }}
 
-cmd fzf_jump ${{
-	res="$(find . -maxdepth 1 | fzf --reverse --header='Jump to location')"
-	if [ -n "$res" ]; then
-		if [ -d "$res" ]; then
-			cmd="cd"
-		else
-			cmd="select"
-		fi
-		res="$(printf '%s' "$res" | sed 's/\\/\\\\/g;s/"/\\"/g')"
-		lf -remote "send $id $cmd \"$res\""
-	fi
+cmd on-cd &{{
+	zoxide add "$PWD"
 }}
 
+# search in files w/ fzf
 cmd fzf_search ${{
-	if hash fzf 2>/dev/null; then
-		cmd="rg --column --line-number --no-heading --color=always --smart-case"
-		fzf --ansi --disabled --layout=reverse --header="Search in files" --delimiter=: \
-				--bind="start:reload([ -n {q} ] && $cmd -- {q} || true)" \
-				--bind="change:reload([ -n {q} ] && $cmd -- {q} || true)" \
-				--bind='enter:become(lf -remote "send $id select \"$(printf "%s" {1} | sed '\''s/\\/\\\\/g;s/"/\\"/g'\'')\"")' \
-				#--preview='cat -- {1}' # Use your favorite previewer here (bat, source-highlight, etc.), for example:
-				#--preview-window='+{2}-/2' \
-				#--preview='bat --color=always --highlight-line={2} -- {1}'
-				# Alternatively you can even use the same previewer you've configured for lf
-				--preview='~/.config/lf/clean; ~/.config/lf/preview -- {1}'
-				#--preview='~/.config/lf/clean; ~/.config/lf/preview {1} "$FZF_PREVIEW_COLUMNS" "$FZF_PREVIEW_LINES" "$FZF_PREVIEW_LEFT" "$FZF_PREVIEW_TOP"'
-	fi
+	cmd="rg --column --line-number --no-heading --color=always --smart-case"
+	fzf --ansi --disabled --header="Search in files" --delimiter=: \
+			--bind="start:reload([ -n {q} ] && $cmd -- {q} || true)" \
+			--bind="change:reload([ -n {q} ] && $cmd -- {q} || true)" \
+			--bind='enter:become(lf -remote "send $id select \"$(printf "%s" {1} | sed '\''s/\\/\\\\/g;s/"/\\"/g'\'')\"")' \
+			#--preview='cat -- {1}' # Use your favorite previewer here (bat, source-highlight, etc.), for example:
+			#--preview-window='+{2}-/2' \
+			#--preview='bat --color=always --highlight-line={2} -- {1}'
+			# Alternatively you can even use the same previewer you've configured for lf
+			--preview='~/.config/lf/clean; ~/.config/lf/preview -- {1}'
+			#--preview='~/.config/lf/clean; ~/.config/lf/preview {1} "$FZF_PREVIEW_COLUMNS" "$FZF_PREVIEW_LINES" "$FZF_PREVIEW_LEFT" "$FZF_PREVIEW_TOP"'
 }}
 
 # helper to cd to curr dir on quit
 cmd quit-and-cd &{{
-  pwd > $LF_CD_FILE
-  lf -remote "send $id quit"
+	pwd > $LF_CD_FILE
+	lf -remote "send $id quit"
 }}
 
 cmd reload-conf ${{
   lf -remote "send $id source ~/.config/lf/lfrc"
 }}
 
+# cmd on-quit ${{
+#   i=$(tput lines)
+#   until [ "${i}" -le 1 ]; do
+#     printf '\n'
+#     i=$((i-1))
+#   done
+#   tput -x clear
+# }}
 
 #### prompt
-
-set promptfmt
-" \033[38;5;8m\033[48;5;236m %u@%h \033[38;5;236m\033[48;5;234m \033[34;40;1m\033[48;5;234m %w/%f \033[0m\033[38;5;234m\033[0m"
+set promptfmt "\033[38;5;8m\033[48;5;236m %u@%h \033[38;5;236m\033[48;5;234m \033[34;40;1m\033[48;5;234m %w/%f \033[0m\033[38;5;234m\033[0m"
 
 # git branch prompt
 cmd on-cd &{{
     # display git repository status in your prompt
     source /usr/share/git/completion/git-prompt.sh
-    # GIT_PS1_SHOWDIRTYSTATE=auto
-    # GIT_PS1_SHOWSTASHSTATE=auto
-    # GIT_PS1_SHOWUNTRACKEDFILES=auto
-    # GIT_PS1_SHOWUPSTREAM=auto
-    # GIT_PS1_COMPRESSSPARSESTATE=auto
+    GIT_PS1_SHOWDIRTYSTATE=auto
+    GIT_PS1_SHOWSTASHSTATE=auto
+    GIT_PS1_SHOWUNTRACKEDFILES=auto
+    GIT_PS1_SHOWUPSTREAM=auto
+    GIT_PS1_COMPRESSSPARSESTATE=auto
     git=$(__git_ps1 "%s* ") || true
     fmt="\033[38;5;8m\033[48;5;236m %u@%h \033[38;5;236m\033[48;5;234m \033[33;49;1m\033[48;5;234m$git\033[34;40;1m\033[48;5;234m%w/%f \033[0m\033[38;5;234m\033[0m"
     lf -remote "send $id set promptfmt \"$fmt\""

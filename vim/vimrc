@@ -714,6 +714,8 @@ function! CustomHighlights() abort
   hi! link moremsg       title
   hi! link question      moremsg
   hi! link modemsg       moremsg
+  " hi! link tablinefill   vertsplit
+  " hi! link specialkey    nontext
 
   " generic syntax
   hi comment             ctermfg=8     ctermbg=none   cterm=none
@@ -897,6 +899,12 @@ call matchadd("Warnings", '^\t\+')
 
 :autocmd Syntax * syn match ExtraWhitespace /\s\+$\| \+\ze\t/
 
+" More accurate syntax highlighting? (see `:h syn-sync`)
+" augroup accurate_syn_highlight
+"   autocmd!
+"   autocmd BufEnter * if getfsize(expand('%')) > 500000 | syntax sync minlines=300 | else | syntax sync fromstart | endif
+" augroup END
+
 " disable syntax on large files
 augroup highlight_large_files
   autocmd!
@@ -904,6 +912,11 @@ augroup highlight_large_files
 augroup END
 
 function! SynStack()
+  " if !exists("*synstack")
+  "   return
+  " endif
+  " echo map(synstack(line('.'), col('.')), 'synIDattr(v:val, "name")')
+
   let l:s = synID(line('.'), col('.'), 1)
   echo synIDattr(l:s, 'name') . ' -> ' . synIDattr(synIDtrans(l:s), 'name')
 endfunc
@@ -1015,11 +1028,48 @@ augroup statusline_startup
   autocmd WinEnter,BufWinEnter * call StatuslineLoad('active')
   autocmd WinLeave * call StatuslineLoad('inactive')
   autocmd ModeChanged * call StatuslineMode()
+  "autocmd CmdlineEnter,CmdlineLeave * call StatuslineMode()
   autocmd FileType netrw,help setlocal statusline=%6*
   autocmd FileType netrw set nolist
   autocmd FileType *\(netwr\|help\)\@<! :call StatuslineMode()
 augroup END
 
 " }
+
+" a gem found in /usr/share/vim/vimfiles/syntax/lf.vim
+
+" Use lf to select and open file(s) in vim (adapted from ranger).
+"
+" You need to either copy the content of this file to your ~/.vimrc or source
+" this file directly:
+"
+"     let lfvim = "/path/to/lf.vim"
+"     if filereadable(lfvim)
+"         exec "source " . lfvim
+"     endif
+"
+" You may also like to assign a key to this command:
+"
+"     nnoremap <leader>l :LF<cr>
+"
+" function! LF()
+"     let temp = tempname()
+"     exec 'silent !lf -selection-path=' . shellescape(temp)
+"     if !filereadable(temp)
+"         redraw!
+"         return
+"     endif
+"     let names = readfile(temp)
+"     if empty(names)
+"         redraw!
+"         return
+"     endif
+"     exec 'edit ' . fnameescape(names[0])
+"     for name in names[1:]
+"         exec 'argadd ' . fnameescape(name)
+"     endfor
+"     redraw!
+" endfunction
+" command! -bar LF call LF()
 
 " vim:et:ts=2:sw=2:fdm=marker:fmr={{{,}}}
