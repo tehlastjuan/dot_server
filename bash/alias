@@ -4,7 +4,15 @@ alias r='lf'
 
 # shellcheck disable=2139
 alias wget="wget --hsts-file='$XDG_CACHE_HOME/wget-hsts'"
-alias ls="LC_COLLATE=C ls --color=auto --group-directories-first"
+
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  alias ls="LC_COLLATE=C ls --color=auto --group-directories-first"
+fi
+
+if [[ "$OSTYPE" == "freebsd"* ]]; then
+  alias ls="LC_COLLATE=C ls --color=auto"
+fi
+
 alias grep='grep --color=auto --exclude-dir=.git'
 alias ip='ip -color=always'
 alias gurl='git remote get-url --no-all ' # usually origin

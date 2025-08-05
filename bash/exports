@@ -64,7 +64,13 @@ export WGETRC="$XDG_CONFIG_HOME"/wget/wgetrc
 ##### Utils #####
 
 # adds .config/bin folder to PATH
-PATH="$XDG_CONFIG_HOME/bin:$PATH"
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+	PATH="$XDG_CONFIG_HOME/bin/linux:$PATH"
+fi
+
+if [[ "$OSTYPE" == "freebsd"* ]]; then
+	PATH="$XDG_CONFIG_HOME/bin/freeBSD:$PATH"
+fi
 
 # docker config
 HAS_ROOTLESS_DOCKER=1
