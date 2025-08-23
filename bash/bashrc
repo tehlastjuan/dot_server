@@ -67,8 +67,11 @@ if hash fzf 2> /dev/null; then
   )
   keymaps="$(printf ",%s" "${fzf_keymaps[@]}")"
   export FZF_DEFAULT_OPTS="--style=minimal --info=inline-right --separator ━ --height 100% --bind ${keymaps:1}"
-  export FZF_DEFAULT_COMMAND='rg --vimgrep --files --follow --hidden --no-ignore-vcs --smart-case --glob !**/.git/*'
-  unset fzf_keymaps keymaps
 
+  if hash rg 2> /dev/null; then
+    export FZF_DEFAULT_COMMAND='rg --vimgrep --files --follow --hidden --no-ignore-vcs --smart-case --glob !**/.git/*'
+  fi
+
+  unset fzf_keymaps keymaps
   eval "$(fzf --bash)"
 fi

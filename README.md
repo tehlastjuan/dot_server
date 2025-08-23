@@ -2,9 +2,13 @@
 
 Basic config files conceived ideally to make live easier on a remote server.
 
-Includes (latest as of 2025-06-23) [LF](https://github.com/gokcehan/lf/releases) and [FZF](https://github.com/junegunn/fzf/releases) binaries.
-
 Check out `bash/exports` for the exported env variables.
+
+Includes binaries (latest as of 2025-06-23):
+
+- [LF](https://github.com/gokcehan/lf/releases)
+- [FZF](https://github.com/junegunn/fzf/releases)
+- [BAT](https://github.com/sharkdp/bat/releases)
 
 ---
 
@@ -32,8 +36,6 @@ ln -s ~/.config/vim/vimrc ~/.vimrc
 
 # Load them in the current shell session
 source ~/.bashrc
-
-# and... enjoy!
 ```
 
 ---
@@ -43,8 +45,8 @@ source ~/.bashrc
 - [Rafi](https://github.com/rafi/.config.git)
 - [MariaSolOs](https://github.com/MariaSolOs/dotfiles.git)
 
-for their inspiration and knowledge (and sometimes raw code!).
+for their inspiration and knowledge (and raw code).
 
 ---
 
-Suggestions are welcome
+Suggestions are welcome!

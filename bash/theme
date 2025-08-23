@@ -15,10 +15,6 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   fi
 fi
 
-# if [[ "$OSTYPE" == "freebsd"* ]]; then
-# 	PATH="$XDG_CONFIG_HOME/bin/freeBSD:$PATH"
-# fi
-
 if [ -n "$SSH_TTY" ]; then
 	PS1='\[\033[01;33m\]\u@\h \[\033[01;32m\]\W\[\033[01;36m\]$(__git_ps1 " %s")\[\033[49m\]\[\033[01;32m\] \$\[\033[00m\] '
 else

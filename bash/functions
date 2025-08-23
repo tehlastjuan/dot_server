@@ -27,9 +27,21 @@ cr() {
   if [ -f "$1" ]; then
     filename=${1%*.?}
     case $2 in
-      gcc) gcc -Wall -g "$1" -lm -o "${filename}" ;;
-      clang) clang -Wall -g "$1" -lm -o "${filename}" ;;
-      *) gcc -Wall -g "$1" -lm -o "${filename}" ;;
+      gcc)
+        if hash gcc 2> /dev/null; then
+          gcc -Wall -g "$1" -lm -o "${filename}"
+        else echo "No gcc binary found"; fi
+        ;;
+      clang)
+        if hash clang 2> /dev/null; then
+          clang -Wall -g "$1" -lm -o "${filename}"
+        else echo "No clang binary found"; fi
+        ;;
+      *)
+        if hash gcc 2> /dev/null; then
+          gcc -Wall -g "$1" -lm -o "${filename}"
+        else echo "No gcc binary found"; fi
+        ;;
     esac
   else echo "No .c file found"; fi
 }
@@ -39,28 +51,28 @@ crt() {
   # clear;
   if [ -f "$1" ]; then
     filename=${1%*.?}
-    gcc -pthread -Wall -g "$1" -lm -o "${filename}"
-  else
-    echo "No .c file found"
-  fi
+    if hash gcc 2> /dev/null; then
+      gcc -pthread -Wall -g "$1" -lm -o "${filename}"
+    else echo "No gcc binary found"; fi
+  else echo "No .c file found"; fi
 }
 
 # java compiler
 jc() {
   if [[ -d "./src/${1}" ]]; then
     dirpath="./src/${1}"
-    javac -d ./bin "${dirpath}"/*.java
-  else
-    echo "No directory name \"./src/${1}\" found"
-  fi
+    if hash javac 2> /dev/null; then
+      javac -d ./bin "${dirpath}"/*.java
+    else echo "No java binaries found"; fi
+  else echo "No directory name \"./src/${1}\" found"; fi
 }
 
 # java runner
 jr() {
   if [[ -d "./bin/${1}" ]]; then
     dirname="${1}"
-    java -cp ./bin "${dirname}".Program
-  else
-    echo "No directory name \"./bin/${1}\" found"
-  fi
+    if hash java 2> /dev/null; then
+      java -cp ./bin "${dirname}".Program
+    else echo "No java binaries found"; fi
+  else echo "No directory name \"./bin/${1}\" found"; fi
 }
