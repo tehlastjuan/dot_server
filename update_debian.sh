@@ -1,8 +1,37 @@
 #!/usr/bin/env bash
 
-USERNAME="debian"
-
 set -euo pipefail  # Exit on error, undefined vars, pipe failures
+
+CLEANUP_FLAG=0
+
+_confirm() {
+    local prompt="$1"
+    local default="${2:-n}"
+    local response
+
+    [[ $VERBOSE == false ]] && return 0
+
+    if [[ $default == "y" ]]; then
+        prompt="$prompt [Y/n]: "
+    else
+        prompt="$prompt [y/N]: "
+    fi
+
+    while true; do
+        read -rp "$(echo -e "${CYAN}$prompt${NC}")" response
+        response=${response,,}
+
+        if [[ -z $response ]]; then
+            response=$default
+        fi
+
+        case $response in
+            y|yes) return 0 ;;
+            n|no) return 1 ;;
+            *) echo -e "${RED}Please answer yes or no.${NC}" ;;
+        esac
+    done
+}
 
 _update_system() {
   echo "Updating system packages..."
@@ -12,15 +41,21 @@ _update_system() {
   fi
 }
 
-_install_packages() {
+_install_essential_packages() {
   echo "Installing essential packages..."
-  if ! apt-get install -y -qq git locales ca-certificates curl; then
+  if ! apt-get install -y -qq ca-certificates curl; then
     echo "Failed to install one or more essential packages. Aborting."
     exit 1
   fi
+  CLEANUP_FLAG=1
 }
 
-_update_locale_timezone() {
+_update_locale() {
+  if ! apt-get install -y -qq locales; then
+    echo "Failed to install the locales package. Aborting."
+    exit 1
+  fi
+
   echo "Updating locales..."
   if [[ ! $LANG == "en_US.UTF-8" ]]; then
     echo "Updating to local timezone..."
@@ -30,62 +65,18 @@ _update_locale_timezone() {
   else
     echo "Locale already updated."
   fi
+  CLEANUP_FLAG=1
+}
 
+_update_timezone() {
   echo "Updating to local timezone..."
   if [[ ! $(cat /etc/timezone) == "Europe/Stockholm" ]]; then
-    echo 'Europe/Stockholm' > /etc/timezone && \
-      DEBIAN_FRONTEND=noninteractive dpkg-reconfigure --frontend=noninteractive tzdata
+    sed -i -e 's/Europe/Stockholm/' /etc/timezone \
+      && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure --frontend=noninteractive tzdata
   else
     echo "Local timezone already updated."
   fi
-}
-
-_install_dot_server() {
-  local home_folder
-  home_folder="/home/$USERNAME"
-  echo "Installing dot_server files..."
-
-  [[ -e "$home_folder/.config/.git" ]] && {
-    echo "Dot_server file already installed." && return 0
-  }
-
-  if ! git clone https://github.com/tehlastjuan/dot_server "$HOME"; then
-    echo "Failed to install dot_server files. Aborting."
-    exit 1
-  fi
-
-  if [ -e "$home_folder/.config" ]; then
-    mv "$home_folder/.config" "$home_folder/dot_server/.old"
-  else
-    mkdir "$home_folder/dot_server/.old"
-  fi
-
-  [ -e "$home_folder/.bashrc" ] &&
-    mv "$home_folder/.bashrc"      "$home_folder/dot_server/.old/bashrc"
-
-  [ -e "$home_folder/.bash_logout" ] &&
-    mv "$home_folder/.bash_logout" "$home_folder/dot_server/.old/bash_logout"
-
-  [ -e "$home_folder/.profile" ]     &&
-    mv "$home_folder/.profile"     "$home_folder/dot_server/.old/profile"
-
-  [ -e "$home_folder/.viminfo" ] &&
-    mv "$home_folder/.viminfo"     "$home_folder/dot_server/.old/viminfo"
-
-  [ ! -e "$home_folder/dot_server/wget" ] &&
-    mkdir -p "$home_folder/dot_server/wget" &&
-    touch "$home_folder/dot_server/wget/wgetrc";
-
-  [ ! -e "$home_folder/.local" ] && mkdir "$home_folder/.local"
-
-  mv "$home_folder/dot_server" "$home_folder/.config"
-
-  ln -s ".config/bash/bashrc"      ".bashrc"
-  ln -s ".config/bash/bash_logout" ".bash_logout"
-  ln -s ".config/bash/profile"     ".profile"
-  ln -s ".config/bash/vim/vimrc"   ".vimrc"
-
-  echo "Dot server files installation completed."
+  CLEANUP_FLAG=1
 }
 
 _install_hardening_packages() {
@@ -93,11 +84,12 @@ _install_hardening_packages() {
   if ! apt-get install -y -qq \
     ufw fail2ban unattended-upgrades chrony \
     rsync wget vim htop iotop nethogs netcat-traditional ncdu \
-    tree rsyslog cron jq gawk coreutils perl skopeo git \
+    tree rsyslog cron jq gawk coreutils perl skopeo \
     ssh openssh-client openssh-server; then
     echo "Failed to install one or more essential packages."
     exit 1
   fi
+  CLEANUP_FLAG=1
 }
 
 _configure_ssh() {
@@ -132,6 +124,7 @@ EOF
   else echo "Confirmed: Root SSH login is disabled."; fi
 
   echo "SSH configuration completed."
+  CLEANUP_FLAG=1
 }
 
 _configure_firewall() {
@@ -180,6 +173,7 @@ _configure_firewall() {
   fi
 
   echo "Firewall configuration completed."
+  CLEANUP_FLAG=1
 }
 
 _configure_fail2ban() {
@@ -251,6 +245,7 @@ EOF
   else echo "Fail2Ban service failed to start. Check 'journalctl -u fail2ban' for errors."; fi
 
   echo "Fail2Ban configuration completed."
+  CLEANUP_FLAG=1
 }
 
 _configure_auto_updates() {
@@ -272,6 +267,7 @@ _configure_auto_updates() {
   DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -f noninteractive unattended-upgrades
 
   echo "Automatic security updates enabled."
+  CLEANUP_FLAG=1
 }
 
 _configure_kernel_hardening() {
@@ -342,6 +338,7 @@ EOF
   else echo "Failed to apply kernel settings. Check for kernel compatibility."; fi
 
   echo "Kernel hardening completed."
+  CLEANUP_FLAG=1
 }
 
 _configure_time_sync() {
@@ -357,6 +354,7 @@ _configure_time_sync() {
   fi
 
   echo "Time synchronization completed."
+  CLEANUP_FLAG=1
 }
 
 # https://docs.docker.com/engine/install/debian/
@@ -371,12 +369,11 @@ _install_docker() {
   echo "Removing old container runtimes..."
   apt-get remove -y -qq docker docker-engine docker.io containerd runc 2>/dev/null || true
 
+  _update_system
+
   echo "Adding Docker's official GPG key and repository..."
   install -m 0755 -d /etc/apt/keyrings
-
-  # TEST
-  # curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
-  curl -fsSL "https://download.docker.com/linux/debian/gpg" | gpg --dearmor -o /etc/apt/keyrings/docker.asc
+  curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
   chmod a+r /etc/apt/keyrings/docker.asc
 
   # Add the repository to Apt sources:
@@ -384,6 +381,8 @@ _install_docker() {
     "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \
     $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
     tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+  _update_system
 
   echo "Installing Docker packages..."
   if ! apt-get install -y -qq \
@@ -415,12 +414,13 @@ EOF
   systemctl daemon-reload
   systemctl enable --now docker
 
-  echo "Adding '$USERNAME' to docker group..."
+  echo "Adding '$SUDO_USER' to docker group..."
   getent group docker >/dev/null || groupadd docker
-  if ! groups "$USERNAME" | grep -qw docker; then
-    usermod -aG docker "$USERNAME"
-    echo "User '$USERNAME' added to docker group."
-  else echo "User '$USERNAME' is already in docker group."; fi
+  if ! groups "$SUDO_USER" | grep -qw docker; then
+    usermod -aG docker "$SUDO_USER"
+    echo "User '$SUDO_USER' added to docker group."
+  else echo "User '$SUDO_USER' is already in docker group."; fi
+  CLEANUP_FLAG=1
 }
 
 _final_cleanup() {
@@ -443,21 +443,21 @@ _main() {
     exit 1
   fi
 
-  echo "Starting Debian hardening script."
+  echo "Starting Debian hardening script..."
 
-  _update_system
-  _install_packages
-  _update_locale_timezone
-  _install_dot_server
-  _install_hardening_packages
-  _configure_ssh
-  _configure_firewall
-  _configure_auto_updates
-  _configure_fail2ban
-  _configure_kernel_hardening
-  _configure_time_sync
-  _install_docker
-  _final_cleanup
+  if _confirm "Would you like to update the system packages now?"; then _update_system; fi
+  if _confirm "Would you like to install curl and ca-certificates packages?"; then _install_essential_packages; fi
+  if _confirm "Would you like to update locale to US-UTF-8?"; then _update_locale; fi
+  if _confirm "Would you like to update timezone to Europe/Stockholm?"; then _update_timezone; fi
+  if _confirm "Would you like to install hardening packages?"; then _install_hardening_packages; fi
+  if _confirm "Would you like to harden the SSH config?"; then _configure_ssh ; fi
+  if _confirm "Would you like to configure the firewall?"; then _configure_firewall ; fi
+  if _confirm "Would you like to install and configure fail2ban?"; then _configure_fail2ban ; fi
+  if _confirm "Would you like to install kernel hardening?"; then _configure_kernel_hardening ; fi
+  if _confirm "Would you like to configure automatic updates?"; then _configure_time_sync ; fi
+  if _confirm "Would you like to install docker?"; then _install_docker ; fi
+
+  if [[ "$CLEANUP_FLAG" -eq 1 ]]; then _final_cleanup; fi
 }
 
 _main "$@"
