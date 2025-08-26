@@ -9,8 +9,6 @@ _confirm() {
     local default="${2:-n}"
     local response
 
-    [[ $VERBOSE == false ]] && return 0
-
     if [[ $default == "y" ]]; then
         prompt="$prompt [Y/n]: "
     else
@@ -18,17 +16,15 @@ _confirm() {
     fi
 
     while true; do
-        read -rp "$(echo -e "${CYAN}$prompt${NC}")" response
+        read -rp "$(echo -e "$prompt")" response
         response=${response,,}
 
-        if [[ -z $response ]]; then
-            response=$default
-        fi
+        if [[ -z $response ]]; then response=$default; fi
 
         case $response in
             y|yes) return 0 ;;
             n|no) return 1 ;;
-            *) echo -e "${RED}Please answer yes or no.${NC}" ;;
+            *) echo -e "Please answer yes or no." ;;
         esac
     done
 }
@@ -50,6 +46,18 @@ _install_essential_packages() {
   CLEANUP_FLAG=1
 }
 
+_update_timezone() {
+  echo "Updating to local timezone..."
+  if [[ ! $(timedatectl | grep -o "Europe/Stockholm") == *Europe/Stockholm* ]]; then
+    if [[ $LANG == "C" ]]; then dpkg-reconfigure tzdata
+    else
+      sed -i -e 's/Europe/Stockholm/' /etc/timezone \
+        && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure --frontend=noninteractive tzdata
+    fi
+  else echo "Local timezone already updated."; fi
+  CLEANUP_FLAG=1
+}
+
 _update_locale() {
   if ! apt-get install -y -qq locales; then
     echo "Failed to install the locales package. Aborting."
@@ -62,20 +70,7 @@ _update_locale() {
     sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen \
       && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure --frontend=noninteractive locales \
       && update-locale LANG=en_US.UTF-8
-  else
-    echo "Locale already updated."
-  fi
-  CLEANUP_FLAG=1
-}
-
-_update_timezone() {
-  echo "Updating to local timezone..."
-  if [[ ! $(cat /etc/timezone) == "Europe/Stockholm" ]]; then
-    sed -i -e 's/Europe/Stockholm/' /etc/timezone \
-      && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure --frontend=noninteractive tzdata
-  else
-    echo "Local timezone already updated."
-  fi
+  else echo "Locale already updated."; fi
   CLEANUP_FLAG=1
 }
 
@@ -447,8 +442,8 @@ _main() {
 
   if _confirm "Would you like to update the system packages now?"; then _update_system; fi
   if _confirm "Would you like to install curl and ca-certificates packages?"; then _install_essential_packages; fi
-  if _confirm "Would you like to update locale to US-UTF-8?"; then _update_locale; fi
   if _confirm "Would you like to update timezone to Europe/Stockholm?"; then _update_timezone; fi
+  if _confirm "Would you like to update locale to US-UTF-8?"; then _update_locale; fi
   if _confirm "Would you like to install hardening packages?"; then _install_hardening_packages; fi
   if _confirm "Would you like to harden the SSH config?"; then _configure_ssh ; fi
   if _confirm "Would you like to configure the firewall?"; then _configure_firewall ; fi
