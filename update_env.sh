@@ -41,7 +41,7 @@ _install_dot_server() {
   ln -s "$HOME/.config/bash/bashrc"      "$HOME/.bashrc"
   ln -s "$HOME/.config/bash/bash_logout" "$HOME/.bash_logout"
   ln -s "$HOME/.config/bash/profile"     "$HOME/.profile"
-  ln -s "$HOME/.config/bash/vim/vimrc"   "$HOME/.vimrc"
+  ln -s "$HOME/.config/vim/vimrc"        "$HOME/.vimrc"
 
   chown -R "$USER": "/home/$USER"
 
