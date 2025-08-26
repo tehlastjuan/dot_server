@@ -48,15 +48,19 @@ _install_dot_server() {
   fi
   ln -s "$HOME/.config/bash/profile" "$HOME/.profile"
 
-  if [[ -e "$HOME/.viminfo" ]]; then
+  if [[ -e "$HOME/.vimrc" ]]; then
     if [[ $ORIGIN -eq 1 ]]; then
       [[ -L "$HOME/.vimrc" ]] && rm "$HOME/.vimrc"
     else
       [[ ! -e "$CONFIG_OLD" ]] && mkdir -p "$CONFIG_OLD"
-      mv "$HOME/.viminfo" "$CONFIG_OLD/viminfo"
+      mv "$HOME/.vimrc" "$CONFIG_OLD/vimrc"
     fi
   fi
   ln -s "$HOME/.config/vim/vimrc" "$HOME/.vimrc"
+
+  if [[ -e "$HOME/.viminfo" ]]; then
+      mv "$HOME/.viminfo" "$CONFIG_OLD/viminfo"
+  fi
 
   echo "Dot server files installation completed."
 }
