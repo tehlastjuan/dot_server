@@ -37,6 +37,7 @@ export INPUTRC="$XDG_CONFIG_HOME/bash/inputrc"
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 	EDITOR=/usr/bin/vim
 fi
+
 if [[ "$OSTYPE" == "freebsd"* ]]; then
 	EDITOR=/usr/local/bin/vim
 fi
@@ -75,18 +76,25 @@ if [[ "$OSTYPE" == "freebsd"* ]]; then
 fi
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  ARCH="$(lscpu | grep 'Architecture' | cut -d ':' -f 2)"
+  ARCH="${ARCH#"${ARCH%%[![:space:]]*}"}"
+  case "$ARCH" in
+    x86_64) ARCH="amd64" ;;
+    aarch4) ARCH="arm64" ;;
+    *) ARCH="amd64" ;;
+  esac
+			
 	# adds .config/bin folder to PATH
-	PATH="$XDG_CONFIG_HOME/bin/linux:$PATH"
+	PATH="$XDG_CONFIG_HOME/bin/linux_$ARCH:$PATH"
 
 	# docker config
-	HAS_ROOTLESS_DOCKER=1
-	USER_ID=$(id "$USER" | sed -nr 's/uid=(\w+).*/\1/p')
-	if [[ $HAS_ROOTLESS_DOCKER -eq 0 ]]; then
-		export DOCKER_HOST=unix:///run/user/$USER_ID/docker.sock
-		export DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS="-p 0.0.0.0:2376:2376/tcp"
-	else
+	if [[ ! -e "/.dockerenv" ]]; then
 		if hash docker 2> /dev/null; then
 			export DOCKER_CONFIG="${XDG_CONFIG_HOME}"/docker
+		else
+			USER_ID=$(id --user)
+			export DOCKER_HOST=unix:///run/user/$USER_ID/docker.sock
+			export DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS="-p 0.0.0.0:2376:2376/tcp"
 		fi
 	fi
 fi
