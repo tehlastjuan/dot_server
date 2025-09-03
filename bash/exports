@@ -80,7 +80,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   ARCH="${ARCH#"${ARCH%%[![:space:]]*}"}"
   case "$ARCH" in
     x86_64) ARCH="amd64" ;;
-    aarch4) ARCH="arm64" ;;
+    aarch64) ARCH="arm64" ;;
     *) ARCH="amd64" ;;
   esac
 			
