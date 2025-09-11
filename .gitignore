@@ -1,1 +1,5 @@
 # add your ignored files/folders here
+
+bin/freeBSD/*
+bin/linux_amd64/*
+bin/linux_arm64/*
