@@ -74,6 +74,7 @@ _download_utils() {
         find "$linux_tmp" -type f -executable -exec cp {} "${LINUX_AMD_DIR}_tmp" \;
         [[ -e "$LINUX_AMD_DIR" ]] && rm -r "$LINUX_AMD_DIR"
         mv "${LINUX_AMD_DIR}_tmp" "$LINUX_AMD_DIR"
+        touch "${LINUX_AMD_DIR}/.gitkkeep"
       fi
     elif [[ $arch == arm64 ]]; then
       if [[ "$(find "$linux_tmp" -type f -executable | wc -l)" -eq 3 ]]; then
@@ -81,6 +82,7 @@ _download_utils() {
         find "$linux_tmp" -type f -executable -exec cp {} "${LINUX_ARM_DIR}_tmp" \;
         [[ -e "$LINUX_ARM_DIR" ]] && rm -r "$LINUX_ARM_DIR"
         mv "${LINUX_ARM_DIR}_tmp" "$LINUX_ARM_DIR"
+        touch "${LINUX_ARM_DIR}/.gitkkeep"
       fi
     fi
 
@@ -93,6 +95,7 @@ _download_utils() {
       find "$bsd_tmp" -type f -executable -exec cp {} "${BSD_DIR}_tmp" \;
       [[ -e "$BSD_DIR" ]] && rm -r "$BSD_DIR"
       mv "${BSD_DIR}_tmp" "$BSD_DIR"
+      touch "${BSD_DIR}/.gitkkeep"
     fi
 
     [[ -d "$bsd_tmp" ]] && rm -r "$bsd_tmp"
