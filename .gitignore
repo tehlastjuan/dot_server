@@ -1,5 +1,7 @@
 # add your ignored files/folders here
 
+wget/.wget-hsts
+
 bin/freeBSD/*
 bin/linux_amd64/*
 bin/linux_arm64/*
