@@ -83,6 +83,8 @@ _download_utils() {
         mv "${LINUX_ARM_DIR}_tmp" "$LINUX_ARM_DIR"
       fi
     fi
+
+    [[ -d "$linux_tmp" ]] && rm -r "$linux_tmp"
   fi
 
   if [[ "$OSTYPE" == "freebsd"* ]]; then
@@ -92,10 +94,9 @@ _download_utils() {
       [[ -e "$BSD_DIR" ]] && rm -r "$BSD_DIR"
       mv "${BSD_DIR}_tmp" "$BSD_DIR"
     fi
-  fi
 
-  [[ -d "$linux_tmp" ]] && rm -r "$linux_tmp"
-  [[ -d "$bsd_tmp" ]] && rm -r "$bsd_tmp"
+    [[ -d "$bsd_tmp" ]] && rm -r "$bsd_tmp"
+  fi
 }
 
 if [[ "${#BASH_SOURCE[@]}" -eq 1 ]]; then
