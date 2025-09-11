@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-
 # shellcheck disable=1091
+
 export LANG="en_US.UTF-8"
 export LC_CTYPE="$LANG"
 export LC_ALL="$LANG"
@@ -17,8 +17,27 @@ export  XDG_STATE_HOME="$HOME/.local/state"
 [ -d "$XDG_DATA_HOME" ]   || mkdir -m 0750 "$XDG_DATA_HOME"
 [ -d "$XDG_STATE_HOME" ]  || mkdir -m 0750 "$XDG_STATE_HOME"
 
-# Local bin
+# Local binaries path
 PATH="$HOME/.local/bin:$PATH:bin"
+
+# dot_server binaries
+if [[ "$OSTYPE" == "freebsd"* ]]; then
+	PATH="$HOME/.config/bin/freeBSD:$PATH"
+fi
+
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  ARCH="$(lscpu | grep 'Architecture' | cut -d ':' -f 2)"
+  ARCH="${ARCH#"${ARCH%%[![:space:]]*}"}"
+
+  case "$ARCH" in
+    x86_64) ARCH="amd64" ;;
+    aarch64) ARCH="arm64" ;;
+    *) ARCH="amd64" ;;
+  esac
+
+	# adds .config/bin folder to PATH
+	PATH="$HOME/.config/bin/linux_$ARCH:$PATH"
+fi
 
 # History settings
 export HISTSIZE=20000
@@ -34,12 +53,13 @@ fi
 export INPUTRC="$XDG_CONFIG_HOME/bash/inputrc"
 
 # Editor and pager
-if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-	EDITOR=/usr/bin/vim
-fi
+WHICH_VIM=$(which vim)
 
 if [[ "$OSTYPE" == "freebsd"* ]]; then
-	EDITOR=/usr/local/bin/vim
+	EDITOR=${WHICH_VIM:-"/usr/local/bin/vim"}
+
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+	EDITOR=${WHICH_VIM:-"/usr/bin/vim"}
 fi
 
 SUDO_EDITOR="$EDITOR"
@@ -51,6 +71,7 @@ if hash nvim 2> /dev/null; then
 	SELECTED_EDITOR="$EDITOR"
 	MANPAGER='nvim +Man!'
 fi
+
 export EDITOR
 export SUDO_EDITOR
 export SELECTED_EDITOR
@@ -68,34 +89,16 @@ export LESSHISTFILE="$XDG_CACHE_HOME/less_history"
 # wget stuff
 export WGETRC="$XDG_CONFIG_HOME"/wget/wgetrc
 
-##### Utils #####
+#----- Utils
 
-if [[ "$OSTYPE" == "freebsd"* ]]; then
-	# adds .config/$OSTYPE/bin folder to PATH
-	PATH="$XDG_CONFIG_HOME/bin/freeBSD:$PATH"
-fi
-
-if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-  ARCH="$(lscpu | grep 'Architecture' | cut -d ':' -f 2)"
-  ARCH="${ARCH#"${ARCH%%[![:space:]]*}"}"
-  case "$ARCH" in
-    x86_64) ARCH="amd64" ;;
-    aarch64) ARCH="arm64" ;;
-    *) ARCH="amd64" ;;
-  esac
-			
-	# adds .config/bin folder to PATH
-	PATH="$XDG_CONFIG_HOME/bin/linux_$ARCH:$PATH"
-
-	# docker config
-	if [[ ! -e "/.dockerenv" ]]; then
-		if hash docker 2> /dev/null; then
-			export DOCKER_CONFIG="${XDG_CONFIG_HOME}"/docker
-		else
-			USER_ID=$(id --user)
-			export DOCKER_HOST=unix:///run/user/$USER_ID/docker.sock
-			export DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS="-p 0.0.0.0:2376:2376/tcp"
-		fi
+# docker config
+if [[ ! -e "/.dockerenv" ]]; then
+	if hash docker 2> /dev/null; then
+		export DOCKER_CONFIG="${XDG_CONFIG_HOME}"/docker
+	else
+		USER_ID=$(id --user)
+		export DOCKER_HOST=unix:///run/user/$USER_ID/docker.sock
+		export DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS="-p 0.0.0.0:2376:2376/tcp"
 	fi
 fi
 
@@ -150,6 +153,7 @@ fi
 if hash java 2> /dev/null; then
 	# Java XWayland blank screens fix
 	export _JAVA_AWT_WM_NONREPARENTING=1
+
 	# java prefs
 	export JAVA_TOOL_OPTIONS="$JAVA_TOOL_OPTIONS \
 		-Djava.util.prefs.userRoot=$XDG_CONFIG_HOME/java
