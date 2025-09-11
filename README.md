@@ -1,14 +1,10 @@
 # dot_server
 
-Basic config files conceived ideally to make live easier on a remote server.
+Basic config files conceived ideally to make live easier on a remote server. Tweak them to fit your purpose.
 
 Check out `bash/exports` for the exported env variables.
 
-Includes binaries (latest as of 2025-06-23):
-
-- [LF](https://github.com/gokcehan/lf/releases)
-- [FZF](https://github.com/junegunn/fzf/releases)
-- [BAT](https://github.com/sharkdp/bat/releases)
+Suggestions are very welcome!
 
 ---
 
@@ -38,15 +34,40 @@ ln -s ~/.config/vim/vimrc ~/.vimrc
 source ~/.bashrc
 ```
 
+Or run the `update_env.sh` script included.
+
 ---
 
-##### Big thanks to
+### Update scripts
+
+#### `update_env.sh`
+
+Sets up dotfiles symlinks at the `$HOME` directory.
+
+#### `update_utils.sh`
+
+Fetches / updates the "utils" binaries for arm64 and amd64 linux platforms.
+
+`bat` : [https://github.com/sharkdp/bat/releases](https://github.com/sharkdp/bat/releases)  
+`fzf` : [https://github.com/junegunn/fzf/releases](https://github.com/junegunn/fzf/releases)  
+`lf ` : [https://github.com/gokcehan/lf/releases](https://github.com/gokcehan/lf/releases)
+
+#### `update_debian.sh`
+
+Updates and hardens a debian installation and installs the `docker` packages as a bonus.
+
+---
+
+#### A note on safety:
+
+_IMPORTANT!_ Read through **any** script downloaded from the internet before running them.  
+If you don't understand what they are doing, don't run them!
+
+---
+
+#### Big thanks to
 
 - [Rafi](https://github.com/rafi/.config.git)
 - [MariaSolOs](https://github.com/MariaSolOs/dotfiles.git)
 
 for their inspiration and knowledge (and raw code).
-
----
-
-Suggestions are welcome!

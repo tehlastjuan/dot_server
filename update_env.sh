@@ -9,10 +9,12 @@ _install_dot_server() {
 
   echo "Installing dot_server files..."
 
-  if [[ -e "$HOME/.config/.git" ]]; then
-    [[ $(git remote --verbose | grep origin | grep fetch | cut -f2 | cut -d' ' -f1) == *dot_server* ]] && ORIGIN=1
-  else
-    [[ -e "$HOME/.config/.git" ]] && echo "Unknown dot files installation. Aborting." && return 1
+  if [[ -d "$HOME/.config/.git" ]]; then
+    if hash git 2> /dev/null; then
+      [[ $(git remote --verbose | grep origin | grep fetch | cut -f2 | cut -d' ' -f1) == *dot_server* ]] && ORIGIN=1
+    else
+      echo "Unknown dot files installation. Aborting." && return 1
+    fi
   fi
 
   [[ ! -e "$HOME/.local" ]] && mkdir "$HOME/.local"
@@ -59,10 +61,17 @@ _install_dot_server() {
   ln -s "$HOME/.config/vim/vimrc" "$HOME/.vimrc"
 
   if [[ -e "$HOME/.viminfo" ]]; then
+    if [[ $ORIGIN -eq 1 ]]; then
+      [[ -L "$HOME/.viminfo" ]] && rm "$HOME/.viminfo"
+    else
+      [[ ! -e "$CONFIG_OLD" ]] && mkdir -p "$CONFIG_OLD"
       mv "$HOME/.viminfo" "$CONFIG_OLD/viminfo"
+    fi
   fi
 
-  echo "Dot server files installation completed."
+  echo "dot_server files installation completed."
 }
 
-_install_dot_server
+if [[ "${#BASH_SOURCE[@]}" -eq 1 ]]; then
+  _install_dot_server
+fi
