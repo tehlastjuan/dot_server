@@ -1,5 +1,9 @@
 # add your ignored files/folders here
 
+docker/
+pulse/
+xfce4/
+
 wget/.wget-hsts
 
 bin/freeBSD/*

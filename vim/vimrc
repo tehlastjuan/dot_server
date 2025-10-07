@@ -1026,9 +1026,9 @@ endfunction
 augroup statusline_startup
   autocmd!
   autocmd WinEnter,BufWinEnter * call StatuslineLoad('active')
-  autocmd WinLeave * call StatuslineLoad('inactive')
-  autocmd ModeChanged * call StatuslineMode()
-  "autocmd CmdlineEnter,CmdlineLeave * call StatuslineMode()
+  autocmd WinLeave,BufWinLeave * call StatuslineLoad('inactive')
+  "autocmd ModeChanged * call StatuslineMode()
+  autocmd CmdlineEnter,CmdlineLeave * call StatuslineMode()
   autocmd FileType netrw,help setlocal statusline=%6*
   autocmd FileType netrw set nolist
   autocmd FileType *\(netwr\|help\)\@<! :call StatuslineMode()
