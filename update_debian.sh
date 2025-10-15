@@ -37,7 +37,12 @@ _update_system() {
 
 _install_essential_packages() {
   echo "Installing essential packages..."
-  if ! apt-get install -y -qq ca-certificates curl; then
+  if ! apt-get install -y -qq \
+    ca-certificates curl wget \
+    rsync vim jq tree \
+    coreutils perl gawk \
+    ssh openssh-client openssh-server \
+    cron chrony htop iotop skopeo; then
     echo "Failed to install one or more essential packages. Aborting."
     exit 1
   fi
@@ -75,10 +80,8 @@ _update_locale() {
 _install_hardening_packages() {
   echo "Installing hardening packages..."
   if ! apt-get install -y -qq \
-    ufw fail2ban unattended-upgrades chrony \
-    rsync wget vim htop iotop nethogs netcat-traditional ncdu \
-    tree rsyslog cron jq gawk coreutils perl skopeo \
-    ssh openssh-client openssh-server; then
+    ufw fail2ban unattended-upgrades \
+    nethogs netcat-traditional ncdu; then
     echo "Failed to install one or more essential packages."
     exit 1
   fi
@@ -88,10 +91,12 @@ _install_hardening_packages() {
 _configure_ssh() {
   echo "Updating SSH Configuration..." # Apply additional hardening
   while true; do
-    echo "Enter custom SSH port (1024-65535) [2222]: ${NC}"
-    read -rp SSH_PORT
+    echo "Enter custom SSH port (1024-65535) [2222]: "
+    read -r SSH_PORT
     SSH_PORT=${SSH_PORT:-2222}
-    if _validate_port "$SSH_PORT"; then break; else print_error "Invalid port number."; fi
+
+    if _validate_port "$SSH_PORT"; then break;
+    else print_error "Invalid port number."; fi
   done
 
   mkdir -p /etc/ssh/sshd_config.d
