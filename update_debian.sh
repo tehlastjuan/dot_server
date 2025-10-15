@@ -452,10 +452,10 @@ _main() {
   echo "Starting Debian hardening script..."
 
   if _confirm "Would you like to update the system packages now?"; then _update_system; fi
-  if _confirm "Would you like to install curl and ca-certificates packages?"; then _install_essential_packages; fi
+  if _confirm "Would you like to install essential packages?"; then _install_essential_packages; fi
   if _confirm "Would you like to update timezone to Europe/Stockholm?"; then _update_timezone; fi
   if _confirm "Would you like to update locale to US-UTF-8?"; then _update_locale; fi
-  if _confirm "Would you like to install hardening packages?"; then _install_hardening_packages; fi
+  if _confirm "Would you like to install net & hardening packages?"; then _install_hardening_packages; fi
   if _confirm "Would you like to harden the SSH config?"; then _configure_ssh ; fi
   if _confirm "Would you like to configure the firewall?"; then _configure_firewall ; fi
   if _confirm "Would you like to install and configure fail2ban?"; then _configure_fail2ban ; fi
