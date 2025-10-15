@@ -91,12 +91,12 @@ _install_hardening_packages() {
 _configure_ssh() {
   echo "Updating SSH Configuration..." # Apply additional hardening
   while true; do
-    echo "Enter custom SSH port (1024-65535) [2222]: "
+    printf "Enter custom SSH port (1024-65535) [2222]: "
     read -r SSH_PORT
     SSH_PORT=${SSH_PORT:-2222}
 
     if _validate_port "$SSH_PORT"; then break;
-    else print_error "Invalid port number."; fi
+    else echo "Invalid port number."; fi
   done
 
   mkdir -p /etc/ssh/sshd_config.d
