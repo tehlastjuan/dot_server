@@ -2,6 +2,7 @@
 
 set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
+SSH_PORT=22
 CLEANUP_FLAG=0
 
 _confirm() {
@@ -27,6 +28,11 @@ _confirm() {
             *) echo -e "Please answer yes or no." ;;
         esac
     done
+}
+
+_validate_port() {
+  local port="$1"
+  [[ "$port" =~ ^[0-9]+$ && "$port" -ge 1024 && "$port" -le 65535 ]]
 }
 
 _update_system() {
@@ -89,8 +95,15 @@ _install_hardening_packages() {
 
 _configure_ssh() {
   echo "Updating SSH Configuration..." # Apply additional hardening
+  while true; do
+    read -rp "$(echo -e "${CYAN}Enter custom SSH port (1024-65535) [2222]: ${NC}")" SSH_PORT
+    SSH_PORT=${SSH_PORT:-2222}
+    if _validate_port "$SSH_PORT"; then break; else print_error "Invalid port number."; fi
+  done
+
   mkdir -p /etc/ssh/sshd_config.d
   tee /etc/ssh/sshd_config.d/99-hardening.conf > /dev/null <<EOF
+  Port $SSH_PORT
 PermitRootLogin no
 PasswordAuthentication no
 PubkeyAuthentication yes
@@ -113,7 +126,7 @@ EOF
   sleep 5
 
   echo "Verifying root SSH login is disabled..." # Verify root SSH is disabled
-  if ssh -p 22 -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@localhost true 2>/dev/null; then
+  if ssh -p ${SSH_PORT} -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@localhost true 2>/dev/null; then
     echo "Root SSH login is still possible! Check configuration."
     return 1
   else echo "Confirmed: Root SSH login is disabled."; fi
@@ -133,11 +146,11 @@ _configure_firewall() {
     ufw default allow outgoing
   fi
 
-  if ! ufw status | grep -qw "22/tcp"; then
-    echo "Adding SSH rule for port 22..."
-    ufw allow 22/tcp comment 'SSH'
+  if ! ufw status | grep -qw "$SSH_PORT/tcp"; then
+    echo "Adding SSH rule for port $SSH_PORT..."
+    ufw allow "$SSH_PORT"/tcp comment 'SSH'
   else
-    echo "SSH rule for port 22 already exists."
+    echo "SSH rule for port $SSH_PORT already exists."
   fi
 
   if ! ufw status | grep -qw "80/tcp"; then
@@ -193,7 +206,7 @@ banaction = ufw
 
 [sshd]
 enabled = true
-port = 22
+port = $SSH_PORT
 
 # This jail monitors UFW logs for rejected packets (port scans, etc.).
 [ufw-probes]
