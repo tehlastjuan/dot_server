@@ -6,20 +6,20 @@ SSH_PORT=22
 CLEANUP_FLAG=0
 
 _confirm() {
-    local prompt="$1 [y/n]: "
-    local response
+  local prompt="$1 [y/n]: "
+  local response
 
-    while true; do
-      echo "$prompt"
-      read -r response
-      response=${response,,}
+  while true; do
+    printf "%s" "$prompt"
+    read -r response
+    response=${response,,}
 
-      case $response in
-        y|yes) return 0 ;;
-        n|no) return 1 ;;
-        *) ;;
-      esac
-    done
+    case $response in
+      y|yes) return 0 ;;
+      n|no) return 1 ;;
+      *) ;;
+    esac
+  done
 }
 
 _validate_port() {
