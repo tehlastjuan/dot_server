@@ -6,27 +6,19 @@ SSH_PORT=22
 CLEANUP_FLAG=0
 
 _confirm() {
-    local prompt="$1"
-    local default="${2:-n}"
+    local prompt="$1 [y/n]: "
     local response
 
-    if [[ $default == "y" ]]; then
-        prompt="$prompt [Y/n]: "
-    else
-        prompt="$prompt [y/N]: "
-    fi
-
     while true; do
-        read -rp "$(echo -e "$prompt")" response
-        response=${response,,}
+      echo "$prompt"
+      read -r response
+      response=${response,,}
 
-        if [[ -z $response ]]; then response=$default; fi
-
-        case $response in
-            y|yes) return 0 ;;
-            n|no) return 1 ;;
-            *) echo -e "Please answer yes or no." ;;
-        esac
+      case $response in
+        y|yes) return 0 ;;
+        n|no) return 1 ;;
+        *) ;;
+      esac
     done
 }
 
@@ -96,7 +88,8 @@ _install_hardening_packages() {
 _configure_ssh() {
   echo "Updating SSH Configuration..." # Apply additional hardening
   while true; do
-    read -rp "$(echo -e "${CYAN}Enter custom SSH port (1024-65535) [2222]: ${NC}")" SSH_PORT
+    echo "Enter custom SSH port (1024-65535) [2222]: ${NC}"
+    read -rp SSH_PORT
     SSH_PORT=${SSH_PORT:-2222}
     if _validate_port "$SSH_PORT"; then break; else print_error "Invalid port number."; fi
   done
