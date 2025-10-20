@@ -55,23 +55,5 @@ fi
 
 # See https://github.com/junegunn/fzf
 if hash fzf 2> /dev/null; then
-  fzf_keymaps=(
-    ctrl-d:half-page-down
-    ctrl-u:half-page-up
-    ctrl-b:preview-half-page-down
-    ctrl-n:preview-half-page-up
-    ctrl-t:toggle-preview-wrap
-    ctrl-y:yank
-    ctrl-k:toggle+up
-    ctrl-j:toggle+down
-  )
-  keymaps="$(printf ",%s" "${fzf_keymaps[@]}")"
-  export FZF_DEFAULT_OPTS="--style=minimal --info=inline-right --separator ━ --height 100% --bind ${keymaps:1}"
-
-  if hash rg 2> /dev/null; then
-    export FZF_DEFAULT_COMMAND='rg --vimgrep --files --follow --hidden --no-ignore-vcs --smart-case --glob !**/.git/*'
-  fi
-
-  unset fzf_keymaps keymaps
-  eval "$(fzf --bash)"
+  source "$XDG_CONFIG_HOME/bash/fzfrc"
 fi
