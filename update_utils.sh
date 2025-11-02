@@ -12,6 +12,7 @@ REPOS=(
   "sharkdp/bat"
   "junegunn/fzf"
   "gokcehan/lf"
+  "ajeetdsouza/zoxide"
 )
 
 _download_utils() {
@@ -55,7 +56,9 @@ _download_utils() {
     # fetch linux amd64/arm64 binaries
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
       if [[ $url == *linux* ]]; then
-        linux_url="$(echo "$url" | grep -o 'https://[^"]*' | grep "${_arch}-unknown-linux-gnu.tar.gz\|linux.*${arch}.tar.gz")"
+        linux_url="$(echo "$url" | grep -o 'https://[^"]*' |
+          # second grep stops at first match
+          grep -m 1 "${_arch}-unknown-linux-gnu.tar.gz\|linux.*${arch}.tar.gz\|${repo##*/}.*-${_arch}-unknown-linux-musl.tar")"
         lx_filename="${linux_url##*/}"
         printf "Downloading %s... " "$lx_filename"
         if [[ ! -e "$linux_tmp/$lx_filename" ]]; then wget -q -O "$linux_tmp/$lx_filename" "$linux_url"; fi
@@ -79,7 +82,7 @@ _download_utils() {
 
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     if [[ $arch == amd64 ]]; then
-      if [[ "$(find "$linux_tmp" -type f -executable | wc -l)" -eq 3 ]]; then
+      if [[ "$(find "$linux_tmp" -type f -executable | wc -l)" -eq "${#REPOS[@]}" ]]; then
         mkdir -p "${LINUX_AMD_DIR}_tmp"
         find "$linux_tmp" -type f -executable -exec cp {} "${LINUX_AMD_DIR}_tmp" \;
         [[ -e "$LINUX_AMD_DIR" ]] && rm -r "$LINUX_AMD_DIR"
@@ -88,7 +91,7 @@ _download_utils() {
         touch "${LINUX_AMD_DIR}/.gitkeep"
       fi
     elif [[ $arch == arm64 ]]; then
-      if [[ "$(find "$linux_tmp" -type f -executable | wc -l)" -eq 3 ]]; then
+      if [[ "$(find "$linux_tmp" -type f -executable | wc -l)" -eq "${#REPOS[@]}" ]]; then
         mkdir -p "${LINUX_ARM_DIR}_tmp"
         find "$linux_tmp" -type f -executable -exec cp {} "${LINUX_ARM_DIR}_tmp" \;
         [[ -e "$LINUX_ARM_DIR" ]] && rm -r "$LINUX_ARM_DIR"
