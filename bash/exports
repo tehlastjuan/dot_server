@@ -39,6 +39,9 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 	PATH="$HOME/.config/bin/linux_$ARCH:$PATH"
 fi
 
+# https://www.gnu.org/software/bash/manual/html_node/Readline-Init-File.html
+export INPUTRC="$XDG_CONFIG_HOME/bash/inputrc"
+
 # History settings
 export HISTSIZE=20000
 if [ "$BASH" ]; then
@@ -49,38 +52,25 @@ if [ "$BASH" ]; then
 	export HISTCONTROL=ignoreboth
 fi
 
-# https://www.gnu.org/software/bash/manual/html_node/Readline-Init-File.html
-export INPUTRC="$XDG_CONFIG_HOME/bash/inputrc"
+# Pager and Editor
+PAGER=$(which less)
+MANPAGER=$PAGER
 
-# Editor and pager
-WHICH_VIM=$(which vim)
-
-if [[ "$OSTYPE" == "freebsd"* ]]; then
-	EDITOR=${WHICH_VIM:-"/usr/local/bin/vim"}
-
-elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-	EDITOR=${WHICH_VIM:-"/usr/bin/vim"}
-fi
-
-SUDO_EDITOR="$EDITOR"
-SELECTED_EDITOR="$EDITOR"
-MANWIDTH=999
-MANPAGER=less
-if hash nvim 2> /dev/null; then
-	EDITOR=$(which nvim)
-	SELECTED_EDITOR="$EDITOR"
-	MANPAGER='nvim +Man!'
+if hash vim 2> /dev/null; then
+	EDITOR=$(which vim)
+  SUDO_EDITOR=$EDITOR
+	MANPAGER='vim +MANPAGER --not-a-term -'
 fi
 
 export EDITOR
 export SUDO_EDITOR
-export SELECTED_EDITOR
-export VISUAL="$EDITOR"
-export MANWIDTH
-export MANPAGER
+export SYSTEMD_EDITOR=$EDITOR
+export SELECTED_EDITOR=$EDITOR
+export VISUAL=$EDITOR
 
-# pager
-export PAGER=less
+export PAGER
+export MANPAGER
+export MANWIDTH=999
 export LESS="-FiQMXRwJ --incsearch --no-vbell --status-col-width 1"
 export LESSQUIET=1
 export LESSCHARSET="UTF-8"
@@ -109,6 +99,7 @@ fi
 if [ -d "$XDG_DATA_HOME/cargo" ]; then
 	export CARGO_HOME="$XDG_DATA_HOME/cargo"
 	PATH="$XDG_DATA_HOME/cargo/bin:$PATH"
+	. "/home/juanro/.local/share/cargo/env"
 fi
 
 # python
@@ -116,6 +107,7 @@ export PYTHON_COLORS=1
 export PYTHONUSERBASE="$XDG_DATA_HOME/python"
 export PYTHON_HISTORY="$XDG_STATE_HOME/python/history"
 export PYTHONPYCACHEPREFIX="$XDG_CACHE_HOME/python"
+
 if hash pipx 2> /dev/null; then
 	export PIPX_HOME="$XDG_DATA_HOME/python/pipx"
 	export PIPX_BIN_DIR="$XDG_DATA_HOME/python/pipx/bin"
@@ -153,26 +145,35 @@ fi
 
 # Java stuff
 if hash java 2> /dev/null; then
+
 	# Java XWayland blank screens fix
 	export _JAVA_AWT_WM_NONREPARENTING=1
 
-	# java prefs
-	export JAVA_TOOL_OPTIONS="$JAVA_TOOL_OPTIONS \
-		-Djava.util.prefs.userRoot=$XDG_CONFIG_HOME/java
-    -Dconfig.override_with_env_vars=true \
-    -Djava.net.preferIPv4Stack=true \
-    -Duser.timezone=UTC \
-    -Dquill.macro.log=false \
-    -XX:+PerfDisableSharedMem"
+	# java TOOLS opts
+	_JAVA_TOOL_OPTS=(
+		"-Djava.util.prefs.userRoot=$HOME/.config/java"
+		"-Dconfig.override_with_env_vars=true"
+		"-Djava.net.preferIPv4Stack=true"
+		"-Duser.timezone=UTC"
+		"-Dquill.macro.log=false"
+		"-XX:+PerfDisableSharedMem"
+	)
+	export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} ${_JAVA_TOOL_OPTS[*]}"
 
-	export JDK_JAVA_OPTIONS="$JDK_JAVA_OPTIONS \
-		-Dawt.useSystemAAFontSettings=on \
-		-Dswing.aatext=true \
-		-Dswing.defaultlaf=com.sun.java.swing.plaf.gtk.GTKLookAndFeel \
-		-Dswing.crossplatformlaf=com.sun.java.swing.plaf.gtk.GTKLookAndFeel \
-		-Djdk.gtk.version=3 \
-		-Dawt.java2d.uiScale.enabled=true \
-		-Dsun.java2d.opengl=true"
+	# java JDK opts
+	_JDK_OPTS=(
+		"-Dawt.useSystemAAFontSettings=on"
+		"-Dawt.toolkit.name=WLToolkit"
+		"-Dswing.aatext=true"
+		"-Dswing.defaultlaf=com.sun.java.swing.plaf.gtk.GTKLookAndFeel"
+		"-Dswing.crossplatformlaf=com.sun.java.swing.plaf.gtk.GTKLookAndFeel"
+		"-Djdk.gtk.version=3"
+		"-Dorg.lwjgl.glfw.libname=/usr/lib/libglfw.so"
+		"-Dawt.java2d.uiScale.enabled=true"
+		"-Dsun.java2d.opengl=true"
+		"-Dsun.java2d.opengl.fbobject=false"
+	)
+	export JDK_JAVA_OPTIONS="${JDK_JAVA_OPTIONS} ${_JDK_OPTS[*]}"
 
 	# gradle builder
 	export GRADLE_USER_HOME="$XDG_DATA_HOME/gradle"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # cd to current dir on lf quit
-lf() {
+r() {
   export LF_CD_FILE=/var/tmp/.lfcd-$$
   command lf "${@}"
   if [ -s "$LF_CD_FILE" ]; then
@@ -16,28 +16,51 @@ lf() {
   unset LF_CD_FILE
 }
 
+# fzf file opener
+f() {
+  local file
+  local files
+  declare -a files
+
+  IFS=$'\n' read -d "" -ra files <<< "$(fzf --query="$1" --select-1 --exit-0 --preview="$XDG_CONFIG_HOME/lf/preview {}")"
+  file=$(head -2 <<< "$files" | tail -1)
+
+  if [[ -n $file ]]; then
+    type=$(xdg-mime query filetype "$file")
+    case "$type" in
+      application/json) $EDITOR "$file" ;;
+      text/plain)       $EDITOR "$file" ;;
+      text/json)        $EDITOR "$file" ;;
+      text/c)           $EDITOR "$file" ;;
+      inode/directory)  return 1 ;;
+      *) return 1
+    esac
+  fi
+}
+
+# reset cursor after closing nvim
+vim() {
+  command nvim "${@}"
+  [ -f "$1" ] && reset
+}
+
 # note ./here
 nh() {
   filename="$(date +%U-%y%m%d-%H%M)"
   "${EDITOR}" "${filename}.md"
 }
 
-# single-thread compiler-runer
+# single-thread compiler
 cr() {
   if [ -f "$1" ]; then
     filename=${1%*.?}
     case $2 in
-      gcc)
-        if hash gcc 2> /dev/null; then
-          gcc -Wall -g "$1" -lm -o "${filename}"
-        else echo "No gcc binary found"; fi
-        ;;
       clang)
         if hash clang 2> /dev/null; then
           clang -Wall -g "$1" -lm -o "${filename}"
         else echo "No clang binary found"; fi
         ;;
-      *)
+      gcc|*)
         if hash gcc 2> /dev/null; then
           gcc -Wall -g "$1" -lm -o "${filename}"
         else echo "No gcc binary found"; fi
@@ -46,9 +69,8 @@ cr() {
   else echo "No .c file found"; fi
 }
 
-# multi-thread compiler-runer
+# multi-thread compiler
 crt() {
-  # clear;
   if [ -f "$1" ]; then
     filename=${1%*.?}
     if hash gcc 2> /dev/null; then

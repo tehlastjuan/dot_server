@@ -7,31 +7,31 @@ elif [ -f /etc/bash_completion ]; then
 fi
 
 # bash completion
-if [[ -f "$XDG_CONFIG_HOME/bash/completion.d/git-completion.sh" ]]; then
+if [ -f "$XDG_CONFIG_HOME/bash/completion.d/git-completion.sh" ]; then
   . "$XDG_CONFIG_HOME/bash/completion.d/git-completion.sh"
 fi
 
 # git completion
-if [[ -f "$XDG_CONFIG_HOME/bash/completion.d/git-prompt.sh" ]]; then
+if [ -f "$XDG_CONFIG_HOME/bash/completion.d/git-prompt.sh" ]; then
   . "$XDG_CONFIG_HOME/bash/completion.d/git-prompt.sh"
 fi
 
 # docker completion
-if [[ -f "$XDG_CONFIG_HOME/bash/completion.d/docker-completion.sh" ]]; then
+if [ -f "$XDG_CONFIG_HOME/bash/completion.d/docker-completion.sh" ]; then
   . "$XDG_CONFIG_HOME/bash/completion.d/docker-completion.sh"
 fi
 
 # node version manager completion
-if [[ -f "$NVM_DIR/bash_completion" ]]; then
+if [ -f "$NVM_DIR/bash_completion" ]; then
   . "$NVM_DIR/bash_completion"
 fi
 
 # java version manager completion
-if [[ -f "$SDKMAN_DIR/contrib/completion/bash/sdk" ]]; then
+if [ -f "$SDKMAN_DIR/contrib/completion/bash/sdk" ]; then
   . "$SDKMAN_DIR/contrib/completion/bash/sdk"
 fi
 
 # gradle completion
-if [[ -f "$XDG_CONFIG_HOME/bash/completion.d/gradle-completion.bash" ]]; then
+if [ -f "$XDG_CONFIG_HOME/bash/completion.d/gradle-completion.bash" ]; then
   . "$XDG_CONFIG_HOME/bash/completion.d/gradle-completion.bash"
 fi

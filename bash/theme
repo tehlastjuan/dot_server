@@ -6,11 +6,11 @@ if [ -z "$(LC_ALL=C type -t __git_ps1)" ]; then
 	}
 fi
 
-if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+if [[ "$OSTYPE" == linux-gnu* ]]; then
   # Load directory and file colors for GNU ls
   eval "$(dircolors -b "$XDG_CONFIG_HOME/dircolors/default")"
 
-  if [[ -z "${LS_COLORS}" ]]; then
+  if [ -z "${LS_COLORS}" ]; then
     LS_COLORS="$(dircolors -b "$XDG_CONFIG_HOME/dircolors/default")"
     export LS_COLORS
   fi

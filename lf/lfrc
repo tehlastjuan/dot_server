@@ -15,11 +15,11 @@ set sortby natural
 set ratios '1:2:3'
 set period 1
 set relativenumber
-set preview
+set watch true
 
+set preview
 set sixel
 set previewer ~/.config/lf/preview
-set cleaner ~/.config/lf/clean
 
 set cursorpreviewfmt ""
 set cursorparentfmt "\033[7m"
@@ -45,7 +45,7 @@ cmap cmd-word
 cmap cmd-word-back
 cmap cmd-word-yank
 
-
+# the actual mappings
 map C reload-conf
 map q quit-and-cd
 map . set hidden!
@@ -61,9 +61,9 @@ map dD delete
 map dd cut
 map dt trash
 
-cmap <c-right> cmd-word
-cmap <c-left> cmd-word-back
-cmap <c-y> cmd-word-yank
+cmap <C-right> cmd-word
+cmap <C-left> cmd-word-back
+cmap <C-y> cmd-word-yank
 
 map i pager
 map I rename
@@ -81,12 +81,11 @@ map ff filter
 map fF $lf -remote "send $id select $(fzf)"
 
 # fuzzy search in files
-map <c-f> :fzf_search
-
-map xx extract
+map <C-f> :fzf_search
 
 # enter name and compress to name.zip
 map xX push :zip<space>
+map xx extract
 
 # jump-dir w\ zoxide
 map zz push :z<space>
@@ -113,9 +112,6 @@ map <c-z> $ kill -STOP $PPID
 
 # Open the directory in Finder on macOS
 # map fm &if [[ -d $f ]]; then open $f; fi
-
-# beyond compare selected files/directories
-# map = &bcompare $fx
 
 
 #### commands
@@ -163,24 +159,11 @@ cmd pager ${{
     bash -c "glow -w ${cols} -p $fx"
 	else
     bash -c "bat $fx \
-                --number --theme=TwoDark --color=always --paging=always \
-                --style=plain --terminal-width ${cols} --line-range :${lines} \
-                --pager='less -iWQMRX~ --no-vbell'"
+			--number --theme=TwoDark --color=always --paging=always \
+			--style=plain --terminal-width ${cols} --line-range :${lines} \
+			--pager='less -iWQMRX~ --no-vbell'"
   fi
 }}
-
-# Implement trash command
-# cmd trash ${{
-# 	set -f
-# 	if hash trash-put 2>/dev/null; then
-# 		trash-put -v -- $fx
-# 	else
-# 		mkdir -p "$HOME"/.trash
-# 		mv -vi $fx "$HOME"/.trash
-# 	fi
-# }}
-
-cmd clear_trash %trash-empty
 
 # Replace open command with robust selection of openers
 cmd open ${{
@@ -206,11 +189,11 @@ cmd new-folder-with-selection ${{
 
 # compress current file or selected files with zip
 cmd zip ${{
-	set -f
-	mkdir $1
-	cp -r $fx $1
-	zip -r $1.zip $1
-	rm -rf $1
+	if [ -f "${fx}" ]; then
+		zip -qur "${fx}" $fx
+	else
+		zip -qr "${fx}.zip" $fx
+	fi
 }}
 
 # extract compressed files
@@ -267,30 +250,51 @@ cmd reload-conf ${{
   lf -remote "send $id source ~/.config/lf/lfrc"
 }}
 
-# cmd on-quit ${{
-#   i=$(tput lines)
-#   until [ "${i}" -le 1 ]; do
-#     printf '\n'
-#     i=$((i-1))
-#   done
-#   tput -x clear
-# }}
 
-#### prompt
+#----- prompt
+
+# main prompt
 set promptfmt "\033[38;5;8m\033[48;5;236m %u@%h \033[38;5;236m\033[48;5;234m \033[34;40;1m\033[48;5;234m %w/%f \033[0m\033[38;5;234m\033[0m"
 
 # git branch prompt
 cmd on-cd &{{
-    # display git repository status in your prompt
-    source /usr/share/git/completion/git-prompt.sh
-    GIT_PS1_SHOWDIRTYSTATE=auto
-    GIT_PS1_SHOWSTASHSTATE=auto
-    GIT_PS1_SHOWUNTRACKEDFILES=auto
-    GIT_PS1_SHOWUPSTREAM=auto
-    GIT_PS1_COMPRESSSPARSESTATE=auto
-    git=$(__git_ps1 "%s* ") || true
-    fmt="\033[38;5;8m\033[48;5;236m %u@%h \033[38;5;236m\033[48;5;234m \033[33;49;1m\033[48;5;234m$git\033[34;40;1m\033[48;5;234m%w/%f \033[0m\033[38;5;234m\033[0m"
-    lf -remote "send $id set promptfmt \"$fmt\""
+	cd "$(dirname "$1")" || exit 1
+
+	if [ "$(git rev-parse --is-inside-git-dir 2>/dev/null)" = false ]; then
+		source /usr/share/git/completion/git-prompt.sh
+		git=$(__git_ps1 "%s* ") || true
+		fmt="\033[38;5;8m\033[48;5;236m %u@%h \033[38;5;236m\033[48;5;234m \033[33;49;1m\033[48;5;234m$git\033[34;40;1m\033[48;5;234m%w/%f \033[0m\033[38;5;234m\033[0m"
+	else
+		fmt="\033[38;5;8m\033[48;5;236m %u@%h \033[38;5;236m\033[48;5;234m \033[34;40;1m\033[48;5;234m %w/%f \033[0m\033[38;5;234m\033[0m"
+	fi
+
+	# add to zoxide db
+	zoxide add "$PWD"
+	# display git repository status in your prompt
+	lf -remote "send $id set promptfmt \"$fmt\""
 }}
+
+
+# git file status info
+cmd on-load &{{
+	cd "$(dirname "$1")" || exit 1
+	[ "$(git rev-parse --is-inside-git-dir 2>/dev/null)" = false ] || exit 0
+
+	cmds=""
+	for file in "$@"; do
+		case "$file" in
+			*/.git|*/.git/*) continue;;
+		esac
+
+		status=$(git status --porcelain --ignored -- "$file" | cut -c1-2 | head -n1)
+		if [ -n "$status" ]; then
+			cmds="${cmds}addcustominfo ${file} \"$status\"; "
+		else
+			cmds="${cmds}addcustominfo ${file} ''; "
+		fi
+	done
+	lf -remote "send $id :$cmds"
+}}
+
 
 # vim: set ts=2 sw=2 tw=80 noet :
