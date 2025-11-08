@@ -39,17 +39,24 @@ _install_essential_packages() {
   echo "Installing essential packages..."
   if ! apt-get install -y -qq \
     ca-certificates \
+    coreutils \
     curl \
     wget \
     rsync \
     vim \
     jq \
     tree \
-    coreutils \
-    perl gawk \
+    perl \
+    gawk \
+    file \
+    zip \
+    unzip \
+    make \
+    gcc \
     ssh \
     openssh-client \
     openssh-server \
+    xdg-user-dirs \
     cron \
     chrony \
     htop \
@@ -383,15 +390,8 @@ _configure_time_sync() {
 _install_docker() {
   echo "Installing docker engine..."
 
-  if apt-get install -y -qq \
-    docker-ce \
-    docker-ce-cli \
-    containerd \
-    docker-buildx-plugin \
-    docker-compose-plugin \
-    criu \
-    python3-pycriu; then
-    echo "Docker already installed. Skipping."
+  if [ -S "unix:///var/run/docker.sock" ]; then
+    echo "Docker already installed and running. Skipping."
     return 0
   fi
 
@@ -400,8 +400,14 @@ _install_docker() {
     docker \
     docker-engine \
     docker.io \
+    docker-ce \
+    docker-ce-cli \
     containerd \
     containerd.io \
+    docker-buildx-plugin \
+    docker-compose-plugin \
+    criu \
+    python3-pycriu \
     runc 2>/dev/null || true
 
   _update_system
@@ -411,18 +417,24 @@ _install_docker() {
   if ! apt-get install -y -qq ca-certificates curl; then
     apt-get install -y -qq ca-certificates curl
   fi
+
   install -m 0755 -d /etc/apt/keyrings
-  curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
-  chmod a+r /etc/apt/keyrings/docker.asc
+
+  if [ -f "/etc/apt/keyrings/docker.asc" ]; then
+    curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+    chmod a+r /etc/apt/keyrings/docker.asc
+  fi
 
   # Add the repository to Apt sources:
-  sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+  if [ ! -f "/etc/apt/sources.list.d/docker.sources" ]; then
+  sudo tee /etc/apt/sources.list.d/docker.sources <<EOF > /dev/null
 Types: deb
 URIs: https://download.docker.com/linux/debian
 Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")
 Components: stable
 Signed-By: /etc/apt/keyrings/docker.asc
 EOF
+  fi
 
   _update_system
 
@@ -452,22 +464,26 @@ EOF
 EOF
 
   mkdir -p /etc/docker
-  if [[ -f /etc/docker/daemon.json ]] && cmp -s "$NEW_DOCKER_CONFIG" /etc/docker/daemon.json; then
+  if [ -f "/etc/docker/daemon.json" ] && cmp -s "$NEW_DOCKER_CONFIG" /etc/docker/daemon.json; then
     echo "Docker daemon configuration already correct. Skipping."
     rm -f "$NEW_DOCKER_CONFIG"
   else
     mv "$NEW_DOCKER_CONFIG" /etc/docker/daemon.json
     chmod 644 /etc/docker/daemon.json
   fi
+
   systemctl daemon-reload
   systemctl enable --now docker
 
   echo "Adding '$SUDO_USER' to docker group..."
   getent group docker >/dev/null || groupadd docker
+
   if ! groups "$SUDO_USER" | grep -qw docker; then
     usermod -aG docker "$SUDO_USER"
     echo "User '$SUDO_USER' added to docker group."
-  else echo "User '$SUDO_USER' is already in docker group."; fi
+  else
+    echo "User '$SUDO_USER' is already in docker group."
+  fi
   CLEANUP_FLAG=1
 }
 
