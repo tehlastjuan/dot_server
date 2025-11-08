@@ -40,15 +40,34 @@ f() {
 
 # reset cursor after closing nvim
 vim() {
-  command nvim "${@}"
+  command vim "${@}"
   [ -f "$1" ] && reset
 }
 
 # note ./here
 nh() {
-  filename="$(date +%U-%y%m%d-%H%M)"
-  "${EDITOR}" "${filename}.md"
+  "${EDITOR}" "$(date +%U-%y%m%d-%H%M).md"
 }
+
+# touch / mkdir in ./here
+th() {
+  case $1 in
+    -d) mkdir "$(date +%y%m%d-%H%M%m)" ;;
+    -f|*) touch "$(date +%y%m%d-%H%M%m)" ;;
+  esac
+}
+
+jctl() {
+  local cols
+  local width
+  declare -i cols
+  declare -i width
+
+  cols=$(tput cols)
+  width=$(if [ $cols -lt 121 ]; then echo 113; else echo $(( cols - 4 )); fi)
+  journalctl "$@" | bat --style=plain --language=log --wrap=character --terminal-width=$width
+}
+
 
 # single-thread compiler
 cr() {
