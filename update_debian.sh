@@ -38,11 +38,23 @@ _update_system() {
 _install_essential_packages() {
   echo "Installing essential packages..."
   if ! apt-get install -y -qq \
-    ca-certificates curl wget \
-    rsync vim jq tree \
-    coreutils perl gawk \
-    ssh openssh-client openssh-server \
-    cron chrony htop iotop skopeo; then
+    ca-certificates \
+    curl \
+    wget \
+    rsync \
+    vim \
+    jq \
+    tree \
+    coreutils \
+    perl gawk \
+    ssh \
+    openssh-client \
+    openssh-server \
+    cron \
+    chrony \
+    htop \
+    iotop \
+    skopeo; then
     echo "Failed to install one or more essential packages. Aborting."
     exit 1
   fi
@@ -78,10 +90,14 @@ _update_locale() {
 }
 
 _install_hardening_packages() {
-  echo "Installing hardening packages..."
+  echo "Installing hardening packages: ufw, fail2ban, unattended-upgrades, nethogs, netcat-traditional, ncdu "
   if ! apt-get install -y -qq \
-    ufw fail2ban unattended-upgrades \
-    nethogs netcat-traditional ncdu; then
+    ufw \
+    fail2ban \
+    unattended-upgrades \
+    nethogs \
+    netcat-traditional \
+    ncdu; then
     echo "Failed to install one or more essential packages."
     exit 1
   fi
@@ -101,7 +117,7 @@ _configure_ssh() {
 
   mkdir -p /etc/ssh/sshd_config.d
   tee /etc/ssh/sshd_config.d/99-hardening.conf > /dev/null <<EOF
-  Port $SSH_PORT
+Port $SSH_PORT
 PermitRootLogin no
 PasswordAuthentication no
 PubkeyAuthentication yes
@@ -124,7 +140,7 @@ EOF
   sleep 5
 
   echo "Verifying root SSH login is disabled..." # Verify root SSH is disabled
-  if ssh -p ${SSH_PORT} -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@localhost true 2>/dev/null; then
+  if ssh -p "$SSH_PORT" -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@localhost true 2>/dev/null; then
     echo "Root SSH login is still possible! Check configuration."
     return 1
   else echo "Confirmed: Root SSH login is disabled."; fi
@@ -367,33 +383,59 @@ _configure_time_sync() {
 _install_docker() {
   echo "Installing docker engine..."
 
-  if hash docker >/dev/null 2>&1; then
+  if apt-get install -y -qq \
+    docker-ce \
+    docker-ce-cli \
+    containerd \
+    docker-buildx-plugin \
+    docker-compose-plugin \
+    criu \
+    python3-pycriu; then
     echo "Docker already installed. Skipping."
     return 0
   fi
 
   echo "Removing old container runtimes..."
-  apt-get remove -y -qq docker docker-engine docker.io containerd runc 2>/dev/null || true
+  apt-get remove -y -qq \
+    docker \
+    docker-engine \
+    docker.io \
+    containerd \
+    containerd.io \
+    runc 2>/dev/null || true
 
   _update_system
 
   echo "Adding Docker's official GPG key and repository..."
+
+  if ! apt-get install -y -qq ca-certificates curl; then
+    apt-get install -y -qq ca-certificates curl
+  fi
   install -m 0755 -d /etc/apt/keyrings
   curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
   chmod a+r /etc/apt/keyrings/docker.asc
 
   # Add the repository to Apt sources:
-  echo \
-    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \
-    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-    tee /etc/apt/sources.list.d/docker.list > /dev/null
+  sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/debian
+Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")
+Components: stable
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
 
   _update_system
 
   echo "Installing Docker packages..."
   if ! apt-get install -y -qq \
-    docker-ce docker-ce-cli containerd.io \
-    docker-buildx-plugin docker-compose-plugin; then
+    docker-ce \
+    docker-ce-cli \
+    containerd \
+    docker-buildx-plugin \
+    docker-compose-plugin \
+    docker-doc \
+    criu \
+    python3-pycriu; then
     echo "Failed to install one or more docker packages."
     exit 1
   fi
