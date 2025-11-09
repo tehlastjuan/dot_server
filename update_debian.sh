@@ -2,8 +2,25 @@
 
 set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
-SSH_PORT=22
-CLEANUP_FLAG=0
+declare -i CLEANUP_FLAG=1
+declare -i SSH_PORT=22
+
+_prt_init_msg() {
+  CLEANUP_FLAG=1
+  local msg="${1:-"This is a message."}"
+  echo "$msg"
+}
+
+_prt_cleared_msg() {
+  CLEANUP_FLAG=0
+  local msg="${1:-"This is a message."}"
+  echo "$msg"
+}
+
+_prt_error() {
+  local msg="${1:-"Unknown error."}"
+  echo "$msg" && exit 1
+}
 
 _confirm() {
   local prompt="$1 [y/n]: "
@@ -15,115 +32,168 @@ _confirm() {
     response=${response,,}
 
     case $response in
-      y|yes) return 0 ;;
-      n|no) return 1 ;;
+      y | yes) return 0 ;;
+      n | no) return 1 ;;
       *) ;;
     esac
   done
 }
 
-_validate_port() {
-  local port="$1"
-  [[ "$port" =~ ^[0-9]+$ && "$port" -ge 1024 && "$port" -le 65535 ]]
+_fetch_ssh_port() {
+  SSH_PORT=$(( $(lsof -nP -iTCP -sTCP:LISTEN | grep -m 1 sshd | cut -d ':' -f 2 | cut -d ' ' -f 1) ))
+}
+
+_validate_ssh_port() {
+  [[ "$1" =~ ^[0-9]+$ && "$1" -ge 1024 && "$1" -le 65535 ]]
 }
 
 _update_system() {
-  echo "Updating system packages..."
-  if ! apt-get update && apt-get upgrade -qq; then
-    echo "Failed to update system packages. Aborting."
-    exit 1
+  _prt_init_msg "Updating system packages..."
+  if [ ! -f "/etc/apt/sources.list.d/debian.sources" ]; then
+    sed -i -e 's/^\(deb.*\)/# \1/' /etc/apt/sources.list
+    tee /etc/apt/sources.list.d/debian.sources > /dev/null << EOF
+Types: deb deb-src
+URIs: https://deb.debian.org/debian
+Suites: trixie trixie-updates
+## If you want access to contrib and non-free components,
+## add " contrib non-free" after "non-free-firmware":
+Components: main non-free-firmware
+Enabled: yes
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb deb-src
+URIs: https://security.debian.org/debian-security
+Suites: trixie-security
+Components: main non-free-firmware
+Enabled: yes
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+EOF
+  fi
+  if ! apt-get update && apt-get upgrade -y -qq --no-install-recommends; then
+    _prt_error "Failed to update system packages."
   fi
 }
 
-_install_essential_packages() {
-  echo "Installing essential packages..."
-  if ! apt-get install -y -qq \
-    ca-certificates \
-    coreutils \
-    curl \
-    wget \
-    rsync \
-    vim \
-    jq \
-    tree \
-    perl \
-    gawk \
-    file \
-    zip \
-    unzip \
-    make \
-    gcc \
-    ssh \
-    openssh-client \
-    openssh-server \
-    xdg-user-dirs \
-    cron \
-    chrony \
-    htop \
-    iotop \
-    skopeo; then
-    echo "Failed to install one or more essential packages. Aborting."
-    exit 1
+CORE_PKG=(
+  ca-certificates
+  coreutils
+  sudo
+  curl
+  wget
+  rsync
+  vim
+  jq
+  tree
+  perl
+  gawk
+  file
+  zip
+  unzip
+  make
+  gcc
+  ssh
+  git
+  xz-utils
+  openssh-client
+  openssh-server
+  xdg-user-dirs
+  cron
+  chrony
+  htop
+  iotop
+  skopeo
+)
+
+_install_core_pkg() {
+  _prt_init_msg "Installing core packages..."
+  if ! apt-get install -y -qq --no-install-recommends "${CORE_PKG[@]}"; then
+    _prt_error "Failed to install one or more packages."
+  else
+    _prt_cleared_msg "Installing core packages completed."
   fi
-  CLEANUP_FLAG=1
 }
 
 _update_timezone() {
-  echo "Updating to local timezone..."
-  if [[ ! $(timedatectl | grep -o "Europe/Stockholm") == *Europe/Stockholm* ]]; then
-    if [[ $LANG == "C" ]]; then dpkg-reconfigure tzdata
+  _prt_init_msg "Updating to local timezone..."
+  local msg
+  if [[ "$(timedatectl | grep -o "Europe/Stockholm")" == *Europe/Stockholm* ]]; then
+    msg="Local timezone already updated."
+  else
+    if [ "$LANG" == "C" ]; then
+      dpkg-reconfigure tzdata
     else
-      sed -i -e 's/Europe/Stockholm/' /etc/timezone \
-        && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure --frontend=noninteractive tzdata
+      sed -i -e 's/Europe/Stockholm/' /etc/timezone &&
+        DEBIAN_FRONTEND=noninteractive dpkg-reconfigure --frontend=noninteractive tzdata
     fi
-  else echo "Local timezone already updated."; fi
-  CLEANUP_FLAG=1
+    msg="Updating timezone completed."
+  fi
+  _prt_cleared_msg "$msg"
 }
 
 _update_locale() {
-  if ! apt-get install -y -qq locales; then
-    echo "Failed to install the locales package. Aborting."
-    exit 1
+  _prt_init_msg "Updating locales..."
+
+  local msg
+  if ! apt-get install -y -qq --no-install-recommends locales; then
+    _prt_error "Failed to install locales package."
   fi
 
-  echo "Updating locales..."
-  if [[ ! $LANG == "en_US.UTF-8" ]]; then
-    echo "Updating to local timezone..."
-    sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen \
-      && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure --frontend=noninteractive locales \
-      && update-locale LANG=en_US.UTF-8
-  else echo "Locale already updated."; fi
-  CLEANUP_FLAG=1
-}
+  local _nolang=0
+  if ! printenv | grep -q "LANG="; then _nolang=1; fi
 
-_install_hardening_packages() {
-  echo "Installing hardening packages: ufw, fail2ban, unattended-upgrades, nethogs, netcat-traditional, ncdu "
-  if ! apt-get install -y -qq \
-    ufw \
-    fail2ban \
-    unattended-upgrades \
-    nethogs \
-    netcat-traditional \
-    ncdu; then
-    echo "Failed to install one or more essential packages."
-    exit 1
+  if [ "$_nolang" -eq 1 ] || [[ "$LANG" != "en_US.UTF-8" ]]; then
+    sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen &&
+      DEBIAN_FRONTEND=noninteractive dpkg-reconfigure --frontend=noninteractive locales &&
+      update-locale LANG=en_US.UTF-8
+    msg="Updating locales completed."
+
+  elif [ "$LANG" == "en_US.UTF-8" ]; then
+    msg="Locale already set to en_US.UTF-8."
   fi
-  CLEANUP_FLAG=1
+  _prt_cleared_msg "$msg"
 }
 
-_configure_ssh() {
-  echo "Updating SSH Configuration..." # Apply additional hardening
-  while true; do
-    printf "Enter custom SSH port (1024-65535) [2222]: "
+HARDENING_PKG=(
+  ufw
+  fail2ban
+  unattended-upgrades
+  nethogs
+  netcat-traditional
+  ncdu
+)
+
+_install_hardening_pkg() {
+  _prt_init_msg "Installing hardening packages..."
+  if ! apt-get install -y -qq --no-install-recommends "${HARDENING_PKG[@]}"; then
+    _prt_error "Failed to install one or more essential packages."
+  else
+    _prt_cleared_msg "Installing hardening packages completed."
+  fi
+}
+
+_setup_ssh_hardening() {
+  _prt_init_msg "Hardening SSH configuration..."
+
+  if ! dpkg -l openssh-server | grep -q ^ii; then
+    local _ufw_warning_msg="openssh-server package is not installed. Install it?"
+    if _confirm "$_ufw_warning_msg"; then
+      if ! apt-get install -y -qq --no-install-recommends openssh-server; then
+        _prt_error "Failed to install the openssh-server package."
+      fi
+    else return 0; fi
+  fi
+
+  while [ $SSH_PORT -eq 22 ]; do
+    printf "Enter custom SSH port (1024-65535): "
     read -r SSH_PORT
-    SSH_PORT=${SSH_PORT:-2222}
+    SSH_PORT=${SSH_PORT:-22}
 
-    if _validate_port "$SSH_PORT"; then break;
+    if _validate_ssh_port "$SSH_PORT"; then break
     else echo "Invalid port number."; fi
   done
 
-  mkdir -p /etc/ssh/sshd_config.d
-  tee /etc/ssh/sshd_config.d/99-hardening.conf > /dev/null <<EOF
+  [ -d "/etc/ssh/sshd_config.d" ] || mkdir -p /etc/ssh/sshd_config.d
+  tee /etc/ssh/sshd_config.d/99-hardening.conf > /dev/null << EOF
 Port $SSH_PORT
 PermitRootLogin no
 PasswordAuthentication no
@@ -135,7 +205,7 @@ PrintMotd no
 Banner /etc/issue.net
 EOF
 
-  tee /etc/issue.net > /dev/null <<'EOF'
+  tee /etc/issue.net > /dev/null << EOF
 
  * All attempts are logged and reviewed
 
@@ -146,25 +216,36 @@ EOF
   systemctl restart sshd.service
   sleep 5
 
-  echo "Verifying root SSH login is disabled..." # Verify root SSH is disabled
-  if ssh -p "$SSH_PORT" -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@localhost true 2>/dev/null; then
-    echo "Root SSH login is still possible! Check configuration."
-    return 1
-  else echo "Confirmed: Root SSH login is disabled."; fi
-
-  echo "SSH configuration completed."
-  CLEANUP_FLAG=1
+  _fetch_ssh_port
+  printf "Verifying root SSH login is disabled... "
+  if [ $SSH_PORT -eq 22 ]; then
+    : "Root SSH login is still possible! Check configuration."
+  else
+    : "Completed: Root SSH login is disabled."
+  fi
+  _prt_cleared_msg "$_"
 }
 
-_configure_firewall() {
-  echo "Configuring firewall (UFW)..."
+_setup_firewall() {
+  _prt_init_msg "Configuring UFW firewall..."
+
+  if ! dpkg -l ufw | grep -q ^ii; then
+    local _ufw_warning_msg="UFW package is not installed. Install the hardening packages?"
+    if _confirm "$_ufw_warning_msg"; then _install_hardening_pkg; else return 0; fi
+  fi
 
   if ufw status | grep -q "Status: active"; then
-    echo "UFW already enabled."
+    echo "UFW is already enabled."
   else
     echo "Configuring UFW default policies..."
     ufw default deny incoming
     ufw default allow outgoing
+  fi
+
+  _fetch_ssh_port
+  if [ "$SSH_PORT" -eq 22 ]; then
+    local _ssh_warning_msg="SSH port is setup to default (22/tcp). Set up SSH hardening?"
+    if _confirm "$_ssh_warning_msg"; then _configure_ssh; fi
   fi
 
   if ! ufw status | grep -qw "$SSH_PORT/tcp"; then
@@ -190,34 +271,41 @@ _configure_firewall() {
 
   echo "Enabling firewall..."
   if ! ufw --force enable; then
-    echo "Failed to enable UFW. Check 'journalctl -u ufw' for details."
-    exit 1
+    _prt_error "Failed to enable UFW: Check 'journalctl -u ufw' for details."
   fi
 
   if ufw status | grep -q "Status: active"; then
-    echo "Firewall is active."
+    _prt_cleared_msg "Completed: Firewall is active."
   else
-    echo "UFW failed to activate. Check 'journalctl -u ufw' for details."
-    exit 1
+    _prt_error "UFW failed to activate: Check 'journalctl -u ufw' for details."
   fi
-
-  echo "Firewall configuration completed."
-  CLEANUP_FLAG=1
 }
 
-_configure_fail2ban() {
-  echo "Configuring Fail2Ban..."
+_setup_fail2ban() {
+  _prt_init_msg "Configuring Fail2Ban..."
+
+  if ! dpkg -l fail2ban | grep -q ^ii; then
+    local _ufw_warning_msg="UFW package is not installed. Install the hardening packages?"
+    if _confirm "$_ufw_warning_msg"; then _install_hardening_pkg; else return 0; fi
+  fi
 
   local UFW_PROBES_CONFIG
-  UFW_PROBES_CONFIG=$(cat <<'EOF'
+  UFW_PROBES_CONFIG=$(cat << EOF
 [Definition]
 # This regex looks for the standard "[UFW BLOCK]" message in /var/log/ufw.log
 failregex = \[UFW BLOCK\] IN=.* OUT=.* SRC=<HOST>
 ignoreregex =
 EOF
-)
-  local JAIL_LOCAL_CONFIG 
-  JAIL_LOCAL_CONFIG=$(cat <<EOF
+  )
+
+  _fetch_ssh_port
+  if [ "$SSH_PORT" -eq 22 ]; then
+    local _ssh_warning_msg="SSH port is setup to default (22/tcp). Would you like to harden the SSH config?"
+    if _confirm "$_ssh_warning_msg"; then _configure_ssh; fi
+  fi
+
+  local JAIL_LOCAL_CONFIG
+  JAIL_LOCAL_CONFIG=$(cat << EOF
 [DEFAULT]
 ignoreip = 127.0.0.1/8 ::1
 bantime = 1d
@@ -237,27 +325,28 @@ filter = ufw-probes
 logpath = /var/log/ufw.log
 maxretry = 3
 EOF
-)
+  )
 
   UFW_FILTER_PATH="/etc/fail2ban/filter.d/ufw-probes.conf"
   JAIL_LOCAL_PATH="/etc/fail2ban/jail.local"
 
   # This checks if the on-disk files are already identical to our desired configuration.
-  if [[ -f "$UFW_FILTER_PATH" && -f "$JAIL_LOCAL_PATH" ]] && \
-    cmp -s "$UFW_FILTER_PATH" <<<"$UFW_PROBES_CONFIG" && \
-    cmp -s "$JAIL_LOCAL_PATH" <<<"$JAIL_LOCAL_CONFIG"; then
-    echo "Fail2Ban is already configured correctly. Skipping."
+  if [[ -f "$UFW_FILTER_PATH" && -f "$JAIL_LOCAL_PATH" ]] &&
+    cmp -s "$UFW_FILTER_PATH" <<< "$UFW_PROBES_CONFIG" &&
+    cmp -s "$JAIL_LOCAL_PATH" <<< "$JAIL_LOCAL_CONFIG"; then
+    _prt_cleared_msg "Fail2Ban is already configured correctly."
     return 0
   fi
 
   # If the check above fails, we write the correct configuration files.
   echo "Applying new Fail2Ban configuration..."
-  mkdir -p /etc/fail2ban/filter.d
+
+  [ -d "/etc/fail2ban/filter.d" ] || mkdir -p /etc/fail2ban/filter.d
   echo "$UFW_PROBES_CONFIG" > "$UFW_FILTER_PATH"
   echo "$JAIL_LOCAL_CONFIG" > "$JAIL_LOCAL_PATH"
 
   # --- Ensure the log file exists BEFORE restarting the service ---
-  if [[ ! -f /var/log/ufw.log ]]; then
+  if [ ! -f "/var/log/ufw.log" ]; then
     touch /var/log/ufw.log
     echo "Created empty /var/log/ufw.log to ensure Fail2Ban starts correctly."
   fi
@@ -269,42 +358,42 @@ EOF
   sleep 2
 
   if systemctl is-active --quiet fail2ban; then
-    echo "Fail2Ban is active with the new configuration."
     fail2ban-client status | tee -a /var/log/ufw.log
-  else echo "Fail2Ban service failed to start. Check 'journalctl -u fail2ban' for errors."; fi
-
-  echo "Fail2Ban configuration completed."
-  CLEANUP_FLAG=1
+    : "Completed: Fail2Ban is active with the new configuration."
+  else
+    : "Fail2Ban service failed to start: Check 'journalctl -u fail2ban' for errors."
+  fi
+  _prt_cleared_msg "$_"
 }
 
-_configure_auto_updates() {
-  echo "Configuring Automatic Security Updates..."
+_setup_autoupdates() {
+  _prt_init_msg "Configuring unattended upgrades..."
   if ! dpkg -l unattended-upgrades | grep -q ^ii; then
-    echo "unattended-upgrades package is not installed."
-    return 1
+    _prt_error "unattended-upgrades package is not installed."
   fi
 
   # Check for existing unattended-upgrades configuration
-  if [[ -f /etc/apt/apt.conf.d/50unattended-upgrades ]] && 
+  if [ -f "/etc/apt/apt.conf.d/50unattended-upgrades" ] &&
     grep -q "Unattended-Upgrade::Allowed-Origins" /etc/apt/apt.conf.d/50unattended-upgrades; then
       echo "Existing unattended-upgrades configuration found."
-      echo "Verify with 'cat /etc/apt/apt.conf.d/50unattended-upgrades'."
+      : "Verify with 'cat /etc/apt/apt.conf.d/50-unattended-upgrades'."
+  else
+    echo "unattended-upgrades unattended-upgrades/enable_auto_updates boolean true" | debconf-set-selections
+    if DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -f noninteractive unattended-upgrades; then
+      : "Completed: Automatic security updates enabled."
+    else
+      : "Files created but couldn't set up unattended upgrades."
+    fi
   fi
-
-  echo "Configuring unattended upgrades..."
-  echo "unattended-upgrades unattended-upgrades/enable_auto_updates boolean true" | debconf-set-selections
-  DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -f noninteractive unattended-upgrades
-
-  echo "Automatic security updates enabled."
-  CLEANUP_FLAG=1
+  _prt_cleared_msg "$_"
 }
 
-_configure_kernel_hardening() {
-  echo "Kernel Parameter Hardening (sysctl)..."
+_setup_kernel_hardening() {
+  _prt_init_msg "Setting up Kernel Parameter Hardening (sysctl)..."
 
   local KERNEL_HARDENING_CONFIG
   KERNEL_HARDENING_CONFIG=$(mktemp)
-  tee "$KERNEL_HARDENING_CONFIG" > /dev/null <<'EOF'
+  tee "$KERNEL_HARDENING_CONFIG" > /dev/null << EOF
 # Recommended Security Settings
 # For details, see: https://www.kernel.org/doc/Documentation/sysctl/
 
@@ -351,8 +440,8 @@ EOF
   local SYSCTL_CONF_FILE="/etc/sysctl.d/99-du-hardening.conf"
 
   # only update if the file doesn't exist or has changed
-  if [[ -f "$SYSCTL_CONF_FILE" ]] && cmp -s "$KERNEL_HARDENING_CONFIG" "$SYSCTL_CONF_FILE"; then
-    echo "Kernel security settings are already configured correctly."
+  if [ -f "$SYSCTL_CONF_FILE" ] && cmp -s "$KERNEL_HARDENING_CONFIG" "$SYSCTL_CONF_FILE"; then
+    _prt_cleared_msg "Kernel security settings are already configured correctly."
     rm -f "$KERNEL_HARDENING_CONFIG"
     return 0
   fi
@@ -360,102 +449,103 @@ EOF
   echo "Applying settings to $SYSCTL_CONF_FILE..."
   mv "$KERNEL_HARDENING_CONFIG" "$SYSCTL_CONF_FILE"
   chmod 644 "$SYSCTL_CONF_FILE"
-
-  echo "Loading new settings..."
-  if sysctl -p "$SYSCTL_CONF_FILE" >/dev/null 2>&1; then
-    echo "Kernel security settings applied successfully."
-  else echo "Failed to apply kernel settings. Check for kernel compatibility."; fi
-
-  echo "Kernel hardening completed."
-  CLEANUP_FLAG=1
+  if sysctl -p "$SYSCTL_CONF_FILE" > /dev/null 2>&1; then
+    : "Completed: Kernel security settings applied successfully."
+  else
+    : "Failed to apply kernel settings: Check for kernel compatibility."
+  fi
+  _prt_cleared_msg "$_"
 }
 
-_configure_time_sync() {
-  echo "Time Synchronization"
-  echo "Ensuring chrony is active..."
-  systemctl enable --now chrony
-  sleep 2
-  if systemctl is-active --quiet chrony; then
-    echo "Chrony is active for time synchronization."
-  else
-    echo "Chrony service failed to start."
-    exit 1
+_setup_timesync() {
+  _prt_init_msg "Ensuring chrony is active..."
+
+  if ! dpkg -l chrony | grep -q ^ii; then
+    local _ufw_warning_msg="Chrony package is not installed. Install it?"
+    if _confirm "$_ufw_warning_msg"; then 
+      if ! apt-get install -y -qq --no-install-recommends chrony; then
+        _prt_error "Failed to install the chrony package."
+      fi
+    else return 0; fi
   fi
 
-  echo "Time synchronization completed."
-  CLEANUP_FLAG=1
+  systemctl enable --now chrony
+  sleep 2
+
+  if systemctl is-active --quiet chrony; then
+    _prt_cleared_msg "Chrony is active for time synchronization."
+  else
+    _prt_error "Chrony service failed to start."
+  fi
 }
 
-# https://docs.docker.com/engine/install/debian/
-_install_docker() {
-  echo "Installing docker engine..."
+DOCKER_PKG_REMOVE=(
+  docker
+  docker-engine
+  docker.io
+  docker-ce
+  docker-ce-cli
+  containerd
+  containerd.io
+  docker-buildx-plugin
+  docker-compose-plugin
+  docker-compose
+  docker-doc
+  podman-docker
+  runc
+)
 
-  if [ -S "unix:///var/run/docker.sock" ]; then
-    echo "Docker already installed and running. Skipping."
+DOCKER_PKG=(
+  docker-ce
+  docker-ce-cli
+  containerd.io
+  docker-buildx-plugin
+  docker-compose-plugin
+)
+
+# https://docs.docker.com/engine/install/debian/
+_setup_docker_engine() {
+  _prt_init_msg "Setting up docker engine..."
+
+  if systemctl is-active --quiet docker; then
+    _prt_cleared_msg "Docker already installed and running."
     return 0
   fi
 
-  echo "Removing old container runtimes..."
-  apt-get remove -y -qq \
-    docker \
-    docker-engine \
-    docker.io \
-    docker-ce \
-    docker-ce-cli \
-    containerd \
-    containerd.io \
-    docker-buildx-plugin \
-    docker-compose-plugin \
-    criu \
-    python3-pycriu \
-    runc 2>/dev/null || true
+  echo "Removing old docker packages..."
+  apt-get remove -y -qq "${DOCKER_PKG_REMOVE[@]}" 2> /dev/null || true
 
   _update_system
-
-  echo "Adding Docker's official GPG key and repository..."
-
-  if ! apt-get install -y -qq ca-certificates curl; then
-    apt-get install -y -qq ca-certificates curl
+  if ! apt-get install -y -qq --no-install-recommends ca-certificates curl; then
+    _prt_error "Failed to install one or more packages."
   fi
 
   install -m 0755 -d /etc/apt/keyrings
-
-  if [ -f "/etc/apt/keyrings/docker.asc" ]; then
-    curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
-    chmod a+r /etc/apt/keyrings/docker.asc
-  fi
+  echo "Adding Docker's official GPG key and repository..."
+  curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+  chmod a+r /etc/apt/keyrings/docker.asc
 
   # Add the repository to Apt sources:
   if [ ! -f "/etc/apt/sources.list.d/docker.sources" ]; then
-  sudo tee /etc/apt/sources.list.d/docker.sources <<EOF > /dev/null
+    echo "Adding Docker sources to /etc/apt/sources.list.d/..."
+    tee /etc/apt/sources.list.d/docker.sources > /dev/null << EOF
 Types: deb
 URIs: https://download.docker.com/linux/debian
-Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")
+Suites: $VERSION_CODENAME
 Components: stable
 Signed-By: /etc/apt/keyrings/docker.asc
 EOF
   fi
 
   _update_system
-
   echo "Installing Docker packages..."
-  if ! apt-get install -y -qq \
-    docker-ce \
-    docker-ce-cli \
-    containerd \
-    docker-buildx-plugin \
-    docker-compose-plugin \
-    docker-doc \
-    criu \
-    python3-pycriu; then
-    echo "Failed to install one or more docker packages."
-    exit 1
+  if ! apt-get install -y -qq "${DOCKER_PKG[@]}"; then
+    _prt_error "Failed to install one or more docker packages."
   fi
 
-  echo "Configuring Docker daemon..."
   local NEW_DOCKER_CONFIG
   NEW_DOCKER_CONFIG=$(mktemp)
-  tee "$NEW_DOCKER_CONFIG" > /dev/null <<EOF
+  tee "$NEW_DOCKER_CONFIG" > /dev/null << EOF
 {
   "log-driver": "json-file",
   "log-opts": { "max-size": "10m", "max-file": "3" },
@@ -463,11 +553,12 @@ EOF
 }
 EOF
 
-  mkdir -p /etc/docker
+  [ -d "/etc/docker" ] || mkdir -p /etc/docker
   if [ -f "/etc/docker/daemon.json" ] && cmp -s "$NEW_DOCKER_CONFIG" /etc/docker/daemon.json; then
-    echo "Docker daemon configuration already correct. Skipping."
+    echo "Docker daemon already configured."
     rm -f "$NEW_DOCKER_CONFIG"
   else
+    echo "Configuring Docker daemon..."
     mv "$NEW_DOCKER_CONFIG" /etc/docker/daemon.json
     chmod 644 /etc/docker/daemon.json
   fi
@@ -475,53 +566,111 @@ EOF
   systemctl daemon-reload
   systemctl enable --now docker
 
-  echo "Adding '$SUDO_USER' to docker group..."
-  getent group docker >/dev/null || groupadd docker
-
+  getent group docker > /dev/null || groupadd docker
   if ! groups "$SUDO_USER" | grep -qw docker; then
-    usermod -aG docker "$SUDO_USER"
-    echo "User '$SUDO_USER' added to docker group."
+    printf "%s " "Adding '$SUDO_USER' to docker group..."
+    usermod -aG docker "$SUDO_USER" && echo "Done."
   else
     echo "User '$SUDO_USER' is already in docker group."
   fi
-  CLEANUP_FLAG=1
+  _prt_cleared_msg "Completed: Docker engine up and running."
 }
 
-_final_cleanup() {
-  echo "Final System Cleanup"
-  echo "Running final system update and cleanup..."
-  if ! apt-get update -qq; then
-    echo "Failed to update package lists during final cleanup."
+_cleanup() {
+  echo "Running system update and cleanup..."
+
+  if ! apt-get update -y -qq; then
+    echo "Updating package lists failed during final cleanup."
+    return 1
   fi
-  if ! apt-get upgrade -y -qq || ! apt-get --purge autoremove -y -qq || ! apt-get autoclean -y -qq; then
-    echo "Final system cleanup failed on one or more commands."
+
+  if ! apt-get --purge autoremove -y -qq ||
+     ! apt-get autoclean -y -qq ||
+     ! apt-get clean -y -qq; then
+    echo "System cleanup failed on one or more commands."
+    return 1
   fi
-  systemctl daemon-reload
-  echo "Final system update and cleanup complete."
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+  if systemctl daemon-reload; then
+    echo "Reload of systemd daemons completed."
+    echo "Success: Final system update and cleanup complete."
+  fi
 }
 
-_main() {
-  if [[ $(id -u) -ne 0 ]]; then # root check
-    echo -e "Error: This script must be run with root privileges."
-    echo -e "Please re-run the script using 'sudo -E':"
-    exit 1
+_run() {
+  if [ "$(id -u)" -ne 0 ]; then # root check
+    echo "Error: This script must be run with root privileges."
+    _prt_error "Re-run the script using 'sudo -E'"
   fi
 
-  echo "Starting Debian hardening script..."
+  . /etc/os-release
+  printf "++\n%s\n++\n" "Starting Debian '$VERSION_CODENAME' hardening script..."
 
-  if _confirm "Would you like to update the system packages now?"; then _update_system; fi
-  if _confirm "Would you like to install essential packages?"; then _install_essential_packages; fi
-  if _confirm "Would you like to update timezone to Europe/Stockholm?"; then _update_timezone; fi
-  if _confirm "Would you like to update locale to US-UTF-8?"; then _update_locale; fi
-  if _confirm "Would you like to install net & hardening packages?"; then _install_hardening_packages; fi
-  if _confirm "Would you like to harden the SSH config?"; then _configure_ssh ; fi
-  if _confirm "Would you like to configure the firewall?"; then _configure_firewall ; fi
-  if _confirm "Would you like to install and configure fail2ban?"; then _configure_fail2ban ; fi
-  if _confirm "Would you like to install kernel hardening?"; then _configure_kernel_hardening ; fi
-  if _confirm "Would you like to configure automatic updates?"; then _configure_time_sync ; fi
-  if _confirm "Would you like to install docker?"; then _install_docker ; fi
+  local run_all="Run the complete installation sequentially?"
+  if _confirm "$run_all"; then
+    while [ $SSH_PORT -eq 22 ]; do
+      printf "Enter custom SSH port (1024-65535): "
+      read -r SSH_PORT
+      SSH_PORT=${SSH_PORT:-22}
+      if _validate_ssh_port "$SSH_PORT"; then break
+      else echo "Invalid port number."; fi
+    done
+    _update_system
+    _install_core_pkg
+    _update_timezone
+    _update_locale
+    _install_hardening_pkg
+    _setup_ssh_hardening
+    _setup_firewall
+    _setup_fail2ban
+    _setup_autoupdates
+    _setup_kernel_hardening
+    _setup_timesync
+    _setup_docker_engine
+    _cleanup
+    return 0
+  fi
 
-  if [[ "$CLEANUP_FLAG" -eq 1 ]]; then _final_cleanup; fi
+  local update_system="Update system packages?"
+  if _confirm "$update_system"; then _update_system; fi
+
+  local packages_core="Install core packages?"
+  if _confirm "$packages_core"; then _install_core_pkg; fi
+
+  local update_timezone="Update timezone to Europe/Stockholm?"
+  if _confirm "$update_timezone"; then _update_timezone; fi
+
+  local update_locale="Update locale to US-UTF-8?"
+  if _confirm "$update_locale"; then _update_locale; fi
+
+  local packages_hardening="Install net & hardening packages?"
+  if _confirm "$packages_hardening"; then _install_hardening_pkg; fi
+
+  local hardening_ssh="Harden the SSH config?"
+  if _confirm "$hardening_ssh"; then _setup_ssh_hardening;  fi
+
+  local setup_ufw="Install and configure UFW firewall?"
+  if _confirm "$setup_ufw"; then _setup_firewall;  fi
+
+  local setup_fail2ban="Install and configure fail2ban?"
+  if _confirm "$setup_fail2ban"; then _setup_fail2ban;  fi
+
+  local setup_autoupdates="Set up automatic updates?"
+  if _confirm "$setup_autoupdates"; then _setup_autoupdates;  fi
+
+  local hardening_kernel="Set up kernel hardening?"
+  if _confirm "$hardening_kernel"; then _setup_kernel_hardening;  fi
+
+  local setup_timesync="Set up chrony for time synchronization?"
+  if _confirm "$setup_timesync"; then _setup_timesync;  fi
+
+  local setup_docker="Install docker?"
+  if _confirm "$setup_docker"; then _setup_docker_engine;  fi
+
+  if [ "$CLEANUP_FLAG" -eq 0 ]; then _cleanup; fi
 }
 
-_main "$@"
+if [ "${#BASH_SOURCE[@]}" -eq 1 ]; then
+  _run "$@"
+fi
