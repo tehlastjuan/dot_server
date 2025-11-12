@@ -8,7 +8,7 @@ set ifs "\n"
 set cursorparentfmt "\033[7m"
 set cursorpreviewfmt ""
 set borderfmt "\033[39;49;1m"
-set numberfmt "\033[93;49m"
+set numberfmt "\033[30;49:1m"
 set timefmt "_2/Jan/2006 15:04"
 set infotimefmtnew "_2|Jan 15:04"
 set infotimefmtold "_2|Jan  2006"
@@ -184,7 +184,7 @@ cmd extract ${{
 			tar -xZf "$f"
     ;;
     *.tar.lz|*.tlz|*.tar.lzma|*.tlzma|*.tar.lzo|*.tzo|*.tar.zst|*.tzst)
-	    tar -xaf "$f"
+			tar -xaf "$f"
     ;;
     *.7z)
 			7za x -- "$f"
@@ -205,10 +205,10 @@ cmd extract ${{
 			arj e -r -- "$f"
 		;;
     *.bz|*.bz2)
-	    bunzip2 -k -- "$f"
+			bunzip2 -k -- "$f"
 		;;
     *.cab|*.CAB|*.exe|*.EXE)
-	    cabextract "$f"
+			cabextract "$f"
     ;;
     *.cpio)
 			cpio -id -F "$f"
@@ -220,10 +220,10 @@ cmd extract ${{
 			gunzip -k "$f"
     ;;
     *.lha|*.lzh)
-	    lha x "$f"
+			lha x "$f"
     ;;
     *.lrz|*.lrzip|*.rz)
-	    lrunzip -- "$f"
+			lrunzip -- "$f"
     ;;
     *.lz)
 			lzip -d -k -- "$f"
@@ -241,7 +241,7 @@ cmd extract ${{
 			unrar x -- "$f"
     ;;
     *.src.rpm|*.rpm|*.spm)
-	    rpm2cpio "$f" | cpio -dium
+			rpm2cpio "$f" | cpio -dium
 		;;
     *.xz)
 			unxz -k -- "$f"
