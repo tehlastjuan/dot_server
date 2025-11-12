@@ -309,7 +309,7 @@ cmd reload-conf ${{
 # git branch prompt
 cmd on-cd &{{
 	if [ "$(git rev-parse --is-inside-git-dir 2>/dev/null)" = false ]; then
-		source /usr/share/git/completion/git-prompt.sh
+		source "$HOME/.config/bash/completion.d/git-prompt.sh"
 		git=$(__git_ps1 "%s* ") || true
 		fmt="\033[37;40m %u@%h \033[0m\033[30;49m\033[33;49;1m $git\033[34;49;1m%w/%f \033[0m"
 	else
