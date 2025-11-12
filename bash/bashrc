@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=1091
 
 # If not running interactively, don't do anything
 # [[ $- != *i* ]] && return
@@ -29,7 +30,7 @@ shopt -s extglob         # Enable extended pattern-matching features
 set -o vi
 
 # Load env exports
-#
+
 # shellcheck disable=1091
 source "$HOME/.config/bash/exports"
 
@@ -57,3 +58,12 @@ fi
 if hash fzf 2> /dev/null; then
   source "$XDG_CONFIG_HOME/bash/fzfrc"
 fi
+
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+	source "$NVM_DIR/nvm.sh"
+fi
+
+if [ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]; then
+  source "$SDKMAN_DIR/bin/sdkman-init.sh"
+fi
+

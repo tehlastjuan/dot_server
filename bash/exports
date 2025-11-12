@@ -44,7 +44,7 @@ export INPUTRC="$XDG_CONFIG_HOME/bash/inputrc"
 
 # History settings
 export HISTSIZE=20000
-if [ "$BASH" ]; then
+if [[ "$BASH" ]]; then
 	export HISTFILE="$XDG_CACHE_HOME/bash_history"
 	export HISTFILESIZE=15000000
 	export HISTTIMEFORMAT="%F %T "
@@ -82,7 +82,7 @@ export WGETRC="$XDG_CONFIG_HOME"/wget/wgetrc
 #----- Utils
 
 # docker config
-if [[ ! -e "/.dockerenv" ]]; then
+if [ ! -e "/.dockerenv" ]; then
 	if hash docker 2> /dev/null; then
 		export DOCKER_CONFIG="${XDG_CONFIG_HOME}"/docker
 	else
@@ -99,7 +99,6 @@ fi
 if [ -d "$XDG_DATA_HOME/cargo" ]; then
 	export CARGO_HOME="$XDG_DATA_HOME/cargo"
 	PATH="$XDG_DATA_HOME/cargo/bin:$PATH"
-	. "/home/juanro/.local/share/cargo/env"
 fi
 
 # python
@@ -117,7 +116,6 @@ fi
 # node version manager
 if [[ -s "$XDG_DATA_HOME/node/nvm.sh" ]]; then
 	export NVM_DIR="$XDG_DATA_HOME/node"
-	. "$NVM_DIR/nvm.sh"
 fi
 
 if hash npm 2> /dev/null; then
@@ -138,9 +136,8 @@ if hash composer 2> /dev/null; then
 fi
 
 # java, kotlin, gradle version manager
-if [[ -s "$XDG_DATA_HOME/sdkman/bin/sdkman-init.sh" ]]; then
+if [ -s "$XDG_DATA_HOME/sdkman/bin/sdkman-init.sh" ]; then
 	export SDKMAN_DIR="$XDG_DATA_HOME/sdkman"
-	. "$SDKMAN_DIR/bin/sdkman-init.sh"
 fi
 
 # Java stuff
@@ -178,6 +175,10 @@ if hash java 2> /dev/null; then
 	# gradle builder
 	export GRADLE_USER_HOME="$XDG_DATA_HOME/gradle"
 fi
+
+# Prune PATH duplicates
+# https://unix.stackexchange.com/questions/40749/remove-duplicate-path-entries-with-awk-command/149054#149054
+PATH="$(perl -e 'print join(":", grep { not $seen{$_}++ } split(/:/, $ENV{PATH}))')"
 
 # Export the final PATH
 export PATH

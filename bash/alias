@@ -17,7 +17,6 @@ if [[ "$OSTYPE" == "freebsd"* ]]; then
   alias ls="LC_COLLATE=C ls --color=auto"
 fi
 
-# shellcheck disable=2139
 alias ip='ip -color=always'
 alias grep='grep --color=auto --exclude-dir=.git'
 alias diff='diff --minimal --color=always '

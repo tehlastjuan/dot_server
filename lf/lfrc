@@ -2,126 +2,54 @@ set shell bash
 set shellopts '-eu'
 set ifs "\n"
 
-set icons
-set hidden
-set drawbox
-set incsearch
-set scrolloff 2
-set tabstop 2
-set smartcase
-set dircounts
-set info size:time
-set sortby natural
-set ratios '1:2:3'
-set period 1
-set relativenumber
-set watch true
+#----- settings
+ 
+# formats
+set cursorparentfmt "\033[7m"
+set cursorpreviewfmt ""
+set borderfmt "\033[38;5;8m"
+set numberfmt "\033[38;5;8m"
+set timefmt "_2/Jan/2006 15:04"
+set infotimefmtnew "_2|Jan 15:04"
+set infotimefmtold "_2|Jan  2006"
+set promptfmt "\033[38;5;8m\033[48;5;236m %u@%h \033[38;5;236m\033[48;5;234m \033[34;40;1m\033[48;5;234m %w/%f \033[0m\033[38;5;234m\033[0m"
 
+# look'n feel
+set anchorfind
+set dircounts
+set dirfirst
+set drawbox
+set hidden
+set icons
+set incsearch
+set info size:time
+set period 1
+set ratios '1:2:3'
+set relativenumber
+set scrolloff 2
+set smartcase
+set sortby natural
+set tabstop 2
+set watch true
+ 
+# previews
 set preview
 set sixel
 set previewer ~/.config/lf/preview
-
-set cursorpreviewfmt ""
-set cursorparentfmt "\033[7m"
-set numberfmt "\033[38;5;8m"
-#set infotimefmtnew "\033[38;5;8m %t \033[0m"
-set infotimefmtnew "[_2 Jan 06]"
-set infotimefmtold "[_2 Jan 06]"
-
-#### mappings
-
-# remove defaults
-map d
-map f
-map F
-map p
-map r
-map y
-map w
-map sa
-map sc
-map se
-cmap cmd-word
-cmap cmd-word-back
-cmap cmd-word-yank
-
-# the actual mappings
-map C reload-conf
-map q quit-and-cd
-map . set hidden!
-
-map yy copy
-map yn copy-filename
-map yP copy-absolute-path
-
-map pp paste
-map pP new-folder-with-selection
-
-map dD delete
-map dd cut
-map dt trash
-
-cmap <C-right> cmd-word
-cmap <C-left> cmd-word-back
-cmap <C-y> cmd-word-yank
-
-map i pager
-map I rename
-
-map e open
-map E $$EDITOR $f
-map S edit-with-sudo
-
-map o &mimeopen $f
-map O push :openwith<space>
-
-map ff filter
-
-# fuzzy find a file
-map fF $lf -remote "send $id select $(fzf)"
-
-# fuzzy search in files
-map <C-f> :fzf_search
-
-# enter name and compress to name.zip
-map xX push :zip<space>
-map xx extract
-
-# jump-dir w\ zoxide
-map zz push :z<space>
-map zi :zi
-
-# sort files
-map sn :{{ set sortby natural; set info size; set preview; }}
-map ss :{{ set sortby size; set info size:time; set preview; }}
-map st :{{ set sortby time; set info size:time; set preview; }}
-map sx :{{ set sortby ext; set info size:time; set preview; }}
-
-cmap <tab> cmd-menu-complete
-cmap <backtab> cmd-menu-complete-back
-
-# show documentation
-map g? $lf -doc | less
-
-# put lf on the background
-map <c-z> $ kill -STOP $PPID
-
-# Tmux?
-# map ah &tmux split-window -h lf
-# map av &tmux split-window -v lf
-
-# Open the directory in Finder on macOS
-# map fm &if [[ -d $f ]]; then open $f; fi
+set cleaner ~/.config/lf/clean
 
 
-#### commands
+#----- commands
+
+cmd select-all :unselect; invert
+cmd select-clear :select-all; unselect
 
 # command autocompletion
 cmap <enter> &{{
 	if [ "$lf_mode" = command ]; then
-			lf -remote "send $id complete-cmd"
+		lf -remote "send $id complete-cmd"
 	else
-			lf -remote "send $id cmd-enter"
+		lf -remote "send $id cmd-enter"
 	fi
 }}
 
@@ -179,6 +107,30 @@ cmd open ${{
 	esac
 }}
 
+# Copy the file names (including extension) of the selections separated by \n
+cmd copy-filename ${{
+	names="$(echo $fx | tr ' ' '\n' | xargs -I{} basename {})"
+	echo $names | tr ' ' '\n' | pbcopy
+}}
+
+# Copy the absolute paths of selections separated by \n
+cmd copy-absolute-path ${{
+	echo $fx | tr ' ' '\n' | pbcopy
+}}
+
+# y (select for copy) and P to paste symlink
+cmd create-symlink %{{
+	set -- $(cat ~/.local/share/lf/files)
+	mode="$1"
+	shift
+	if [ "$#" -lt 1 ]; then
+		lf -remote "send $id echoerr no files to link"
+		exit
+	fi
+	ln -sr -t . -- "$@"
+}}
+
+# mkdir and move files
 cmd new-folder-with-selection ${{
   set -f
   echo "Directory name: "
@@ -199,14 +151,125 @@ cmd zip ${{
 # extract compressed files
 cmd extract ${{
 	set -f
-		case $f in
-		*.tar.bz|*.tar.bz2|*.tbz|*.tbz2) tar xjvf $f;;
-		*.tar.gz|*.tgz) tar xzvf $f;;
-		*.tar.xz|*.txz) tar xJvf $f;;
-		*.zip) unzip -O gbk $f;;
-		*.rar) unrar x $f;;
-		*.7z) 7z x $f;;
+	out_dir="$*"
+
+	if [ -n "$out_dir" ]; then
+		mkdir -p "$out_dir"
+		cd "$out_dir" || {
+			lf -remote "send $id echoerr unable to create dir"
+			exit 1
+		}
+	fi
+
+	[ -w . ] || {
+		lf -remote "send $id echoerr unable to extract to \
+			\'${out_dir:-.}\'. No write permissions"
+		exit 1
+	}
+
+	case "$f" in
+    *.tar)
+			tar -xf "$f"
+    ;;
+    *.tar.bz|*.tbz|*.tar.bz2|*.tbz2)
+			tar -xjf "$f"
+    ;;
+    *.tar.gz|*.tgz)
+			tar -xzf "$f"
+    ;;
+    *.tar.xz|*.txz)
+			tar -xJf "$f"
+    ;;
+    *.tar.[zZ]|*.t[zZ])
+			tar -xZf "$f"
+    ;;
+    *.tar.lz|*.tlz|*.tar.lzma|*.tlzma|*.tar.lzo|*.tzo|*.tar.zst|*.tzst)
+	    tar -xaf "$f"
+    ;;
+    *.7z)
+			7za x -- "$f"
+    ;;
+    *.a|*.ar)
+			ar x -- "$f"
+    ;;
+    *.ace)
+			unace e -- "$f"
+    ;;
+    *.alz)
+			unalz -- "$f"
+    ;;
+    *.arc|*.ark|*.ARC|*.ARK)
+			nomarch -- "$f"
+    ;;
+    *.arj|*.ARJ)
+			arj e -r -- "$f"
+		;;
+    *.bz|*.bz2)
+	    bunzip2 -k -- "$f"
+		;;
+    *.cab|*.CAB|*.exe|*.EXE)
+	    cabextract "$f"
+    ;;
+    *.cpio)
+			cpio -id -F "$f"
+		;;
+    *.deb)
+			dpkg -x -- "$f" .
+		;;
+    *.gz)
+			gunzip -k "$f"
+    ;;
+    *.lha|*.lzh)
+	    lha x "$f"
+    ;;
+    *.lrz|*.lrzip|*.rz)
+	    lrunzip -- "$f"
+    ;;
+    *.lz)
+			lzip -d -k -- "$f"
+		;;
+    *.lz4)
+			unlz4 -- "$f"
+    ;;
+    *.lzma)
+			xz -d -k "$f"
+    ;;
+    *.lzo)
+			lzop -x "$f"
+    ;;
+    *.rar)
+			unrar x -- "$f"
+    ;;
+    *.src.rpm|*.rpm|*.spm)
+	    rpm2cpio "$f" | cpio -dium
+		;;
+    *.xz)
+			unxz -k -- "$f"
+    ;;
+    *.[zZ])
+			uncompress -- "$f"
+		;;
+    *.zip|*.osz)
+			unzip -- "$f"
+    ;;
+    *.zst)
+			unzstd -- "$f"
+    ;;
+    *.AppImage)
+			./"$f" --appimage-extract
+		;;
+    *)
+			lf -remote "send $id echoerr ${f##*/} unknown archive format"
+			exit 0
+		;;
 	esac
+
+	if [ -n "$out_dir" ]; then
+		lf -remote "send $id select '$out_dir'"
+	fi
+
+	lf -remote "send $id reload"
+	lf -remote "send $id echomsg ${f##*/} extracted."
 }}
 
 # cd directories w\ zoxide
@@ -221,10 +284,6 @@ cmd zi ${{
 	lf -remote "send $id cd \"$result\""
 }}
 
-cmd on-cd &{{
-	zoxide add "$PWD"
-}}
-
 # search in files w/ fzf
 cmd fzf_search ${{
 	cmd="rg --column --line-number --no-heading --color=always --smart-case"
@@ -232,12 +291,7 @@ cmd fzf_search ${{
 			--bind="start:reload([ -n {q} ] && $cmd -- {q} || true)" \
 			--bind="change:reload([ -n {q} ] && $cmd -- {q} || true)" \
 			--bind='enter:become(lf -remote "send $id select \"$(printf "%s" {1} | sed '\''s/\\/\\\\/g;s/"/\\"/g'\'')\"")' \
-			#--preview='cat -- {1}' # Use your favorite previewer here (bat, source-highlight, etc.), for example:
-			#--preview-window='+{2}-/2' \
-			#--preview='bat --color=always --highlight-line={2} -- {1}'
-			# Alternatively you can even use the same previewer you've configured for lf
 			--preview='~/.config/lf/clean; ~/.config/lf/preview -- {1}'
-			#--preview='~/.config/lf/clean; ~/.config/lf/preview {1} "$FZF_PREVIEW_COLUMNS" "$FZF_PREVIEW_LINES" "$FZF_PREVIEW_LEFT" "$FZF_PREVIEW_TOP"'
 }}
 
 # helper to cd to curr dir on quit
@@ -250,16 +304,10 @@ cmd reload-conf ${{
   lf -remote "send $id source ~/.config/lf/lfrc"
 }}
 
-
 #----- prompt
-
-# main prompt
-set promptfmt "\033[38;5;8m\033[48;5;236m %u@%h \033[38;5;236m\033[48;5;234m \033[34;40;1m\033[48;5;234m %w/%f \033[0m\033[38;5;234m\033[0m"
 
 # git branch prompt
 cmd on-cd &{{
-	cd "$(dirname "$1")" || exit 1
-
 	if [ "$(git rev-parse --is-inside-git-dir 2>/dev/null)" = false ]; then
 		source /usr/share/git/completion/git-prompt.sh
 		git=$(__git_ps1 "%s* ") || true
@@ -273,28 +321,91 @@ cmd on-cd &{{
 	# display git repository status in your prompt
 	lf -remote "send $id set promptfmt \"$fmt\""
 }}
+on-cd
 
 
-# git file status info
-cmd on-load &{{
-	cd "$(dirname "$1")" || exit 1
-	[ "$(git rev-parse --is-inside-git-dir 2>/dev/null)" = false ] || exit 0
+#----- key mappings
 
-	cmds=""
-	for file in "$@"; do
-		case "$file" in
-			*/.git|*/.git/*) continue;;
-		esac
+# remove defaults
+map d
+map f
+map F
+map p
+map r
+map y
+map w
+map sa
+map sb
+map sc
+map se
 
-		status=$(git status --porcelain --ignored -- "$file" | cut -c1-2 | head -n1)
-		if [ -n "$status" ]; then
-			cmds="${cmds}addcustominfo ${file} \"$status\"; "
-		else
-			cmds="${cmds}addcustominfo ${file} ''; "
-		fi
-	done
-	lf -remote "send $id :$cmds"
-}}
+# actual mappings
+map C select-clear
+map R reload-conf
+map q quit-and-cd
+map . set hidden!
 
+map yy copy
+map yn copy-filename
+map yP copy-absolute-path
 
-# vim: set ts=2 sw=2 tw=80 noet :
+map pp paste
+map pP create-symlink
+map pn new-folder-with-selection
+
+map dD delete
+map dd cut
+map dt trash
+
+cmap <c-right> cmd-word
+cmap <c-left> cmd-word-back
+cmap <c-p> cmd-yank
+cmap <c-t> cmd-transpose-word
+cmap <c-l> cmd-delete-word
+
+map i pager
+map I rename
+
+map e open
+map E $$EDITOR $f
+map S edit-with-sudo
+
+map o &mimeopen $f
+map O push :openwith<space>
+
+map ff filter
+
+# fuzzy-find a file
+map fF $lf -remote "send $id select $(fzf)"
+
+# fuzzy search in files
+map <c-f> :fzf_search
+
+# enter name and compress to name.zip
+map xX :zip
+map xx extract
+
+# jump-dir w\ zoxide
+map zz push :z<space>
+map zi :zi
+
+# sort files
+map sn :{{ set sortby natural; set info size:time; }}
+map ss :{{ set sortby size; set info size:time; }}
+map st :{{ set sortby time; set info size:time; }}
+map sx :{{ set sortby ext; set info size:time; }}
+# map sg :{{ set sortby natural; set info custom:time; }}
+
+cmap <tab> cmd-menu-complete
+cmap <backtab> cmd-menu-complete-back
+
+# show documentation
+map g? $lf -doc | less
+
+# put lf on the background
+map <c-z> $ kill -STOP $PPID
+
+# reloads current directory (r)
+map r reload
+
+# # vim: set ts=2 sw=2 tw=80 noet :

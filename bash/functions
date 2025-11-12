@@ -68,6 +68,24 @@ jctl() {
   journalctl "$@" | bat --style=plain --language=log --wrap=character --terminal-width=$width
 }
 
+# pretty-print journalctl with sudo
+sjctl() {
+  local -i cols
+  local -i width
+  cols=$(tput cols)
+  width=$(if [ $cols -lt 121 ]; then echo 113; else echo $((cols - 4));   fi)
+  sudo journalctl "$@" |
+    bat --style=plain --language=log --wrap=character --terminal-width=$width
+}
+
+# SHA256 file check
+chsum() {
+  [ $# -ne 2 ] || [ ! -f "$1" ] && return 1
+  [ "$(sha256sum "$2")" = "$1  $2" ] && {
+    echo "Checksum OK" >&2 && return
+  }
+  echo "Checksum failed" >&2 && false
+}
 
 # single-thread compiler
 cr() {
