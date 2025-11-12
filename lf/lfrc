@@ -7,8 +7,8 @@ set ifs "\n"
 # formats
 set cursorparentfmt "\033[7m"
 set cursorpreviewfmt ""
-set borderfmt "\033[38;5;8m"
-set numberfmt "\033[38;5;8m"
+set borderfmt "\033[39;49;1m"
+set numberfmt "\033[93;49;1m"
 set timefmt "_2/Jan/2006 15:04"
 set infotimefmtnew "_2|Jan 15:04"
 set infotimefmtold "_2|Jan  2006"
@@ -309,8 +309,8 @@ cmd reload-conf ${{
 # git branch prompt
 cmd on-cd &{{
 	if [ "$(git rev-parse --is-inside-git-dir 2>/dev/null)" = false ]; then
-		source "$HOME/.config/bash/completion.d/git-prompt.sh"
-		git=$(__git_ps1 "%s* ") || true
+		source "/etc/bash/completion.d/git-prompt"
+		git=$(__git_ps1 "*%s* ") || true
 		fmt="\033[37;40m %u@%h \033[0m\033[30;49m\033[33;49;1m $git\033[34;49;1m%w/%f \033[0m"
 	else
 		fmt="\033[37;40m %u@%h \033[0m\033[30;49m\033[34;49;1m %w/%f \033[0m"
