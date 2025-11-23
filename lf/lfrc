@@ -10,9 +10,9 @@ set cursorpreviewfmt ""
 set borderfmt "\033[39;49;1m"
 set numberfmt "\033[30;49:1m"
 set timefmt "_2/Jan/2006 15:04"
-set infotimefmtnew "_2|Jan 15:04"
-set infotimefmtold "_2|Jan  2006"
-set promptfmt "\033[37;40m %u@%h \033[0m\033[30;49m\033[34;49;1m %w/%f \033[0m"
+set infotimefmtnew "_2.Jan 15:04"
+set infotimefmtold "_2.Jan  2006"
+# set promptfmt "\033[37;40m %u@%h \033[0m\033[30;49m\033[34;49;1m %w/%f \033[0m"
 
 # look'n feel
 set anchorfind
@@ -43,25 +43,10 @@ set cleaner ~/.config/lf/clean
 
 cmd select-all :unselect; invert
 cmd select-clear :select-all; unselect
-
-# command autocompletion
-cmap <enter> &{{
-	if [ "$lf_mode" = command ]; then
-		lf -remote "send $id complete-cmd"
-	else
-		lf -remote "send $id cmd-enter"
-	fi
-}}
-
-cmd complete-cmd :{{
-	# position cursor at the end of the first word
-	cmd-home
-	cmd-word
-
-	# perform tab completion before running the command
-	cmd-complete
-	cmd-enter
-}}
+cmd sort-by-extension :set sortby ext; set info size:time
+cmd sort-by-natural   :set sortby natural; set info size:time;
+cmd sort-by-size      :set sortby size; set info size:time;
+cmd sort-by-time      :set sortby time; set info size:time;
 
 # edit-with-sudo
 cmd edit-with-sudo ${{
@@ -75,34 +60,47 @@ cmd edit-with-sudo ${{
 
 # Pager command
 cmd pager ${{
+  declare -i cols
+  declare -i lines
+  declare -i width
+  declare -i f_lines
+
   cols=$(tput cols)
   lines=$(tput lines)
-  if [[ cols -gt 115 ]]; then
-    cols=105
-  else
-    declare -i cols=$cols-10
-  fi
-
-	if [[ $f = *.md  ]]; then
-    bash -c "glow -w ${cols} -p $fx"
-	else
-    bash -c "bat $fx \
-			--number --theme=TwoDark --color=always --paging=always \
-			--style=plain --terminal-width ${cols} --line-range :${lines} \
-			--pager='less -iWQMRX~ --no-vbell'"
-  fi
+  width=$(if [ $cols -lt 121 ]; then echo 113; else echo $((cols - 4)); fi)
+	f_lines=0
+		
+  if [ -f "$f" ]; then
+		f_lines="$(wc -l "$f" | cut -d ' ' -f 1)"
+    [ "0$f_lines" -lt "0$lines" ] && exit 1
+		if [[ "$f" == *.md ]]; then
+			bash -c "glow -w ${width} -p $fx"
+		else
+			bash -c "bat $fx \
+				--theme=TwoDark --color=always --terminal-width ${width} \
+				--style=plain --number --paging=always \
+				--pager='less -iWQMRX~ --no-vbell'"
+		fi
+	elif [ -d "$f" ]; then
+		f_lines="$(tree "$f" | wc -l | cut -d ' ' -f 1)"
+    [ "0$f_lines" -lt "0$lines" ] && exit 1
+    bash -c "tree $f | bat \
+			--theme=TwoDark --color=always --terminal-width ${width} \
+			--style=plain --number --language=man \
+			--paging=always --pager='less -iWQMRX~ --no-vbell'"
+	fi
 }}
 
 # Replace open command with robust selection of openers
 cmd open ${{
 	case $(file --dereference --mime-type $f -b) in
-		inode/x-empty) $EDITOR $fx ;;
-		text/*) $EDITOR $fx;;
-		video/*) nohup mpv $fx > /dev/null & ;;
-		audio/*) nohup mpv $fx > /dev/null & ;;
-		audio/midi) timidity $fx ;;
-		application/epub+zip) nohup FBReader $f > /dev/null & ;;
-		application/pdf) nohup zathura $f > /dev/null & ;;
+		inode/x-empty)        $EDITOR $fx ;;
+		text/*)               $EDITOR $fx;;
+		video/*)              nohup mpv $fx > /dev/null & ;;
+		audio/midi)           timidity $fx ;;
+		audio/*)              nohup mpv $fx > /dev/null & ;;
+		application/epub*)    footclient /usr/bin/epy $f &> /dev/null & ;;
+		application/pdf)      nohup zathura $f > /dev/null & ;;
 		*) for f in $fx; do $OPENER $f > /dev/null 2> /dev/null & done;;
 	esac
 }}
@@ -304,16 +302,18 @@ cmd reload-conf ${{
   lf -remote "send $id source ~/.config/lf/lfrc"
 }}
 
+
 #----- prompt
 
 # git branch prompt
 cmd on-cd &{{
+	fmt="\033[37;40m %u@%h \033[0m\033[30;49m\033[34;49;1m %w/%f \033[0m"
 	if [ "$(git rev-parse --is-inside-git-dir 2>/dev/null)" = false ]; then
-		source "/etc/bash_completion.d/git-prompt"
-		git=$(__git_ps1 "*%s ") || true
+		# source "/etc/bash_completion.d/git-prompt"
+		# git=$(__git_ps1 "*%s ") || true
+		branch=$(git symbolic-ref HEAD)
+		git="*${branch##*/} "
 		fmt="\033[37;40m %u@%h \033[0m\033[30;49m\033[33;49;1m $git\033[34;49;1m%w/%f \033[0m"
-	else
-		fmt="\033[37;40m %u@%h \033[0m\033[30;49m\033[34;49;1m %w/%f \033[0m"
 	fi
 
 	# add to zoxide db
@@ -338,65 +338,65 @@ map sa
 map sb
 map sc
 map se
+map zh
+map zr
+map zn
+map za
+map zs
+map zt
+map <c-i>
+map <c-p>
+map <c-m>
+map <c-h>
+map <c-l>
+map <c-j>
+map <c-k>
+cmap <c-i>
+cmap <c-p>
+cmap <c-m>
+cmap <c-h>
+cmap <c-l>
+cmap <c-j>
+cmap <c-k>
 
 # actual mappings
-map C select-clear
-map R reload-conf
+map <enter> open
+map <esc> :clear; visual-clear; select-clear
 map q quit-and-cd
 map . set hidden!
 
+# reload: current directory, lfrc
+map r reload
+map R reload-conf
+
+map dd cut
+map dD delete
+map dt trash
+
 map yy copy
-map yn copy-filename
-map yP copy-absolute-path
+map yY copy-absolute-path
+map <c-y> copy-filename
 
 map pp paste
 map pP create-symlink
 map pn new-folder-with-selection
 
-map dD delete
-map dd cut
-map dt trash
-
-cmap <c-right> cmd-word
-cmap <c-left> cmd-word-back
-cmap <c-p> cmd-yank
-cmap <c-t> cmd-transpose-word
-cmap <c-l> cmd-delete-word
-
-map i pager
-map I rename
-
 map e open
 map E $$EDITOR $f
 map S edit-with-sudo
 
+map i pager
+map I rename
+
 map o &mimeopen $f
 map O push :openwith<space>
 
+# filter/find
 map ff filter
-
 # fuzzy-find a file
 map fF $lf -remote "send $id select $(fzf)"
-
-# fuzzy search in files
+# fuzzy-find in files
 map <c-f> :fzf_search
-
-# enter name and compress to name.zip
-map xX :zip
-map xx extract
-
-# jump-dir w\ zoxide
-map zz push :z<space>
-map zi :zi
-
-# sort files
-map sn :{{ set sortby natural; set info size:time; }}
-map ss :{{ set sortby size; set info size:time; }}
-map st :{{ set sortby time; set info size:time; }}
-map sx :{{ set sortby ext; set info size:time; }}
-
-cmap <tab> cmd-menu-complete
-cmap <backtab> cmd-menu-complete-back
 
 # show documentation
 map g? $lf -doc | less
@@ -404,7 +404,28 @@ map g? $lf -doc | less
 # put lf on the background
 map <c-z> $ kill -STOP $PPID
 
-# reloads current directory (r)
-map r reload
+# sort files
+map se sort-by-extension
+map sn sort-by-natural
+map ss sort-by-size
+map st sort-by-time
+map sx set reverse!
+
+# zip utils
+map xx extract
+# enter name and compress to name.zip
+map xX :zip
+
+# fuzzy-jump-to-dir
+map zz push :z<space>
+map zi :zi
+
+# cmd line
+cmap <tab> cmd-menu-complete
+cmap <backtab> cmd-menu-complete-back
+cmap <c-left> cmd-word-back
+cmap <c-right> cmd-word
+cmap <c-h> cmd-word-back
+cmap <c-l> cmd-word
 
 # # vim: set ts=2 sw=2 tw=80 noet :

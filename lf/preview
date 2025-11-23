@@ -105,26 +105,24 @@ _view_pdf() {
 # Find and view cover image with tar and xmlstarlet
 _view_epub() {
 	if hash xmlstarlet 2> /dev/null; then
-		opf_path="$(tar xOf "$FILE" 'META-INF/container.xml' |
+		opf_path="$(unzip -jqc "$FILE" 'META-INF/container.xml' |
 			xmlstarlet sel -t -v '/_:container/_:rootfiles/_:rootfile/@full-path')"
 
-		opf="$(tar xOf "$FILE" "$opf_path")"
+		opf="$(unzip -jqc "$FILE" "$opf_path")"
 
-		cover_name="$(echo "$opf" | xmlstarlet \
-			sel -t -v '/_:package/_:metadata/_:meta[@name="cover"]/@content')"
+		cover_name="$(echo "$opf" |
+			xmlstarlet sel -t -v '/_:package/_:metadata/_:meta[@name="cover"]/@content')"
 
-		echo "$opf" | xmlstarlet sel \
-			-t -v "/_:package/_:manifest/_:item[@id='$cover_name']/@href" |
-			xargs -I'{}' tar xOf "$FILE" "$(dirname "$opf_path")/{}" |
-			view_image -
+		echo "$opf" |
+			xmlstarlet sel -t -v "/_:package/_:manifest/_:item[@id='$cover_name']/@href" |
+			xargs -I '%' unzip -jqc "$FILE" "$(dirname "$opf_path")"/'%' | _view_image -
 	else
 		{
-			tar xOf "$FILE" 'OEBPS/assets/cover.*' ||
-				tar xOf "$FILE" '*/cover.png' ||
-				tar xOf "$FILE" 'cover.png'
+			unzip -jqc "$FILE" 'OEBPS/assets/cover.*' || 
+				unzip -jqc "$FILE" '*/cover.png' || 
+				unzip -jqc "$FILE" 'cover.png'
 		} | view_image -
 	fi
-
 	return $?
 }
 
