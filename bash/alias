@@ -21,6 +21,15 @@ alias ip='ip -color=always'
 alias grep='grep --color=auto --exclude-dir=.git'
 alias diff='diff --minimal --color=always '
 
+
+#----- dirs
+
+alias ,conf="cd $XDG_CONFIG_HOME"
+alias ,data="cd $XDG_DATA_HOME"
+alias ,cache="cd $XDG_CACHE_HOME"
+alias ,state="cd $XDG_STATE_HOME"
+
+
 #----- Docker
 
 if hash docker 2> /dev/null; then

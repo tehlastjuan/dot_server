@@ -48,27 +48,23 @@ if [[ "$BASH" ]]; then
 	export HISTFILE="$XDG_CACHE_HOME/bash_history"
 	export HISTFILESIZE=15000000
 	export HISTTIMEFORMAT="%F %T "
-	export HISTIGNORE='pwd:jobs:ls:history:clear:r:ranger'
+	export HISTIGNORE='pwd:jobs:ls:history:clear:r:lf'
 	export HISTCONTROL=ignoreboth
 fi
 
 # Pager and Editor
-PAGER=$(which less)
+export PAGER=/usr/bin/less
 MANPAGER=$PAGER
 
 if hash vim 2> /dev/null; then
-	EDITOR=$(which vim)
-  SUDO_EDITOR=$EDITOR
+	export EDITOR=/usr/bin/vim
+  export SUDO_EDITOR=$EDITOR
+	export SYSTEMD_EDITOR=$EDITOR
+	export SELECTED_EDITOR=$EDITOR
+	export VISUAL=$EDITOR
 	MANPAGER='vim +MANPAGER --not-a-term -'
 fi
 
-export EDITOR
-export SUDO_EDITOR
-export SYSTEMD_EDITOR=$EDITOR
-export SELECTED_EDITOR=$EDITOR
-export VISUAL=$EDITOR
-
-export PAGER
 export MANPAGER
 export MANWIDTH=999
 export LESS="-FiQMXRwJ --incsearch --no-vbell --status-col-width 1"
@@ -98,7 +94,7 @@ if [ -d "$XDG_DATA_HOME/rustup" ]; then
 fi
 if [ -d "$XDG_DATA_HOME/cargo" ]; then
 	export CARGO_HOME="$XDG_DATA_HOME/cargo"
-	PATH="$XDG_DATA_HOME/cargo/bin:$PATH"
+	PATH="$CARGO_HOME/bin:$PATH"
 fi
 
 # python
@@ -122,12 +118,24 @@ if hash npm 2> /dev/null; then
 	export NPM_CONFIG_USERCONFIG="$XDG_CONFIG_HOME/npm/npmrc"
 fi
 
+# Pnpm
+if hash pnpm 2> /dev/null; then
+	export PNPM_HOME="$XDG_DATA_HOME/pnpm"
+	PATH="$PNPM_HOME:$PATH"
+fi
+
 # yarn builder
 if hash yarn 2> /dev/null; then
 	PATH="$XDG_DATA_HOME/yarn/global/node_modules/.bin/:$PATH"
 	export YARN_GLOBAL_FOLDER="$XDG_DATA_HOME/yarn/berry"
 	export YARN_CACHE_FOLDER="$XDG_CACHE_HOME/yarn"
 	export YARN_ENABLE_TELEMETRY=0
+fi
+
+# JS Bun
+if hash bun 2> /dev/null; then
+	export BUN_INSTALL="$XDG_DATA_HOME/bun"
+	PATH="$BUN_INSTALL/bin:$PATH"
 fi
 
 # php builder

@@ -6,10 +6,11 @@ if hash fzf 2> /dev/null; then
   fzf_keymaps=(
     ctrl-d:half-page-down
     ctrl-u:half-page-up
-    ctrl-n:preview-down
-    ctrl-p:preview-up
+    ctrl-b:preview-down
+    ctrl-n:preview-up
+    ctrl-h:preview-half-page-down
+    ctrl-l:preview-half-page-up
     ctrl-t:toggle-preview-wrap
-    ctrl-y:yank
     ctrl-space:toggle+down
     tab:toggle+down
   )
@@ -34,6 +35,14 @@ if hash fzf 2> /dev/null; then
     --pointer='>>'
     --separator='─'
     --scrollbar='│'"
+
+  export FZF_CTRL_T_OPTS="
+    --walker-skip .git,node_modules,target
+    --preview '$XDG_CONFIG_HOME/lf/preview {}'"
+
+  export FZF_ALT_C_OPTS="
+    --walker-skip .git,node_modules,target
+    --preview 'tree -s -h --du -C {}'"
 
   if hash rg 2> /dev/null; then
     export FZF_DEFAULT_COMMAND="
