@@ -8,10 +8,10 @@ fi
 
 if [[ "$OSTYPE" == linux-gnu* ]]; then
   # Load directory and file colors for GNU ls
-  eval "$(dircolors -b "$XDG_CONFIG_HOME/dircolors/default")"
+  eval "$(dircolors -b "$XDG_CONFIG_HOME/bash/dircolors")"
 
   if [ -z "${LS_COLORS}" ]; then
-    LS_COLORS="$(dircolors -b "$XDG_CONFIG_HOME/dircolors/default")"
+    LS_COLORS="$(dircolors -b "$XDG_CONFIG_HOME/bash/dircolors")"
     export LS_COLORS
   fi
 fi

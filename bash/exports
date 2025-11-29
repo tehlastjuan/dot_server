@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # shellcheck disable=1091
 
+#----- General environment
+
 export LANG="en_US.UTF-8"
 export LC_CTYPE="$LANG"
 export LC_ALL="$LANG"
@@ -17,12 +19,26 @@ export  XDG_STATE_HOME="$HOME/.local/state"
 [ -d "$XDG_DATA_HOME" ]   || mkdir -m 0750 "$XDG_DATA_HOME"
 [ -d "$XDG_STATE_HOME" ]  || mkdir -m 0750 "$XDG_STATE_HOME"
 
+# Gnupg stuff
+export GNUPGHOME="$HOME/.local/share/gnupg"
+
+
+#----- PATH Binaries
+
+# from /etc/profile
+append_path () {
+	case ":$PATH:" in
+		*:"$1":*) ;;
+		*) PATH="${PATH:+$PATH:}$1"
+	esac
+}
+
 # Local binaries path
-PATH="$HOME/.local/bin:$PATH:bin"
+append_path "$HOME/.local/bin"
 
 # dot_server binaries
 if [[ "$OSTYPE" == "freebsd"* ]]; then
-	PATH="$HOME/.config/bin/freeBSD:$PATH"
+	append_path "$HOME/.config/bin/freeBSD"
 fi
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
@@ -36,8 +52,11 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   esac
 
 	# adds .config/bin folder to PATH
-	PATH="$HOME/.config/bin/linux_$ARCH:$PATH"
+	append_path "$HOME/.config/bin/linux_${ARCH}"
 fi
+
+
+#----- Terminal utilities
 
 # https://www.gnu.org/software/bash/manual/html_node/Readline-Init-File.html
 export INPUTRC="$XDG_CONFIG_HOME/bash/inputrc"
@@ -72,10 +91,13 @@ export LESSQUIET=1
 export LESSCHARSET="UTF-8"
 export LESSHISTFILE="$XDG_CACHE_HOME/less_history"
 
-# wget stuff
-export WGETRC="$XDG_CONFIG_HOME"/wget/wgetrc
+# Wget stuff
+if [ -f "$XDG_CONFIG_HOME/wget/wgetrc" ]; then
+	export WGETRC="$XDG_CONFIG_HOME/wget/wgetrc"
+fi
 
-#----- Utils
+
+#----- Dev Utilities
 
 # docker config
 if [ ! -e "/.dockerenv" ]; then
@@ -88,13 +110,19 @@ if [ ! -e "/.dockerenv" ]; then
 	fi
 fi
 
+# Go config
+if hash go 2> /dev/null; then
+	export GOPATH="$XDG_DATA_HOME/go"
+	append_path "$GOPATH/bin"
+fi
+
 # rust
 if [ -d "$XDG_DATA_HOME/rustup" ]; then
 	export RUSTUP_HOME="$XDG_DATA_HOME/rustup"
 fi
-if [ -d "$XDG_DATA_HOME/cargo" ]; then
+if [ -d "$XDG_DATA_HOME/cargo/bin" ]; then
 	export CARGO_HOME="$XDG_DATA_HOME/cargo"
-	PATH="$CARGO_HOME/bin:$PATH"
+	append_path "$CARGO_HOME/bin"
 fi
 
 # python
@@ -106,12 +134,7 @@ export PYTHONPYCACHEPREFIX="$XDG_CACHE_HOME/python"
 if hash pipx 2> /dev/null; then
 	export PIPX_HOME="$XDG_DATA_HOME/python/pipx"
 	export PIPX_BIN_DIR="$XDG_DATA_HOME/python/pipx/bin"
-	PATH="${PIPX_BIN_DIR}:${PATH}"
-fi
-
-# node version manager
-if [[ -s "$XDG_DATA_HOME/node/nvm.sh" ]]; then
-	export NVM_DIR="$XDG_DATA_HOME/node"
+	append_path "$PIPX_BIN_DIR"
 fi
 
 if hash npm 2> /dev/null; then
@@ -121,21 +144,21 @@ fi
 # Pnpm
 if hash pnpm 2> /dev/null; then
 	export PNPM_HOME="$XDG_DATA_HOME/pnpm"
-	PATH="$PNPM_HOME:$PATH"
+	append_path "$PNPM_HOME"
 fi
 
 # yarn builder
 if hash yarn 2> /dev/null; then
-	PATH="$XDG_DATA_HOME/yarn/global/node_modules/.bin/:$PATH"
 	export YARN_GLOBAL_FOLDER="$XDG_DATA_HOME/yarn/berry"
 	export YARN_CACHE_FOLDER="$XDG_CACHE_HOME/yarn"
 	export YARN_ENABLE_TELEMETRY=0
+	append_path "$XDG_DATA_HOME/yarn/global/node_modules/.bin"
 fi
 
 # JS Bun
 if hash bun 2> /dev/null; then
 	export BUN_INSTALL="$XDG_DATA_HOME/bun"
-	PATH="$BUN_INSTALL/bin:$PATH"
+	append_path "$BUN_INSTALL/bin"
 fi
 
 # php builder
@@ -184,9 +207,8 @@ if hash java 2> /dev/null; then
 	export GRADLE_USER_HOME="$XDG_DATA_HOME/gradle"
 fi
 
-# Prune PATH duplicates
-# https://unix.stackexchange.com/questions/40749/remove-duplicate-path-entries-with-awk-command/149054#149054
-PATH="$(perl -e 'print join(":", grep { not $seen{$_}++ } split(/:/, $ENV{PATH}))')"
+# Unload our profile API functions
+unset -f append_path
 
 # Export the final PATH
 export PATH

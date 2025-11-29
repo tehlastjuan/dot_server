@@ -55,4 +55,14 @@ set colored-stats on
 # Color the common prefix
 set colored-completion-prefix on
 
+# set vi mode on the command line
+set editing-mode vi
+
+# style vi mode
+set vi-ins-mode-string \1\e[0 q\2
+set vi-cmd-mode-string \1\e[1 q\2
+
+# show vi mode
+set show-mode-in-prompt on
+
 # vim: set ft=readline ts=2 sw=2 tw=80 noet :

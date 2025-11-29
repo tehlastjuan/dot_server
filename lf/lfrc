@@ -12,7 +12,6 @@ set numberfmt "\033[30;49:1m"
 set timefmt "_2/Jan/2006 15:04"
 set infotimefmtnew "_2.Jan 15:04"
 set infotimefmtold "_2.Jan  2006"
-# set promptfmt "\033[37;40m %u@%h \033[0m\033[30;49m\033[34;49;1m %w/%f \033[0m"
 
 # look'n feel
 set anchorfind
@@ -33,10 +32,9 @@ set tabstop 2
 set watch true
 
 # previews
+set previewer ~/.config/lf/preview
 set preview
 set sixel
-set previewer ~/.config/lf/preview
-set cleaner ~/.config/lf/clean
 
 
 #----- commands
@@ -94,14 +92,9 @@ cmd pager ${{
 # Replace open command with robust selection of openers
 cmd open ${{
 	case $(file --dereference --mime-type $f -b) in
-		inode/x-empty)        $EDITOR $fx ;;
-		text/*)               $EDITOR $fx;;
-		video/*)              nohup mpv $fx > /dev/null & ;;
-		audio/midi)           timidity $fx ;;
-		audio/*)              nohup mpv $fx > /dev/null & ;;
-		application/epub*)    footclient /usr/bin/epy $f &> /dev/null & ;;
-		application/pdf)      nohup zathura $f > /dev/null & ;;
-		*) for f in $fx; do $OPENER $f > /dev/null 2> /dev/null & done;;
+		application/json) $EDITOR "$file" ;;
+		text/*)           $EDITOR "$file" ;;
+		*)                return 1 ;;
 	esac
 }}
 
@@ -309,8 +302,6 @@ cmd reload-conf ${{
 cmd on-cd &{{
 	fmt="\033[37;40m %u@%h \033[0m\033[30;49m\033[34;49;1m %w/%f \033[0m"
 	if [ "$(git rev-parse --is-inside-git-dir 2>/dev/null)" = false ]; then
-		# source "/etc/bash_completion.d/git-prompt"
-		# git=$(__git_ps1 "*%s ") || true
 		branch=$(git symbolic-ref HEAD)
 		git="*${branch##*/} "
 		fmt="\033[37;40m %u@%h \033[0m\033[30;49m\033[33;49;1m $git\033[34;49;1m%w/%f \033[0m"
