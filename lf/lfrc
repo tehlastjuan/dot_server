@@ -132,10 +132,15 @@ cmd new-folder-with-selection ${{
 
 # compress current file or selected files with zip
 cmd zip ${{
-	if [ -f "${fx}" ]; then
-		zip -qur "${fx}" $fx
-	else
-		zip -qr "${fx}.zip" $fx
+  [[ "$(file "${fx##*/}" | cut -d ':' -f 2 | cut -d ' ' -f 2)" == "Zip" ]] && exit 1
+	if [ -d "${fx}" ]; then
+		zipname="${fx##*/}"
+    (pushd "$(dirname "${fx}")" &> /dev/null &&
+			zip -qpr "${zipname}.zip" "$zipname" &&
+			popd &> /dev/null)
+	elif [ -f "${fx}" ]; then
+		zipname="${fx##*/}"
+		zip -qpr "${zipname%.*}.zip" "$zipname"
 	fi
 }}
 
