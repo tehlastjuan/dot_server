@@ -3,12 +3,11 @@
 # cd to current dir on lf quit
 r() {
   export LF_CD_FILE=/var/tmp/.lfcd-$$
-  command lf "${@}"
+  command lf "${@}" && reset
   if [ -s "$LF_CD_FILE" ]; then
     local DIR
     DIR="$(realpath "$(cat "$LF_CD_FILE")")"
     if [ "$DIR" != "$PWD" ]; then
-      # echo "cd to $DIR"
       cd "$DIR" || exit
     fi
     rm "$LF_CD_FILE"
@@ -29,19 +28,10 @@ f() {
     type=$(xdg-mime query filetype "$file")
     case "$type" in
       application/json) $EDITOR "$file" ;;
-      text/plain)       $EDITOR "$file" ;;
-      text/json)        $EDITOR "$file" ;;
-      text/c)           $EDITOR "$file" ;;
-      inode/directory)  return 1 ;;
-      *) return 1
+      text/*)           $EDITOR "$file" ;;
+      *)                return 1 ;;
     esac
   fi
-}
-
-# reset cursor after closing nvim
-vim() {
-  command vim "${@}"
-  [ -f "$1" ] && reset
 }
 
 # note ./here
@@ -65,7 +55,8 @@ jctl() {
 
   cols=$(tput cols)
   width=$(if [ $cols -lt 121 ]; then echo 113; else echo $(( cols - 4 )); fi)
-  journalctl "$@" | bat --style=plain --language=log --wrap=character --terminal-width=$width
+  journalctl "$@" |
+    bat --style=plain --language=log --wrap=character --terminal-width=$width
 }
 
 # pretty-print journalctl with sudo
