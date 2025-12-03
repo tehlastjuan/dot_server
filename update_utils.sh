@@ -28,8 +28,10 @@ _download_utils() {
 
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 
+    if lscpu &> /dev/null/; then
     _arch="$(lscpu | grep 'Architecture' | cut -d ':' -f 2)"
     _arch="${_arch#"${_arch%%[![:space:]]*}"}"
+    else _arch='x86_64'; fi
 
     case "$_arch" in
       unknown) arch="amd64" ;;
@@ -56,8 +58,8 @@ _download_utils() {
     # fetch linux amd64/arm64 binaries
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
       if [[ $url == *linux* ]]; then
+        # second grep stops at first match
         linux_url="$(echo "$url" | grep -o 'https://[^"]*' |
-          # second grep stops at first match
           grep -m 1 "${_arch}-unknown-linux-gnu.tar.gz\|linux.*${arch}.tar.gz\|${repo##*/}.*-${_arch}-unknown-linux-musl.tar")"
         lx_filename="${linux_url##*/}"
         printf "Downloading %s... " "$lx_filename"
