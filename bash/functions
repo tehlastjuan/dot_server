@@ -71,8 +71,12 @@ sjctl() {
 
 # SHA256 file check
 chsum() {
-  [ $# -ne 2 ] || [ ! -f "$1" ] && return 1
-  [ "$(sha256sum "$2")" = "$1  $2" ] && {
+  [ $# -lt 2 ] && return 1
+  local dl_checksum
+  local dl_file
+  dl_checksum="$1"
+  dl_file="$2"
+  [ "$(sha256sum "$dl_file")" = "$dl_checksum  $dl_file" ] && {
     echo "Checksum OK" >&2 && return
   }
   echo "Checksum failed" >&2 && false
