@@ -76,13 +76,16 @@ export PAGER=/usr/bin/less
 MANPAGER=$PAGER
 
 if hash vim 2> /dev/null; then
-	export EDITOR=/usr/bin/vim
+	if [[ "$OSTYPE" == "freebsd"* ]]; then
+		export EDITOR=/usr/local/bin/vim
+	fi
+	if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+		export EDITOR=/usr/bin/vim
+		export SYSTEMD_EDITOR=$EDITOR
+	fi
   export SUDO_EDITOR=$EDITOR
 	export SELECTED_EDITOR=$EDITOR
 	export VISUAL=$EDITOR
-	if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-		export SYSTEMD_EDITOR=$EDITOR
-	fi
 	MANPAGER='vim +MANPAGER --not-a-term -'
 fi
 
