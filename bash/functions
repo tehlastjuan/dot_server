@@ -3,7 +3,7 @@
 # cd to current dir on lf quit
 r() {
   export LF_CD_FILE=/var/tmp/.lfcd-$$
-  command lf "${@}" && reset
+  command lf "${@}" && reset -Q
   if [ -s "$LF_CD_FILE" ]; then
     local DIR
     DIR="$(realpath "$(cat "$LF_CD_FILE")")"
