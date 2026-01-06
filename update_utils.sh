@@ -16,6 +16,8 @@ REPOS=(
 )
 
 _download_utils() {
+  if ! hash curl 2> /dev/null; then echo "curl is not installed" return 1; fi
+
   local linux_tmp
   local linux_url
   local bsd_tmp
@@ -63,8 +65,9 @@ _download_utils() {
         linux_url="$(echo "$url" | grep -o 'https://[^"]*' |
           grep -m 1 "${_arch}-unknown-linux-gnu.tar.gz\|linux.*${arch}.tar.gz\|${repo##*/}.*-${_arch}-unknown-linux-musl.tar")"
         lx_filename="${linux_url##*/}"
+        echo "$linux_url"
         printf "Downloading %s... " "$lx_filename"
-        if [[ ! -e "$linux_tmp/$lx_filename" ]]; then wget -q -O "$linux_tmp/$lx_filename" "$linux_url"; fi
+        if [[ ! -e "$linux_tmp/$lx_filename" ]]; then curl -s -L "$linux_url" -o "$linux_tmp/$lx_filename"; fi
         tar xf "$linux_tmp/$lx_filename" --directory "$linux_tmp/bin"
         echo "Done."
       fi
@@ -76,7 +79,7 @@ _download_utils() {
         bsd_url="$(echo "$url" | grep -o 'https://[^"]*' | grep "freebsd.*${arch}.tar.gz")"
         bsd_filename="${bsd_url##*/}"
         printf "Downloading %s... " "$bsd_filename"
-        if [[ ! -e "$bsd_tmp/$bsd_filename" ]]; then wget -q -O "$bsd_tmp/$bsd_filename" "$bsd_url"; fi
+        if [[ ! -e "$bsd_tmp/$bsd_filename" ]]; then curl -s -L "$bsd_url" -o "$bsd_tmp/$bsd_filename"; fi
         tar xf "$bsd_tmp/$bsd_filename" --directory "$bsd_tmp/bin"
         echo "Done."
       fi
