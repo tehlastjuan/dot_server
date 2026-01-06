@@ -78,9 +78,11 @@ MANPAGER=$PAGER
 if hash vim 2> /dev/null; then
 	export EDITOR=/usr/bin/vim
   export SUDO_EDITOR=$EDITOR
-	export SYSTEMD_EDITOR=$EDITOR
 	export SELECTED_EDITOR=$EDITOR
 	export VISUAL=$EDITOR
+	if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+		export SYSTEMD_EDITOR=$EDITOR
+	fi
 	MANPAGER='vim +MANPAGER --not-a-term -'
 fi
 
@@ -104,7 +106,12 @@ if [ ! -e "/.dockerenv" ]; then
 	if hash docker 2> /dev/null; then
 		export DOCKER_CONFIG="${XDG_CONFIG_HOME}"/docker
 	else
-		USER_ID=$(id --user)
+		if [[ "$OSTYPE" == "freebsd"* ]]; then
+			USER_ID="$(id -u "$USER")"
+		fi
+		if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+			USER_ID="$(id --user)"
+		fi
 		export DOCKER_HOST=unix:///run/user/$USER_ID/docker.sock
 		export DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS="-p 0.0.0.0:2376:2376/tcp"
 	fi
