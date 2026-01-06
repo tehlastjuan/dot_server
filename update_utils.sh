@@ -27,12 +27,12 @@ _download_utils() {
   local arch
 
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-
-    if lscpu &> /dev/null/; then
-    _arch="$(lscpu | grep 'Architecture' | cut -d ':' -f 2)"
-    _arch="${_arch#"${_arch%%[![:space:]]*}"}"
-    else _arch='x86_64'; fi
-
+    if hash lscpu 2> /dev/null; then
+      _arch="$(lscpu | grep 'Architecture' | cut -d ':' -f 2)"
+      _arch="${_arch#"${_arch%%[![:space:]]*}"}"
+    else
+      _arch='x86_64'
+    fi
     case "$_arch" in
       unknown) arch="amd64" ;;
       aarch64) arch="arm64" ;;
@@ -40,14 +40,15 @@ _download_utils() {
     esac
 
     echo "Fetching linux binaries for $arch architecture..."
-
     linux_tmp="/tmp/tmp.linux$(date +%m%d%H%M%S)"
     [[ ! -d $linux_tmp ]] && mkdir -p "$linux_tmp/bin"
   fi
 
   if [[ "$OSTYPE" == "freebsd"* ]]; then
-    echo "Fetching freeBSD binaries ..."
+    arch="$(sysctl -a | grep 'machine' | head -1 | cut -f 2)"
+    if [[ -z $arch ]]; then return 1; fi
 
+    echo "Fetching freeBSD binaries ..."
     bsd_tmp="/tmp/tmp.bsd$(date +%m%d%H%M%S)"
     [[ ! -d $bsd_tmp ]] && mkdir -p "$bsd_tmp/bin"
   fi
