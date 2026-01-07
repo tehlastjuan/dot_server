@@ -3,6 +3,7 @@
 docker/
 pulse/
 xfce4/
+htop/
 
 wget/.wget-hsts
 
