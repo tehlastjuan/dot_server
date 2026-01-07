@@ -305,22 +305,17 @@ cmd reload-conf ${{
 
 # git branch prompt
 cmd on-cd &{{
+	tty_user="\033[30;1m%u@%h\033[0m"
+	work_dir="${PWD##${HOME}/}"
 	git=""
-  work_dir="${PWD##${HOME}/}"
-	tty_user=""
 
-  if [[ -n "$SSH_CLIENT" && -n "$SSH_TTY" ]]; then
-		tty_user="\033[33;1m%u@%h\033[0m"
-	fi
-  if [[ "$PWD" == "$HOME" ]]; then
-		work_dir="~"
-	fi
+  if [[ "$PWD" == "$HOME" ]]; then work_dir="~"; fi
 	if git rev-parse --is-inside-work-tree &>/dev/null; then
 		branch="$(git symbolic-ref HEAD)"
-		git="\033[34;1m ${branch##*/}\033[0m"
+		git="${branch##*/}"
 	fi
 	
-  fmt="${tty_user}\033[32;1m ${work_dir}\033[0m${git}"
+  fmt="${tty_user}\033[32;1m ${work_dir}\033[34;1m ${git}\033[0m"
 
 	# add to zoxide db
 	if hash zoxide 2> /dev/null; then zoxide add "$PWD"; fi
