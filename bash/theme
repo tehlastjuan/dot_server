@@ -16,10 +16,37 @@ if [[ "$OSTYPE" == linux-gnu* ]]; then
   fi
 fi
 
-if [ -n "$SSH_TTY" ] || [ -e "/.dockerenv" ]; then
-  PS1='\[\033[01;33m\]\u@\h \[\033[01;32m\]\W\[\033[01;36m\]$(__git_ps1 " %s")\[\033[49m\]\[\033[01;32m\] \$\[\033[00m\] '
-elif [ "$(id -u)" -eq 0 ]; then
-  PS1='\[\033[01;31m\]\u@\h \[\033[01;32m\]\W\[\033[01;36m\]$(__git_ps1 " %s")\[\033[49m\]\[\033[01;32m\] \$\[\033[00m\] '
-else
-  PS1='\[\033[01;32m\]\W\[\033[01;36m\]$(__git_ps1 " %s")\[\033[49m\]\[\033[01;32m\] \$\[\033[00m\] '
-fi
+# shellcheck disable=2016
+build_ps1() {
+  __get_domain_name() {
+    if [ -f "/etc/resolv.conf" ]; then
+      cat /etc/resolv.conf | grep 'search' | grep -v '^#' | cut -d ' ' -f 2
+    elif [ -f "/etc/hosts" ]; then
+      cat /etc/hosts | grep "$HOSTNAME" | cut -f 2
+    fi
+  }
+
+  local dir_name='\[\033[01;32m\]\W'
+  local git_branch='\[\033[01;36m\]$(__git_ps1 "%s")'
+  local prompt='\[\033[01;32m\]\$\[\033[00m\]'
+
+  if [ -n "$SSH_TTY" ] || [ -e "/.dockerenv" ]; then
+    local user_name='\[\033[01;33m\]\u@'
+    PS1="${user_name}$(__get_domain_name) ${dir_name} ${git_branch} ${prompt} "
+  elif [ "$(id -u)" -eq 0 ]; then
+    local ssh_user_domain='\[\033[01;31m\]\u@'
+    PS1="${ssh_user_domain}$(__get_domain_name) ${dir_name} ${git_branch} ${prompt} "
+  else
+    PS1="${dir_name} ${git_branch} ${prompt} "
+  fi
+}
+
+build_ps1
+
+# if [ -n "$SSH_TTY" ] || [ -e "/.dockerenv" ]; then
+#   PS1='\[\033[01;33m\]\u@\h \[\033[01;32m\]\W\[\033[01;36m\]$(__git_ps1 " %s")\[\033[49m\]\[\033[01;32m\] \$\[\033[00m\] '
+# elif [ "$(id -u)" -eq 0 ]; then
+#   PS1='\[\033[01;31m\]\u@\H \[\033[01;32m\]\W\[\033[01;36m\]$(__git_ps1 " %s")\[\033[49m\]\[\033[01;32m\] \$\[\033[00m\] '
+# else
+#   PS1='\[\033[01;32m\]\W\[\033[01;36m\]$(__git_ps1 " %s")\[\033[49m\]\[\033[01;32m\] \$\[\033[00m\] '
+# fi
