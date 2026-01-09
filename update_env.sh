@@ -2,74 +2,106 @@
 
 set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
+USER_HOME="/home/$USER"
+CONFIG_OLD="$HOME/.config.old"
+FILES=(
+    bashrc
+    bash_logout
+    profile
+    vimrc
+  )
+
 _install_dot_server() {
-  local ORIGIN=0
-  local CONFIG_OLD
-  CONFIG_OLD="$HOME/.config.old"
+  printf "Installing dot_server files... "
 
-  echo "Installing dot_server files..."
-
-  if [[ -d "$HOME/.config/.git" ]]; then
-    if hash git 2> /dev/null; then
-      [[ $(git remote --verbose | grep origin | grep fetch | cut -f2 | cut -d' ' -f1) == *dot_server* ]] && ORIGIN=1
-    else
-      echo "Unknown dot files installation. Aborting." && return 1
+  if [[ -d "${USER_HOME}/.config" ]]; then
+    if git -C "${USER_HOME}/.config" rev-parse --is-inside-work-tree &>/dev/null; then
+      if [[ $(git -C "${USER_HOME}/.config" remote get-url --no-all origin) != *dot_server* ]]; then
+        echo "Unknown dot files installation. Aborting." && return 1
+      fi
     fi
   fi
 
-  [[ ! -e "$HOME/.local" ]] && mkdir "$HOME/.local"
-  [[ -e "$HOME/dot_server" ]] && mv "$HOME/dot_server" "$HOME/.config"
-
-  if [[ -e "$HOME/.bashrc" ]]; then
-    if [[ $ORIGIN -eq 1 ]]; then
-      [[ -L "$HOME/.bashrc" ]] && rm "$HOME/.bashrc"
-    else
-      [[ ! -e "$CONFIG_OLD" ]] && mkdir -p "$CONFIG_OLD"
-      mv "$HOME/.bashrc" "$CONFIG_OLD/bashrc"
-    fi
+  [[ -d "${USER_HOME}/.local" ]] || mkdir -p "${USER_HOME}/.local"
+  if [[ -d "${USER_HOME}/dot_server" ]]; then
+    mv "${USER_HOME}/dot_server" "${USER_HOME}/.config"
   fi
-  ln -s "$HOME/.config/bash/bashrc" "$HOME/.bashrc"
 
-  if [[ -e "$HOME/.bash_logout" ]]; then
-    if [[ $ORIGIN -eq 1 ]]; then
-      [[ -L "$HOME/.bash_logout" ]] && rm "$HOME/.bash_logout"
-    else
-      [[ ! -e "$CONFIG_OLD" ]] && mkdir -p "$CONFIG_OLD"
-      mv "$HOME/.bash_logout" "$CONFIG_OLD/bash_logout"
+  for _file in "${FILES[@]}"; do
+    if [[ -L "${USER_HOME}/.${_file}" ]]; then
+      rm "${USER_HOME}/.${_file}"
+      ln -s "${USER_HOME}/.config/bash/${_file}" "${USER_HOME}/.${_file}"
+    elif [[ -f "${USER_HOME}/.${_file}" ]]; then
+      [[ -d "$CONFIG_OLD" ]] || mkdir -p "$CONFIG_OLD"
+      mv "${USER_HOME}/.${_file}" "$CONFIG_OLD/${_file}"
+      ln -s "${USER_HOME}/.config/bash/${_file}" "${USER_HOME}/.${_file}"
     fi
-  fi
-  ln -s "$HOME/.config/bash/bash_logout" "$HOME/.bash_logout"
+  done
 
-  if [[ -e "$HOME/.profile" ]]; then
-    if [[ $ORIGIN -eq 1 ]]; then
-      [[ -L "$HOME/.profile" ]] && rm "$HOME/.profile"
-    else
-      [[ ! -e "$CONFIG_OLD" ]] && mkdir -p "$CONFIG_OLD"
-      mv "$HOME/.profile" "$CONFIG_OLD/profile"
-    fi
+  if [[ -L "$HOME/.viminfo" ]]; then
+    rm "$HOME/.viminfo"
+  elif [[ -f "$HOME/.viminfo" ]]; then
+    rm "$HOME/.viminfo"
   fi
-  ln -s "$HOME/.config/bash/profile" "$HOME/.profile"
 
-  if [[ -e "$HOME/.vimrc" ]]; then
-    if [[ $ORIGIN -eq 1 ]]; then
-      [[ -L "$HOME/.vimrc" ]] && rm "$HOME/.vimrc"
-    else
-      [[ ! -e "$CONFIG_OLD" ]] && mkdir -p "$CONFIG_OLD"
-      mv "$HOME/.vimrc" "$CONFIG_OLD/vimrc"
-    fi
-  fi
-  ln -s "$HOME/.config/vim/vimrc" "$HOME/.vimrc"
+  echo "Done."
+  return
+}
 
-  if [[ -e "$HOME/.viminfo" ]]; then
-    if [[ $ORIGIN -eq 1 ]]; then
-      [[ -L "$HOME/.viminfo" ]] && rm "$HOME/.viminfo"
-    else
-      [[ ! -e "$CONFIG_OLD" ]] && mkdir -p "$CONFIG_OLD"
-      mv "$HOME/.viminfo" "$CONFIG_OLD/viminfo"
+_install_dot_server_by_file(){
+  printf "Installing dot_server files... "
+
+  if [[ -d "${USER_HOME}/.config" ]]; then
+    if git -C "${USER_HOME}/.config" rev-parse --is-inside-work-tree &>/dev/null; then
+      if [[ $(git -C "${USER_HOME}/.config" remote get-url --no-all origin) != *dot_server* ]]; then
+        echo "Unknown dot files installation. Aborting." && return 1
+      fi
     fi
   fi
 
-  echo "dot_server files installation completed."
+  if [[ -L "${USER_HOME}/.bashrc" ]]; then
+    rm "${USER_HOME}/.bashrc"
+    ln -s "${USER_HOME}/.config/bash/bashrc" "${USER_HOME}/.bashrc"
+  elif [[ -f "${USER_HOME}/.bashrc" ]]; then
+    [[ -d "$CONFIG_OLD" ]] || mkdir -p "$CONFIG_OLD"
+    mv "${USER_HOME}/.bashrc" "$CONFIG_OLD/bashrc"
+    ln -s "${USER_HOME}/.config/bash/bashrc" "${USER_HOME}/.bashrc"
+  fi
+
+  if [[ -L "${USER_HOME}/.bash_logout" ]]; then
+    rm "${USER_HOME}/.bash_logout"
+    ln -s "${USER_HOME}/.config/bash/bash_logout" "${USER_HOME}/.bash_logout"
+  elif [[ -f "${USER_HOME}/.bash_logout" ]]; then
+    [[ -d "$CONFIG_OLD" ]] || mkdir -p "$CONFIG_OLD"
+    mv "${USER_HOME}/.bash_logout" "$CONFIG_OLD/bash_logout"
+    ln -s "${USER_HOME}/.config/bash/bash_logout" "${USER_HOME}/.bash_logout"
+  fi
+
+  if [[ -L "${USER_HOME}/.profile" ]]; then
+    rm "${USER_HOME}/.profile"
+    ln -s "${USER_HOME}/.config/bash/profile" "${USER_HOME}/.profile"
+  elif [[ -f "${USER_HOME}/.bash_logout" ]]; then
+    [[ -d "$CONFIG_OLD" ]] || mkdir -p "$CONFIG_OLD"
+    mv "${USER_HOME}/.profile" "$CONFIG_OLD/profile"
+    ln -s "${USER_HOME}/.config/bash/profile" "${USER_HOME}/.profile"
+  fi
+
+  if [[ -L "${USER_HOME}/.vimrc" ]]; then
+    rm "${USER_HOME}/.vimrc"
+    ln -s "${USER_HOME}/.config/vim/vimrc" "${USER_HOME}/.vimrc"
+  elif [[ -f "${USER_HOME}/.vimrc" ]]; then
+    [[ -d "$CONFIG_OLD" ]] || mkdir -p "$CONFIG_OLD"
+    mv "${USER_HOME}/.vimrc" "$CONFIG_OLD/vimrc"
+    ln -s "${USER_HOME}/.config/vim/vimrc" "${USER_HOME}/.vimrc"
+  fi
+
+  if [[ -L "${USER_HOME}/.viminfo" ]]; then
+    rm "${USER_HOME}/.viminfo"
+  elif [[ -f "${USER_HOME}/.viminfo" ]]; then
+    rm "${USER_HOME}/.viminfo"
+  fi
+
+  echo "Done."
 }
 
 if [[ "${#BASH_SOURCE[@]}" -eq 1 ]]; then
