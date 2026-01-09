@@ -102,6 +102,7 @@ CORE_PKG=(
   htop
   iotop
   skopeo
+  lsof
 )
 
 _install_core_pkg() {
