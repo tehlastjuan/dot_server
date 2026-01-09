@@ -313,7 +313,13 @@ cmd on-cd &{{
   if [[ $PWD == "$HOME" ]]; then work_dir="~"
 	else work_dir="${PWD##${HOME}/}"; fi
 		
-  fmt=" ${git}\033[32;1m ${work_dir} \033[30;1m%u@%h\033[0m"
+	if [ -f "/etc/resolv.conf" ]; then
+		domain_name="$(cat /etc/resolv.conf | grep 'search' | grep -v '^#' | cut -d ' ' -f 2)"
+	elif [ -f "/etc/hosts" ]; then
+		domain_name="$(cat /etc/hosts | grep "$HOSTNAME" | cut -f 2)"
+	else domain_name='\h'; fi
+		
+  fmt=" ${git}\033[32;1m ${work_dir} \033[30;1m%u@${domain_name}\033[0m"
 
 	# add to zoxide db
 	hash zoxide 2> /dev/null && zoxide add "$PWD"
