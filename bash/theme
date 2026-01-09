@@ -28,15 +28,15 @@ build_ps1() {
 	fi
 
   local dir_name='\[\033[01;32m\]\W'
-  local git_branch='\[\033[01;36m\]$(__git_ps1 "%s")'
+  local git_branch='\[\033[01;36m\]$(__git_ps1 " %s")'
   local prompt='\[\033[01;32m\]\$\[\033[00m\]'
 
   if [ -n "$SSH_TTY" ] || [ -e "/.dockerenv" ]; then
-    PS1="\[\033[01;33m\]\u@${domain_name} ${dir_name} ${git_branch} ${prompt} "
+    PS1="\[\033[01;33m\]\u@${domain_name} ${dir_name}${git_branch} ${prompt} "
   elif [ "$(id -u)" -eq 0 ]; then
-    PS1="\[\033[01;31m\]\u@${domain_name} ${dir_name} ${git_branch} ${prompt} "
+    PS1="\[\033[01;31m\]\u@${domain_name} ${dir_name}${git_branch} ${prompt} "
   else
-    PS1="${dir_name} ${git_branch} ${prompt} "
+    PS1="${dir_name}${git_branch} ${prompt} "
   fi
 }
 
