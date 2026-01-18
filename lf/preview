@@ -1,133 +1,122 @@
 #!/usr/bin/env bash
-# the ultimate preview script
-# github.com/rafi/.config
-# ---
+# adapted from github.com/rafi/.config
 
 set -eu
 
-[ -z "${1:-}" ] && echo "usage: $0 <image> [width] [height]" && exit 1
+FILE=
+WIDTH=
+HEIGHT=
+OFFSET=
 
-FILE="${1}"
-WIDTH="${2:-$(tput cols)}"
-HEIGHT="${3:-$(tput lines)}"
-
-WIDTH="$((WIDTH - 3))"
-HEIGHT="$((HEIGHT - 3))"
-
-[ -L "${FILE}" ] && FILE="$(readlink "$FILE")"
-
-_zebra_lines() {
+zebra_lines() {
 	gsed $'1~2s/^/\e[38;05;242m/;s/$/\e[m/' < /dev/stdin
 }
 
 # View binary hexyl/heksa/hexdump
-_view_binary() {
+view_binary() {
 	local len="$((WIDTH * HEIGHT))"
-
 	hexyl -n "$len" --border none "$FILE" ||
 		heksa -l "$len" "$FILE" ||
 		hexdump -n "$len" -C "$FILE"
-
 	return $?
 }
 
 # View source-code with bat/pygmentize/highlight/cat
-_view_sourcecode() {
+view_sourcecode() {
 	local input="${1:-$FILE}"
-
-	BAT_CONFIG_PATH='' bat "${input}" \
-		--theme=TwoDark --color=always --paging=never --tabs=2 --wrap=auto \
-		--style=plain --terminal-width "${WIDTH}" --line-range :"${HEIGHT}" ||
-		pygmentize -P tabsize=2 -O style=monokai -f console256 -g "${input}" ||
-		highlight -t 2 -s rdark -O xterm256 --force "${input}" ||
-		cat "${input}"
-
+	if [ -f "$input" ]; then
+		bat --color=always --theme=TwoDark --style=changes \
+				--tabs=2 --terminal-width "${WIDTH}" --wrap=never \
+				--line-range "${OFFSET}:" "${input}" ||
+			pygmentize -P tabsize=2 -O style=monokai -f console256 -g "${input}" ||
+			highlight -t 2 -s rdark -O xterm256 --force "${input}" ||
+			cat "${input}"
+	else
+		echo "$input" | bat \
+			--color=always --theme=TwoDark --style=changes \
+			--tabs=2 --terminal-width "${WIDTH}" --wrap=never \
+			--line-range "${OFFSET}:" ||
+			echo "$input" | pygmentize -P tabsize=2 -O style=monokai -f console256 -g ||
+			echo "$input" | highlight -t 2 -s rdark -O xterm256 --force "${input}" ||
+			echo "$input"
+	fi
 	return $?
 }
 
 # View images in terminal with chafa/timg/catimg/imgcat
-_view_image() {
+view_image() {
 	local input="${1:-$FILE}"
-
 	chafa -f sixel -s "$WIDTH"x"$HEIGHT" --animate off --polite on "$input" ||
 		viu -sb -w "$WIDTH" "$input" ||
 		timg -E -g"$WIDTH"x"$HEIGHT" "$input" ||
 		catimg -r 2 -H "$HEIGHT" "$input" ||
 		imgcat --depth=256 --width "$WIDTH" "$input"
-
 	local result=$?
 	if hash exiv2 2> /dev/null; then
 		echo
 		exiv2 -qu "$FILE"
 	fi
-
 	return $result
 }
 
 # Viw multimedia metadata with mediainfo/id3ted/exiftool/id3info
-_view_multimedia() {
+view_multimedia() {
 	if hash mediainfo 2> /dev/null; then
-		mediainfo "${FILE}" | _zebra_lines
-		return $?
-	fi
-
-	id3ted -L "${FILE}" || id3info "${FILE}" || exiftool "${FILE}"
+		mediainfo "${FILE}" | zebra_lines
+	elif hash id3ted 2> /dev/null; then
+		id3ted -L "${FILE}" || id3info "${FILE}" || exiftool "${FILE}"
+	else return 1; fi
 	return $?
 }
 
 # View Opendocument with pandoc/odt2txt
-_view_opendocument() {
-	if ! hash odt2txt 2> /dev/null; then
-		return 1
-	elif ! hash pandoc 2> /dev/null; then
-		odt2txt "${FILE}"
-	elif ! hash glow 2> /dev/null; then
-		pandoc "${FILE}" --to=markdown || odt2txt "${FILE}"
-	else
+view_opendocument() {
+	if ! hash odt2txt 2> /dev/null || ! hash pandoc 2> /dev/null; then return 1
+	elif hash glow 2> /dev/null; then
 		glow -s dark -w "${WIDTH}" <(pandoc "${FILE}" --to=markdown || odt2txt "${FILE}")
-	fi
+	elif hash pandoc 2> /dev/null; then
+		pandoc "${FILE}" --to=markdown || odt2txt "${FILE}"
+	else return 1; fi
 	return $?
 }
 
 # View PDF with pdftoppm or pdftotext
-_view_pdf() {
+view_pdf() {
 	if hash pdftoppm 2> /dev/null; then
+		[ -d "$HOME/.cache/lf" ] || mkdir -p "$HOME/.cache/lf"
+		SHA=$(stat --printf '%n\0%i\0%F\0%s\0%W\0%Y' -- "$(readlink -f "$FILE")" | sha256sum | awk '{print $1}')
+		THUMB="$HOME/.cache/lf/thumbnail.${SHA}"
 		pdftoppm -f 1 -l 1 -scale-to-x 1024 -scale-to-y -1 \
-			-singlefile -jpeg -tiffcompression jpeg -- "${FILE}" |
-			view_image  -
-		# hash pdfinfo 2>/dev/null && pdfinfo "$FILE"
+			-singlefile -jpeg -tiffcompression jpeg -- "${FILE}" > "$THUMB"
+		view_image "$THUMB"
 	elif hash pdftotext 2> /dev/null; then
 		pdftotext -raw -l 10 -nopgbrk -q -- "${FILE}" -
-	fi
+	else return 1; fi
 	return $?
 }
 
 # Find and view cover image with tar and xmlstarlet
-_view_epub() {
+view_epub() {
 	if hash xmlstarlet 2> /dev/null; then
-		opf_path="$(unzip -jqc "$FILE" 'META-INF/container.xml' |
+		local opf_path; opf_path="$(unzip -jqc "$FILE" 'META-INF/container.xml' |
 			xmlstarlet sel -t -v '/_:container/_:rootfiles/_:rootfile/@full-path')"
-
-		opf="$(unzip -jqc "$FILE" "$opf_path")"
-
-		cover_name="$(echo "$opf" |
+		local opf; opf="$(unzip -jqc "$FILE" "$opf_path")"
+		local cover_name; cover_name="$(echo "$opf" |
 			xmlstarlet sel -t -v '/_:package/_:metadata/_:meta[@name="cover"]/@content')"
-
 		echo "$opf" |
 			xmlstarlet sel -t -v "/_:package/_:manifest/_:item[@id='$cover_name']/@href" |
-			xargs -I '%' unzip -jqc "$FILE" "$(dirname "$opf_path")"/'%' | _view_image -
-	else
-		{
-			unzip -jqc "$FILE" 'OEBPS/assets/cover.*' || 
-				unzip -jqc "$FILE" '*/cover.png' || 
-				unzip -jqc "$FILE" 'cover.png'
-		} | view_image -
+			xargs -I '%' unzip -jqc "$FILE" "$(dirname "$opf_path")"/'%' | view_image -
+		return $?
 	fi
+	unzip -jqc "$FILE" 'OEBPS/assets/cover.*' ||
+		unzip -jqc "$FILE" '*/cover.png' ||
+		unzip -jqc "$FILE" 'cover.png' | view_image -
 	return $?
 }
 
 # List SQLite file tables and dump schema
-_view_sqlite() {
+view_sqlite() {
+	! hash sqlite3 && return 1
 	echo -e "# \e[1;37mTABLES\e[0m\n"
 	sqlite3 "$FILE" ".tables"
 	echo -e "\n# \e[1;37mSCHEMA\e[0m\n"
@@ -136,60 +125,107 @@ _view_sqlite() {
 }
 
 # View ANSI as PNG with ansilove
-_view_ansi() {
+view_ansi() {
+	! hash ansilove || ! hash chafa && return 1
 	local tmpdir="${TMPDIR:-/tmp}"
 	local tmppng="$tmpdir/lf-preview-ansi-$$.png"
-
 	ansilove -o "$tmppng" "$FILE" 1> /dev/null &&
 		chafa -s "$WIDTH"x "$tmppng" &&
 		rm -f -- "$tmppng"
-
 	return $?
 }
 
-# Main procedure
 main() {
+	[ -z "${1:-}" ] && 
+		echo "usage: $0 <image> [width] [height]" && exit 1
 
-	# Use the right tool for the extension
+	FILE="${1}"
+	WIDTH="${2:-$(tput cols)}"
+	HEIGHT="${3:-$(tput lines)}"
+	OFFSET="${lf_user_preview_offset:-1}"
+
+	[ -L "${FILE}" ] && FILE="$(readlink "$FILE")"
+
 	case "${FILE}" in
-		*.deb) ar -tv "${FILE}"; return $?;;
-		*.zip) als -lqq "${FILE}" || unzip -l "${FILE}"; return $?;;
-		*.rar) unrar l -- "${FILE}"; return $?;;
-		*.7z|*.dmg|*.gz) 7z l -- "${FILE}" && return $?;;
-		*.tar|*.tgz|*.xz) tar tvf "${FILE}"; return $?;;
-		*.bzip|*.bzip2|*.bp|*.bz2) als "${FILE}" && return $?;;
-
-		*.md) glow -s dark -w "${WIDTH}" "${FILE}" && return $?;;
-		*.txt) _view_sourcecode && return $?;;
-		*.xml) xmlstarlet fo -s 2 "${FILE}" | _view_sourcecode - && return $?;;
-		*.json) jq -C . "${FILE}" && return $?;;
-		*.plist) plutil -p "${FILE}" && return $?;;
-		*.ans|*.ANS) _view_ansi && return $?;;
-		*.jpg|*.JPG|*.png|*.PNG) _view_image && return $?;;
-	esac
-
-	# Use the right tool for the mimetype label
-	case "$(file -b --mime-type "${FILE}")" in
-	image/*) _view_image ;;
-	video/* | audio/*) _view_multimedia || _view_binary ;;
-	application/pdf) _view_pdf || _view_binary ;;
-	application/epub*) _view_epub || _view_binary ;;
-	application/gzip | application-x-xz) tar tvf "${FILE}" ;;
-	application/x-sqlite*) _view_sqlite || _view_binary ;;
-	application/x-terminfo | text/x-bytecode.python) _view_binary ;;
-	application/vnd.*-officedocument.wordprocessingml.document)
-		_view_opendocument || +view_binary
-		;;
-	application/octet-stream | application/x-*-binary | application/x-*executable)
-		_view_binary
-		;;
-	*) _view_sourcecode ;;
+		*.deb)
+			ar -tv "${FILE}"; return $?
+			;;
+		*.zip)
+			als -lqq "${FILE}" || unzip -l "${FILE}"; return $?
+			;;
+		*.rar)
+			unrar l -- "${FILE}"; return $?
+			;;
+		*.7z|*.dmg|*.gz)
+			7z l -- "${FILE}" && return $?
+			;;
+		*.tar|*.tgz|*.xz)
+			tar tvf "${FILE}"; return $?
+			;;
+		*.bzip|*.bzip2|*.bp|*.bz2)
+			als "${FILE}" && return $?
+			;;
+		*.md)
+			glow -s dark -w "${WIDTH}" "${FILE}" && return $?
+			;;
+		*.txt)
+			view_sourcecode && return $?
+			;;
+		*.xml|*.plist)
+			xmlstarlet fo -s 2 "${FILE}" | view_sourcecode && return $?
+			;;
+		*.json)
+			view_sourcecode && return $?
+			;;
+		*.ans|*.ANS)
+			view_ansi && return $?
+			;;
+		*.jpg|*.JPG|*.png|*.PNG)
+			view_image && return $?
+			;;
+		*)
+			case "$(file -b --mime-type "${FILE}")" in
+				text/xml)
+					xmlstarlet fo -s 2 "${FILE}" | view_sourcecode - && return $?
+					;;
+				image/*)
+					view_image
+					;;
+				video/* | audio/*)
+					view_multimedia || view_binary
+					;;
+				application/pdf)
+					view_pdf || view_binary
+					;;
+				application/epub*)
+					view_epub || view_binary
+					;;
+				application/gzip | application-x-xz)
+					tar tvf "${FILE}"
+					;;
+				application/x-sqlite*)
+					view_sqlite || view_binary
+					;;
+				application/x-terminfo | text/x-bytecode.python)
+					view_binary
+					;;
+				application/vnd.*-officedocument.wordprocessingml.document)
+					view_opendocument || view_binary
+					;;
+				application/octet-stream | application/x-*-binary | application/x-*executable)
+					view_binary
+					;;
+				*)
+					view_sourcecode
+					;;
+			esac
+			;;
 	esac
 	return $?
 }
 
 if [[ "${#BASH_SOURCE[@]}" -eq 1 ]]; then
-	main
+	main "$@"
 	exit 1
 fi
 

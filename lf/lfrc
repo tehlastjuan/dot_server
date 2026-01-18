@@ -12,7 +12,7 @@ set numberfmt "\033[30;49:1m"
 set timefmt "_2/Jan/2006 15:04"
 set infotimefmtnew "_2.Jan 15:04"
 set infotimefmtold "_2.Jan  2006"
-set promptfmt "\033[32;1m %w\033[30;1m %u@%h\033[0m"
+set promptfmt " \033[32;1m%d%S\033[30;1m%u@%h\033[0m "
 
 # look'n feel
 set anchorfind
@@ -30,22 +30,14 @@ set scrolloff 2
 set smartcase
 set sortby natural
 set tabstop 2
-set watch true
 
 # previews
+set cleaner ~/.config/lf/clean
 set previewer ~/.config/lf/preview
 set preview
-set sixel
 
 
 #----- commands
-
-cmd select-all :unselect; invert
-cmd select-clear :select-all; unselect
-cmd sort-by-extension :set sortby ext; set info size:time
-cmd sort-by-natural   :set sortby natural; set info size:time;
-cmd sort-by-size      :set sortby size; set info size:time;
-cmd sort-by-time      :set sortby time; set info size:time;
 
 # edit-with-sudo
 cmd edit-with-sudo ${{
@@ -59,42 +51,52 @@ cmd edit-with-sudo ${{
 
 # Pager command
 cmd pager ${{
-  declare -i cols
-  declare -i lines
-  declare -i width
-  declare -i f_lines
-
-  cols=$(tput cols)
-  lines=$(tput lines)
-  width=$(if [ $cols -lt 121 ]; then echo 113; else echo $((cols - 4)); fi)
-	f_lines=0
-		
+  declare -i lines; lines=$(tput lines)
   if [ -f "$f" ]; then
 		f_lines="$(wc -l "$f" | cut -d ' ' -f 1)"
-    [ "0$f_lines" -lt "0$lines" ] && exit 1
+		[[ "0$f_lines" -lt "0$lines" ]] && exit 0
 		if [[ "$f" == *.md ]]; then
-			bash -c "glow -w ${width} -p $fx"
+			if hash glow 2> /dev/null; then
+				bash -c "glow -p $f"
+			else
+				bash -c "less -iWQMRX~ --no-vbell $f"
+			fi
 		else
-			bash -c "bat $fx \
-				--theme=TwoDark --color=always --terminal-width ${width} \
-				--style=plain --number --paging=always \
-				--pager='less -iWQMRX~ --no-vbell'"
+			if hash bat 2> /dev/null; then
+				bash -c "bat $f \
+				--color=always \
+				--theme=TwoDark \
+				--style=changes,numbers \
+				--tabs=2 \
+				--wrap=never \
+				--paging=always"
+			else
+				bash -c "less -iWQMRX~ --no-vbell $f"
+			fi
 		fi
 	elif [ -d "$f" ]; then
 		f_lines="$(tree "$f" | wc -l | cut -d ' ' -f 1)"
-    [ "0$f_lines" -lt "0$lines" ] && exit 1
-    bash -c "tree $f | bat \
-			--theme=TwoDark --color=always --terminal-width ${width} \
-			--style=plain --number --language=man \
-			--paging=always --pager='less -iWQMRX~ --no-vbell'"
+		[[ "0$f_lines" -lt "0$lines" ]] && exit 0
+			if hash tree 2>/dev/null; then
+				bash -c "tree -l -dF --noreport -C $f | bat \
+					--color=always \
+					--theme=TwoDark \
+					--style=plain \
+					--tabs=2 \
+					--wrap=never \
+					--paging=always"
+			else
+				bash -c "ls -la $f | less -iWQMRX~ --no-vbell"
+			fi
+	else exit 1
 	fi
 }}
 
 # Replace open command with robust selection of openers
 cmd open ${{
 	case $(file --dereference --mime-type $f -b) in
-		application/json) $EDITOR "$file" ;;
-		text/*)           $EDITOR "$file" ;;
+		application/json) $EDITOR "$fx" ;;
+		text/*)           $EDITOR "$fx" ;;
 		*)                return 1 ;;
 	esac
 }}
@@ -283,12 +285,24 @@ cmd zi ${{
 
 # search in files w/ fzf
 cmd fzf_search ${{
-	cmd="rg --column --line-number --no-heading --color=always --smart-case"
-	fzf --ansi --disabled --header="Search in files" --delimiter=: \
-			--bind="start:reload([ -n {q} ] && $cmd -- {q} || true)" \
-			--bind="change:reload([ -n {q} ] && $cmd -- {q} || true)" \
+  if hash bat 2> /dev/null; then
+		preview="bat --color=always --theme=TwoDark --number --tabs=2 --wrap=auto {1} --highlight-line {2}"
+	else
+		preview="cat {1}"
+	fi
+	if hash rg 2> /dev/null; then
+		cmd="rg --vimgrep --follow --hidden --no-ignore-vcs --smart-case --glob !**/.git/* -- {q}"
+	else
+		cmd="grep --dereference-recursive --binary-files=without-match --line-number --with-filename --exclude !**/.git/* --exclude !**/.cache/* -- {q} ."
+	fi
+
+	fzf --header="Search in files" --delimiter=: \
+	    --disabled \
+			--preview-window 'right,+{2}+3/3' \
+  		--bind="start:reload([ -n {q} ] && $cmd || true)" \
+			--bind="change:reload([ -n {q} ] && $cmd || true)" \
 			--bind='enter:become(lf -remote "send $id select \"$(printf "%s" {1} | sed '\''s/\\/\\\\/g;s/"/\\"/g'\'')\"")' \
-			--preview='~/.config/lf/clean; ~/.config/lf/preview -- {1}'
+			--preview="~/.config/lf/clean; $preview"
 }}
 
 # helper to cd to curr dir on quit
@@ -297,23 +311,29 @@ cmd quit-and-cd &{{
 	lf -remote "send $id quit"
 }}
 
-cmd reload-conf ${{
-  lf -remote "send $id source ~/.config/lf/lfrc"
+# `set preview true` is a hack used to reload the preview
+cmd scroll-preview &{{
+	declare -i offset=$((lf_user_preview_offset + $1))
+	declare -i f_lines="$(wc -l "$f" | cut -d ' ' -f 1)"
+	declare -i max_offset=$(( f_lines - lf_height + 6 ))
+
+	[ $offset -lt 1 ] && offset=1
+	[ $offset -ge $max_offset ] && offset=$(( max_offset - 1 ))
+	lf -remote "send $id :set user_preview_offset $offset; set preview true"
 }}
 
 
 #----- prompt
 
-# git branch prompt
-cmd on-cd &{{
+cmd prompt-load %{{
 	if git rev-parse --is-inside-work-tree &>/dev/null; then
 		branch="$(git symbolic-ref HEAD)"
-		git="\033[36;1m${branch##*/}\033[0m"
+		git="\033[36;1m${branch##*/} \033[0m"
 	else git=""; fi
 
   if [[ $PWD == "$HOME" ]]; then work_dir="~"
 	else work_dir="${PWD##${HOME}/}"; fi
-		
+
   domain_name=
 	if [ -f "/etc/resolv.conf" ]; then
 		domain_name=".$(cat /etc/resolv.conf | grep 'search' | grep -v '^#' | cut -d ' ' -f 2)"
@@ -321,19 +341,43 @@ cmd on-cd &{{
 		domain_name=".$(cat /etc/hosts | grep "$HOSTNAME" | cut -f 2)"
 	fi
 		
-  fmt=" ${git}\033[32;1m ${work_dir} \033[30;1m%u@%h${domain_name}\033[0m"
-
-	# add to zoxide db
-	hash zoxide 2> /dev/null && zoxide add "$PWD"
-	# display git repository status in the prompt
+  fmt=" ${git}\033[32;1m%d%S\033[30;1m%u@%h${domain_name}\033[0m "
 	lf -remote "send $id set promptfmt \"$fmt\""
 }}
-on-cd
+
+# git branch prompt
+cmd on-cd %{{
+	hash zoxide 2> /dev/null && zoxide add "$PWD"
+	lf -remote "send $id prompt-load"
+}}
+
+
+#----- command shortcuts
+
+cmd on-select         set user_preview_offset 1
+cmd on-load           prompt-load
+
+cmd reload-conf       $lf -remote "send $id source ~/.config/lf/lfrc"
+cmd cd-back           $lf -remote "send $id cd \"$OLDPWD\""
+
+cmd clear-all         :clear; visual-clear; select-clear
+cmd select-all        :unselect; invert
+cmd select-clear      :select-all; unselect
+
+cmd sort-by-extension :set sortby ext; set info size:time
+cmd sort-by-natural   :set sortby natural; set info size:time;
+cmd sort-by-size      :set sortby size; set info size:time;
+cmd sort-by-time      :set sortby time; set info size:time;
+
+cmd fuzzy-find        $lf -remote "send $id select $(fzf)"
+cmd zoxide-query      push :z<space>
+cmd zoxide-interact   :zi
 
 
 #----- key mappings
 
 # remove defaults
+
 map d
 map f
 map F
@@ -351,6 +395,7 @@ map zn
 map za
 map zs
 map zt
+map <tab>
 map <c-i>
 map <c-p>
 map <c-m>
@@ -358,6 +403,10 @@ map <c-h>
 map <c-l>
 map <c-j>
 map <c-k>
+map <c-w>
+map <backspace>
+map <backspace2>
+cmap <tab>
 cmap <c-i>
 cmap <c-p>
 cmap <c-m>
@@ -365,10 +414,13 @@ cmap <c-h>
 cmap <c-l>
 cmap <c-j>
 cmap <c-k>
+cmap <c-w>
+cmap <backspace>
 
 # actual mappings
+
 map <enter> open
-map <esc> :clear; visual-clear; select-clear
+map <esc> clear-all
 map q quit-and-cd
 map . set hidden!
 
@@ -378,8 +430,8 @@ map R reload-conf
 
 map dd cut
 map dD delete
-map dt trash
 
+map yt yewtube
 map yy copy
 map yY copy-absolute-path
 map <c-y> copy-filename
@@ -398,12 +450,9 @@ map I rename
 map o &mimeopen $f
 map O push :openwith<space>
 
-# filter/find
 map ff filter
-# fuzzy-find a file
-map fF $lf -remote "send $id select $(fzf)"
-# fuzzy-find in files
-map <c-f> :fzf_search
+map fF fuzzy-find
+map <c-f> fzf-search
 
 # show documentation
 map g? $lf -doc | less
@@ -416,23 +465,44 @@ map se sort-by-extension
 map sn sort-by-natural
 map ss sort-by-size
 map st sort-by-time
-map sx set reverse!
+map sx sort-reverse
 
 # zip utils
+map xf zip-files
 map xx extract
-# enter name and compress to name.zip
-map xX :zip
 
 # fuzzy-jump-to-dir
-map zz push :z<space>
-map zi :zi
+map zb cd-back
+map zi zoxide-interact
+map zz zoxide-query
+
+# preview window scroll
+map <c-j> scroll-preview 1
+map <c-k> scroll-preview -1
+map <c-b> scroll-preview 16
+map <c-n> scroll-preview -16
 
 # cmd line
 cmap <tab> cmd-menu-complete
 cmap <backtab> cmd-menu-complete-back
+
+cmap <backspace> cmd-word-back
+cmap <c-l> cmd-word
+cmap <c-j> cmd-left
+cmap <c-k> cmd-right
+cmap <c-^> cmd-home
+cmap <c-b> cmd-home
+cmap <c-n> cmd-end
+
+cmap <c-delete> cmd-delete-word
+cmap <c-w> cmd-delete-word
+cmap <c-y> cmd-yank
+
 cmap <c-left> cmd-word-back
 cmap <c-right> cmd-word
-cmap <c-h> cmd-word-back
-cmap <c-l> cmd-word
+cmap left cmd-left
+cmap right cmd-right
+cmap home cmd-home
+cmap end cmd-end
 
 # # vim: set ts=2 sw=2 tw=80 noet :
