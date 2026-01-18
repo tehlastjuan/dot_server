@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+#shellcheck disable=2034
+
+AMD64_NET_BIT_URL="https://cdimage.debian.org/debian-cd/current/amd64/bt-cd/"
+AMD64_DVD_BIT_URL="https://cdimage.debian.org/debian-cd/current/amd64/bt-dvd/"
+AMD64_NET_ISO_URL="https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/"
+AMD64_DVD_ISO_URL="https://cdimage.debian.org/debian-cd/current/amd64/iso-dvd/"
+declare -n WORKURL
+
+NET_BIT_DIR="${PWD}/debian/netinst/torrent"
+NET_ISO_DIR="${PWD}/debian/netinst/iso"
+DVD_BIT_DIR="${PWD}/debian/dvd/torrent"
+DVD_ISO_DIR="${PWD}/debian/dvd/iso"
+declare -n WORKDIR
+
+NET_INFIX="netinst"
+DVD_INFIX="DVD-1"
+declare -n WORKINFIX
+
+SHA256SUM_FN=( SHA256SUMS SHA256SUMS.sign)
+TORRENT_FN=
+ISO_FN=
+
+VERSION=
+
+#----- initialize filenames
+
+_init() {
+  local ver; ver="$(curl -s "$AMD64_NET_ISO_URL" | sed -nr 's/.*debian-([0-9]+.[0-9]+.[0-9]+).*/\1/p')"
+  VERSION=${ver:-0}
+  TORRENT_FN="debian-${VERSION}-amd64-${WORKINFIX}.iso.torrent"
+  ISO_FN="debian-${VERSION}-amd64-${WORKINFIX}.iso"
+}
+
+#----- utils
+
+chsum() {
+  [ ! -f "${1-}" ] && return 1
+  local sha256sum_value
+  sha256sum_value="$(cat "${1-}" | grep -m 1 "${2-}" | head -1)"
+
+  pushd "${WORKDIR}" &> /dev/null && {
+    if [[ "$(sha256sum "${2-}")" == "$sha256sum_value" ]]; then
+      echo "Checksum OK" && return
+    fi
+  }
+  echo "Checksum failed" && false
+}
+
+dl_file() {
+  [ -z "${1-}" ] && return 1
+  [ -d "$WORKDIR" ] || mkdir -p "$WORKDIR"
+  echo "fetching '${WORKURL}${1}'..."
+  wget -qO "${WORKDIR}/${1}" "${WORKURL}${1}"
+  return $?
+}
+
+get_torrent() {
+  for file in "${SHA256SUM_FN[@]}"; do dl_file "${file}"; done
+  if dl_file "$TORRENT_FN"; then
+    chsum "${WORKDIR}/${SHA256SUM_FN[0]}" "$TORRENT_FN"
+  fi
+  return $?
+}
+
+get_iso() {
+  for file in "${SHA256SUM_FN[@]}"; do dl_file "${file}"; done
+  if dl_file "$ISO_FN"; then
+    chsum "${WORKDIR}/${SHA256SUM_FN[0]}" "$ISO_FN"
+  fi
+  return $?
+}
+
+#----- main
+
+_prt_fetch_debiso_info() {
+  cat << EOT
+usage: fetch_debian [FLAG]
+       fetch_debian [-d|--dvd] [-i|--iso]           := download dvd ISO
+       fetch_debian [-d|--dvd] [-t|--torrent]       := download dvd torrent
+       fetch_debian [-n|--netinst] [-i|--iso]       := download netinst ISO
+       fetch_debian [-n|--netinst] [-t|--torrent]   := download netinst torrent
+EOT
+}
+
+_fetch_debian() {
+  case "${1-}" in
+    -d|--dvd)
+      WORKINFIX=DVD_INFIX; _init
+      case "${2-}" in
+        -t|--torrent)
+          WORKDIR=DVD_BIT_DIR
+          WORKURL=AMD64_DVD_BIT_URL
+          get_torrent
+          ;;
+        -i|--iso)
+          WORKDIR=DVD_ISO_DIR
+          WORKURL=AMD64_DVD_ISO_URL
+          get_iso
+          ;;
+        *) _prt_fetch_debiso_info && return 1 ;;
+      esac
+      ;;
+    -n|--netinst)
+      WORKINFIX=NET_INFIX
+      _init
+      case "${2-}" in
+        -t|--torrent)
+          WORKDIR=NET_BIT_DIR
+          WORKURL=AMD64_NET_BIT_URL
+          get_torrent
+          ;;
+        -i|--iso)
+          WORKDIR=NET_ISO_DIR
+          WORKURL=AMD64_NET_ISO_URL
+          get_iso
+          ;;
+        *) _prt_fetch_debiso_info && return 1 ;;
+      esac
+      ;;
+    *) _prt_fetch_debiso_info ;;
+  esac
+}
+
+if [[ "${#BASH_SOURCE[@]}" -eq 1 ]]; then
+  _fetch_debian "$@"
+fi

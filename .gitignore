@@ -1,5 +1,6 @@
 # add your ignored files/folders here
 
+debian/
 docker/
 pulse/
 xfce4/

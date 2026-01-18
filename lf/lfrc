@@ -284,7 +284,7 @@ cmd zi ${{
 }}
 
 # search in files w/ fzf
-cmd fzf_search ${{
+cmd fzf-search ${{
   if hash bat 2> /dev/null; then
 		preview="bat --color=always --theme=TwoDark --number --tabs=2 --wrap=auto {1} --highlight-line {2}"
 	else
