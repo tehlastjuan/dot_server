@@ -5,10 +5,10 @@ set -euo pipefail  # Exit on error, undefined vars, pipe failures
 USER_HOME="/home/$USER"
 CONFIG_OLD="$HOME/.config.old"
 FILES=(
-    bashrc
-    bash_logout
-    profile
-    vimrc
+    'bash/bashrc'
+    'bash/bash_logout'
+    'bash/profile'
+    'vim/vimrc'
   )
 
 _install_dot_server() {
@@ -28,13 +28,13 @@ _install_dot_server() {
   fi
 
   for _file in "${FILES[@]}"; do
-    if [[ -L "${USER_HOME}/.${_file}" ]]; then
-      rm "${USER_HOME}/.${_file}"
-      ln -s "${USER_HOME}/.config/bash/${_file}" "${USER_HOME}/.${_file}"
-    elif [[ -f "${USER_HOME}/.${_file}" ]]; then
+    if [[ -L "${USER_HOME}/.${_file##/*}" ]]; then
+      rm "${USER_HOME}/.${_file##/*}"
+      ln -s "${USER_HOME}/.config/${_file}" "${USER_HOME}/.${_file##/*}"
+    elif [[ -f "${USER_HOME}/.${_file##/*}" ]]; then
       [[ -d "$CONFIG_OLD" ]] || mkdir -p "$CONFIG_OLD"
-      mv "${USER_HOME}/.${_file}" "$CONFIG_OLD/${_file}"
-      ln -s "${USER_HOME}/.config/bash/${_file}" "${USER_HOME}/.${_file}"
+      mv "${USER_HOME}/.${_file##/*}" "$CONFIG_OLD/${_file##/*}"
+      ln -s "${USER_HOME}/.config/${_file}" "${USER_HOME}/.${_file##/*}"
     fi
   done
 
