@@ -19,11 +19,13 @@ fi
 # shellcheck disable=2016
 build_ps1() {
   local domain_name='\u@\h'
+  local hostname=
 	if [ -f "/etc/resolv.conf" ]; then
-		domain_name+=".$(cat /etc/resolv.conf | grep 'search' | grep -v '^#' | cut -d ' ' -f 2)"
+		hostname="$(cat /etc/resolv.conf | grep 'search' | grep -v '^#' | cut -d ' ' -f 2)"
 	elif [ -f "/etc/hosts" ]; then
-		domain_name+=".$(cat /etc/hosts | grep "$HOSTNAME" | cut -f 2)"
+		hostname="$(cat /etc/hosts | grep "$HOSTNAME" | cut -f 2)"
 	fi
+  [ -n "$hostname" ] && domain_name+=".${hostname}"
 
   local dir_name='\[\033[01;32m\]\W'
   local git_branch='\[\033[01;36m\]$(__git_ps1 " %s")'

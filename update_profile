@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
-set -euo pipefail  # Exit on error, undefined vars, pipe failures
+set -euo pipefail
 
 USER_HOME="/home/$USER"
-CONFIG_OLD="$HOME/.config.old"
+CONFIG_DIR="${USER_HOME}/.config"
+CONFIG_OLD="${USER_HOME}/.config.old"
 FILES=(
     'bash/bashrc'
     'bash/bash_logout'
@@ -14,35 +15,35 @@ FILES=(
 _install_dot_server() {
   printf "Installing dot_server files... "
 
-  if [[ -d "${USER_HOME}/.config" ]]; then
-    if git -C "${USER_HOME}/.config" rev-parse --is-inside-work-tree &>/dev/null; then
-      if [[ $(git -C "${USER_HOME}/.config" remote get-url --no-all origin) != *dot_server* ]]; then
+  if [ -d "$CONFIG_DIR" ]; then
+    if git -C "$CONFIG_DIR" rev-parse --is-inside-work-tree &>/dev/null; then
+      [[ $(git -C "$CONFIG_DIR" remote get-url --no-all origin) != *dot_server* ]] && {
         echo "Unknown dot files installation. Aborting." && return 1
-      fi
+      }
     fi
   fi
 
-  [[ -d "${USER_HOME}/.local" ]] || mkdir -p "${USER_HOME}/.local"
-  if [[ -d "${USER_HOME}/dot_server" ]]; then
-    mv "${USER_HOME}/dot_server" "${USER_HOME}/.config"
+  [ -d "${USER_HOME}/.local" ] || mkdir -p "${USER_HOME}/.local"
+  if [ -d "${USER_HOME}/dot_server" ]; then
+    mv "${USER_HOME}/dot_server" "$CONFIG_DIR"
   fi
 
   for _file in "${FILES[@]}"; do
-    if [[ -L "${USER_HOME}/.${_file##/*}" ]]; then
-      rm "${USER_HOME}/.${_file##/*}"
-      ln -s "${USER_HOME}/.config/${_file}" "${USER_HOME}/.${_file##/*}"
-    elif [[ -f "${USER_HOME}/.${_file##/*}" ]]; then
+    local filename="${_file##*/}"
+    local home_filename="${USER_HOME}/.${filename}"
+    local dots_filename="${CONFIG_DIR}/${_file}"
+
+    if [ -L "$home_filename" ]; then
+      rm "$home_filename"
+    elif [ -f "$home_filename" ]; then
       [[ -d "$CONFIG_OLD" ]] || mkdir -p "$CONFIG_OLD"
-      mv "${USER_HOME}/.${_file##/*}" "$CONFIG_OLD/${_file##/*}"
-      ln -s "${USER_HOME}/.config/${_file}" "${USER_HOME}/.${_file##/*}"
+      mv "$home_filename" "${CONFIG_OLD}/${home_filename##/*}"
     fi
+
+    ln -s "$dots_filename" "$home_filename"
   done
 
-  if [[ -L "$HOME/.viminfo" ]]; then
-    rm "$HOME/.viminfo"
-  elif [[ -f "$HOME/.viminfo" ]]; then
-    rm "$HOME/.viminfo"
-  fi
+  [ -e "${USER_HOME}/.viminfo" ] && rm "${USER_HOME}/.viminfo"
 
   echo "Done."
   return
