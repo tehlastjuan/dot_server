@@ -309,9 +309,9 @@ EOF
   JAIL_LOCAL_CONFIG=$(cat << EOF
 [DEFAULT]
 ignoreip = 127.0.0.1/8 ::1
-bantime = 1d
+bantime = -1
 findtime = 10m
-maxretry = 5
+maxretry = 3
 banaction = ufw
 
 [sshd]
@@ -324,7 +324,6 @@ enabled = true
 port = all
 filter = ufw-probes
 logpath = /var/log/ufw.log
-maxretry = 3
 EOF
   )
 

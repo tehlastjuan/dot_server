@@ -300,8 +300,8 @@ EXEC                   01;32
 *viminfo               00;37
 
 # prg
-*justfile              38;5;02
 *config                00;35
+*justfile              38;5;02
 .bash                  38;5;02
 .csh                   38;5;02
 .sh                    38;5;02
@@ -320,7 +320,7 @@ EXEC                   01;32
 .csv                   00;35
 .def                   00;35
 .go                    00;35
-.h                     38;5;08
+.h                     00;35
 .hs                    00;35
 .htm                   00;35
 .html                  00;35

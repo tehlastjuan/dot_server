@@ -2,8 +2,6 @@
 # shellcheck disable=1091
 
 # If not running interactively, don't do anything
-# [[ $- != *i* ]] && return
-# or
 case $- in
   *i*) ;;
   *) return ;;
@@ -22,8 +20,10 @@ shopt -s cdspell         # Auto-corrects cd misspellings
 shopt -s dotglob         # Include dotfiles in pathname expansion
 shopt -s expand_aliases  # Expand aliases
 shopt -s extglob         # Enable extended pattern-matching features
-[[ $DISPLAY ]] && \
+
+if [[ $WAYLAND_DISPLAY || $DISPLAY ]]; then
   shopt -s checkwinsize  # Update LINES and COLUMNS after each command
+fi
 
 # Load env exports
 . "$HOME/.config/bash/exports"

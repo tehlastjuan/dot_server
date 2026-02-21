@@ -6,6 +6,11 @@ elif [ -f /etc/bash_completion ]; then
   . /etc/bash_completion.d/000_bash_completion_compat.bash
 fi
 
+# complete alias plugin
+if [ -f "$XDG_CONFIG_HOME/bash/completion.d/complete_alias" ]; then
+ . "$XDG_CONFIG_HOME/bash/completion.d/complete_alias"
+fi
+
 # bash completion
 if [ -f "$XDG_CONFIG_HOME/bash/completion.d/git-completion.sh" ]; then
   . "$XDG_CONFIG_HOME/bash/completion.d/git-completion.sh"
@@ -17,9 +22,9 @@ if [ -f "$XDG_CONFIG_HOME/bash/completion.d/git-prompt.sh" ]; then
 fi
 
 # docker completion
-if [ -f "$XDG_CONFIG_HOME/bash/completion.d/docker-completion.sh" ]; then
-  . "$XDG_CONFIG_HOME/bash/completion.d/docker-completion.sh"
-fi
+# if [ -f "$XDG_CONFIG_HOME/bash/completion.d/docker-completion.sh" ]; then
+#   . "$XDG_CONFIG_HOME/bash/completion.d/docker-completion.sh"
+# fi
 
 # gradle completion
 if [ -f "$XDG_CONFIG_HOME/bash/completion.d/gradle-completion.bash" ]; then

@@ -17,7 +17,8 @@ if hash fzf 2> /dev/null; then
   keymaps="$(printf ",%s" "${fzf_keymaps[@]}")"
 
   export FZF_DEFAULT_OPTS="
-    --layout=reverse --margin=1 --info=inline-right --separator=- --no-height --bind ${keymaps:1}
+    --layout=reverse --margin=1 --info=inline-right --separator=- --no-height
+    --bind ${keymaps:1}
     --color=fg:7,fg+:3
     --color=bg:#1e222a,bg+:#1e222a
     --color=hl:4,hl+:11
@@ -36,19 +37,39 @@ if hash fzf 2> /dev/null; then
     --separator='─'
     --scrollbar='│'"
 
+  width=80
+
+  # shellcheck disable=2016
+  opener='
+    case $(file --dereference --mime-type "$file" -b) in
+      application/json) $EDITOR "$file" ;;
+      text/*)           $EDITOR "$file" ;;
+      *)                return 1 ;;
+    esac'
+
+  if hash rg 2> /dev/null; then
+    # files
+    FZF_DEFAULT_COMMAND="rg --vimgrep --files --follow --hidden --no-ignore-vcs --smart-case --glob !**/.git/* --glob !**/.cache/* --"
+  else
+    # files
+    FZF_DEFAULT_COMMAND="grep --dereference-recursive --binary-files=without-match --files-with-matches --exclude !**/.git/* --exclude !**/.cache/* --with-filename -- ."
+  fi
+
+  export FZF_DEFAULT_COMMAND
+  export FZF_CTRL_T_COMMAND=$FZF_DEFAULT_COMMAND
+
   export FZF_CTRL_T_OPTS="
-    --walker-skip .git,node_modules,target
+    --walker-skip .git,node_modules,target,.cache
+    --bind 'enter:execute-silent($opener)'
+    --preview-window "right,$width"
     --preview '$XDG_CONFIG_HOME/lf/preview {}'"
 
   export FZF_ALT_C_OPTS="
-    --walker-skip .git,node_modules,target
-    --preview 'tree -s -h --du -C {}'"
+    --walker-skip .git,node_modules,target,.cache
+    --bind 'enter:execute(lf {})+accept+close'
+    --preview-window "right,$width"
+    --preview 'tree -L 1 -l -d -s -h --du -C {}'"
 
-  if hash rg 2> /dev/null; then
-    export FZF_DEFAULT_COMMAND="
-      rg --vimgrep --files --follow --hidden --no-ignore-vcs --smart-case --glob !**/.git/*"
-  fi
- 
-  unset fzf_keymaps keymaps
+  unset fzf_keymaps keymaps width opener
   eval "$(fzf --bash)"
 fi

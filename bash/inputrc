@@ -3,7 +3,7 @@
 $include /etc/inputrc
 
 # Ring the bell, let other programs handle it (urxvt, tmux, etc.)
-set bell-style audible
+set bell-style none
 
 # Ignore case when matching and completing paths
 set completion-ignore-case on

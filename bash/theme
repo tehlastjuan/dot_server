@@ -8,13 +8,24 @@ fi
 
 if [[ "$OSTYPE" == linux-gnu* ]]; then
   # Load directory and file colors for GNU ls
-  eval "$(dircolors -b "$XDG_CONFIG_HOME/bash/dircolors")"
-
-  if [ -z "${LS_COLORS}" ]; then
-    LS_COLORS="$(dircolors -b "$XDG_CONFIG_HOME/bash/dircolors")"
-    export LS_COLORS
+  if [ -f "$XDG_CONFIG_HOME/bash/dircolors" ]; then
+    eval "$(dircolors -b "$XDG_CONFIG_HOME/bash/dircolors")"
+  else
+    eval "$(dircolors)"
   fi
 fi
+
+# better debug info for set -x
+# shellcheck disable=2016
+build_ps4() {
+  local proc_status='$(if [ "$?" -eq 0 ]; then echo "\033[32m"; else echo "\033[31m"; fi)'
+  local line_num='$(printf "%4u" "$LINENO")\033[0m'
+  local source_script='${BASH_SOURCE[0]##*/}/${FUNCNAME[0]:-''}'
+  echo -e "${proc_status}${line_num} ${source_script}\t"
+}
+
+export PS4
+PS4=$(build_ps4)
 
 # shellcheck disable=2016
 build_ps1() {
@@ -41,11 +52,3 @@ build_ps1() {
 }
 
 build_ps1
-
-# if [ -n "$SSH_TTY" ] || [ -e "/.dockerenv" ]; then
-#   PS1='\[\033[01;33m\]\u@\h \[\033[01;32m\]\W\[\033[01;36m\]$(__git_ps1 " %s")\[\033[49m\]\[\033[01;32m\] \$\[\033[00m\] '
-# elif [ "$(id -u)" -eq 0 ]; then
-#   PS1='\[\033[01;31m\]\u@\H \[\033[01;32m\]\W\[\033[01;36m\]$(__git_ps1 " %s")\[\033[49m\]\[\033[01;32m\] \$\[\033[00m\] '
-# else
-#   PS1='\[\033[01;32m\]\W\[\033[01;36m\]$(__git_ps1 " %s")\[\033[49m\]\[\033[01;32m\] \$\[\033[00m\] '
-# fi

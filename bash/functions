@@ -3,7 +3,7 @@
 # cd to current dir on lf quit
 r() {
   export LF_CD_FILE=/var/tmp/.lfcd-$$
-  command lf "${@}" && reset -Q
+  command lf "${@}"
   if [ -s "$LF_CD_FILE" ]; then
     local DIR
     DIR="$(realpath "$(cat "$LF_CD_FILE")")"
@@ -18,15 +18,9 @@ r() {
 # fzf file opener
 f() {
   local file
-  local files
-  declare -a files
-
-  IFS=$'\n' read -d "" -ra files <<< "$(fzf --query="$1" --select-1 --exit-0 --preview="$XDG_CONFIG_HOME/lf/preview {}")"
-  file=$(head -2 <<< "$files" | tail -1)
-
-  if [[ -n $file ]]; then
-    type=$(xdg-mime query filetype "$file")
-    case "$type" in
+  file=$(fzf --query="$1" --select-1 --exit-0 --preview="$XDG_CONFIG_HOME/lf/preview {}")
+  if [ -n "$file" ]; then
+    case $(file --dereference --mime-type "$file" -b) in
       application/json) $EDITOR "$file" ;;
       text/*)           $EDITOR "$file" ;;
       *)                return 1 ;;
@@ -36,25 +30,17 @@ f() {
 
 # note ./here
 nh() {
-  "${EDITOR}" "$(date +%U-%y%m%d-%H%M).md"
-}
-
-# touch / mkdir in ./here
-th() {
-  case $1 in
-    -d) mkdir "$(date +%y%m%d-%H%M%m)" ;;
-    -f|*) touch "$(date +%y%m%d-%H%M%m)" ;;
+  case "${1-}" in
+    -u|--unix) shift; $EDITOR "${1:-"note"}-$(date +%s).md" ;;
+    *) $EDITOR "${1:-"note"}-$(date +%Y%m%d-%H%M%S).md" ;;
   esac
 }
 
 jctl() {
-  local cols
-  local width
-  declare -i cols
-  declare -i width
-
+  local -i cols
+  local -i width
   cols=$(tput cols)
-  width=$(if [ $cols -lt 121 ]; then echo 113; else echo $(( cols - 4 )); fi)
+  width=$(if [ $cols -lt 121 ]; then echo 113; else echo $((cols - 4));   fi)
   journalctl "$@" |
     bat --style=plain --language=log --wrap=character --terminal-width=$width
 }
@@ -71,62 +57,34 @@ sjctl() {
 
 # SHA256 file check
 chsum() {
-  [ $# -lt 2 ] && return 1
-  local dl_checksum
-  local dl_file
-  dl_checksum="$1"
-  dl_file="$2"
-  [ "$(sha256sum "$dl_file")" = "$dl_checksum  $dl_file" ] && {
+  local checksum=
+  local filename=
+
+  __prt_info() {
+    cat << EOT
+usage: chsum [ARGS]
+       chsum [FILE]              := read file l1 with "SHA256SUM  FILENAME"
+       chsum [STRING]            := read string "SHA256SUM  FILENAME"
+       chsum [SUM] [FILENAME]    := read string "SHA256SUM", read string "FILENAME"
+EOT
+    }
+
+  if [ -f "${1-}" ]; then
+    local line; line=$(cat "$1" | head -1)
+    checksum=${line%  *}
+    filename=${line##*  }
+  elif [ $# -eq 1 ]; then
+    checksum=${1%  *}
+    filename=${1##*  }
+  elif [ $# -eq 2 ]; then
+    checksum=${1}
+    filename=${2}
+  else
+    __prt_info && return 1
+  fi
+
+  if [[ "$(sha256sum "$filename")" == "$checksum  $filename" ]]; then
     echo "Checksum OK" >&2 && return
-  }
+  fi
   echo "Checksum failed" >&2 && false
-}
-
-# single-thread compiler
-cr() {
-  if [ -f "$1" ]; then
-    filename=${1%*.?}
-    case $2 in
-      clang)
-        if hash clang 2> /dev/null; then
-          clang -Wall -g "$1" -lm -o "${filename}"
-        else echo "No clang binary found"; fi
-        ;;
-      gcc|*)
-        if hash gcc 2> /dev/null; then
-          gcc -Wall -g "$1" -lm -o "${filename}"
-        else echo "No gcc binary found"; fi
-        ;;
-    esac
-  else echo "No .c file found"; fi
-}
-
-# multi-thread compiler
-crt() {
-  if [ -f "$1" ]; then
-    filename=${1%*.?}
-    if hash gcc 2> /dev/null; then
-      gcc -pthread -Wall -g "$1" -lm -o "${filename}"
-    else echo "No gcc binary found"; fi
-  else echo "No .c file found"; fi
-}
-
-# java compiler
-jc() {
-  if [[ -d "./src/${1}" ]]; then
-    dirpath="./src/${1}"
-    if hash javac 2> /dev/null; then
-      javac -d ./bin "${dirpath}"/*.java
-    else echo "No java binaries found"; fi
-  else echo "No directory name \"./src/${1}\" found"; fi
-}
-
-# java runner
-jr() {
-  if [[ -d "./bin/${1}" ]]; then
-    dirname="${1}"
-    if hash java 2> /dev/null; then
-      java -cp ./bin "${dirname}".Program
-    else echo "No java binaries found"; fi
-  else echo "No directory name \"./bin/${1}\" found"; fi
 }
