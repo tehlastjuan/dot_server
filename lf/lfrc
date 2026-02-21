@@ -395,30 +395,33 @@ map zn
 map za
 map zs
 map zt
+map <lt>
+map <gt>
 map <tab>
-map <c-i>
-map <c-p>
-map <c-m>
+map <c-b>
 map <c-h>
-map <c-l>
+map <c-i>
 map <c-j>
 map <c-k>
-map <c-x>
+map <c-l>
+map <c-m>
+map <c-n>
+map <c-p>
 map <c-w>
 map <backspace>
 map <backspace2>
-map <lt>
-map <gt>
 cmap <tab>
-cmap <c-i>
-cmap <c-p>
-cmap <c-m>
+cmap <c-b>
 cmap <c-h>
-cmap <c-l>
+cmap <c-i>
 cmap <c-j>
 cmap <c-k>
-cmap <c-x>
+cmap <c-l>
+cmap <c-m>
+cmap <c-n>
+cmap <c-p>
 cmap <c-w>
+cmap <c-x>
 cmap <backspace>
 
 # actual mappings
@@ -480,6 +483,10 @@ map zb cd-back
 map zi zoxide-interact
 map zz zoxide-query
 
+# general navigation
+map <backspace> updir
+map <c-l> open
+
 # preview window scroll
 map <c-j> scroll-preview 1
 map <c-k> scroll-preview -1
@@ -505,10 +512,11 @@ cmap <c-home> cmd-home
 cmap <c-end> cmd-end
 cmap <home> cmd-home
 cmap <end> cmd-end
-
 cmap <c-^> cmd-home
+cmap <c-e> cmd-end
 
 cmap <c-delete> cmd-delete-word
+cmap <c-backspace2> cmd-delete-back
 cmap <c-d> cmd-delete-word
 cmap <c-x> cmd-delete
 cmap <c-y> cmd-yank
