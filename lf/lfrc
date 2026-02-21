@@ -403,9 +403,12 @@ map <c-h>
 map <c-l>
 map <c-j>
 map <c-k>
+map <c-x>
 map <c-w>
 map <backspace>
 map <backspace2>
+map <lt>
+map <gt>
 cmap <tab>
 cmap <c-i>
 cmap <c-p>
@@ -414,6 +417,7 @@ cmap <c-h>
 cmap <c-l>
 cmap <c-j>
 cmap <c-k>
+cmap <c-x>
 cmap <c-w>
 cmap <backspace>
 
@@ -486,23 +490,27 @@ map <c-n> scroll-preview -16
 cmap <tab> cmd-menu-complete
 cmap <backtab> cmd-menu-complete-back
 
-cmap <backspace> cmd-word-back
-cmap <c-l> cmd-word
-cmap <c-j> cmd-left
-cmap <c-k> cmd-right
-cmap <c-^> cmd-home
-cmap <c-b> cmd-home
-cmap <c-n> cmd-end
-
-cmap <c-delete> cmd-delete-word
-cmap <c-w> cmd-delete-word
-cmap <c-y> cmd-yank
+cmap <backspace> cmd-left
+cmap <left> cmd-left
+cmap <right> cmd-right
+cmap <c-h> cmd-left
+cmap <c-l> cmd-right
 
 cmap <c-left> cmd-word-back
 cmap <c-right> cmd-word
-cmap left cmd-left
-cmap right cmd-right
-cmap home cmd-home
-cmap end cmd-end
+cmap <c-b> cmd-word-back
+cmap <c-n> cmd-word
+
+cmap <c-home> cmd-home
+cmap <c-end> cmd-end
+cmap <home> cmd-home
+cmap <end> cmd-end
+
+cmap <c-^> cmd-home
+
+cmap <c-delete> cmd-delete-word
+cmap <c-d> cmd-delete-word
+cmap <c-x> cmd-delete
+cmap <c-y> cmd-yank
 
 # # vim: set ts=2 sw=2 tw=80 noet :
