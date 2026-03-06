@@ -32,7 +32,7 @@ build_ps1() {
   local domain_name='\u@\h'
   local hostname=
 	if [ -f "/etc/resolv.conf" ]; then
-		hostname="$(cat /etc/resolv.conf | grep 'search' | grep -v '^#' | cut -d ' ' -f 2)"
+		hostname="$(cat /etc/resolv.conf | grep -v '^#' | grep 'search' | cut -d ' ' -f 2 | sed 's/^.$//i')"
 	elif [ -f "/etc/hosts" ]; then
 		hostname="$(cat /etc/hosts | grep "$HOSTNAME" | cut -f 2)"
 	fi
