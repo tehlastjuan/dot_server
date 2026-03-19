@@ -101,6 +101,18 @@ if [ -f "$XDG_CONFIG_HOME/wget/wgetrc" ]; then
 	export WGETRC="$XDG_CONFIG_HOME/wget/wgetrc"
 fi
 
+# enable network connection forwarding, see route_fwd.sh
+export FORWARDING=0
+export IS_FORWARDING=0
+
+FORWARDING=$(sysctl net.ipv4.ip_forward | sed -E 's/.*= //g')
+if [ "$FORWARDING" -eq 1 ]; then
+	[ "$IS_FORWARDING" -eq 0 ] && {
+		bash -c "$XDG_CONFIG_HOME/route_fwd.sh"
+		IS_FORWARDING=1
+	}
+fi
+
 
 #----- Dev Utilities
 
@@ -196,7 +208,7 @@ if hash java 2> /dev/null; then
 		"-Dquill.macro.log=false"
 		"-XX:+PerfDisableSharedMem"
 	)
-	export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} ${_JAVA_TOOL_OPTS[*]}"
+	export JAVA_TOOL_OPTIONS="${_JAVA_TOOL_OPTS[*]}"
 
 	# java JDK opts
 	_JDK_OPTS=(
@@ -211,7 +223,7 @@ if hash java 2> /dev/null; then
 		"-Dsun.java2d.opengl=true"
 		"-Dsun.java2d.opengl.fbobject=false"
 	)
-	export JDK_JAVA_OPTIONS="${JDK_JAVA_OPTIONS} ${_JDK_OPTS[*]}"
+	export JDK_JAVA_OPTIONS="${_JDK_OPTS[*]}"
 
 	# gradle builder
 	export GRADLE_USER_HOME="$XDG_DATA_HOME/gradle"
