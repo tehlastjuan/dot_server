@@ -105,12 +105,14 @@ fi
 export FORWARDING=0
 export IS_FORWARDING=0
 
-FORWARDING=$(sysctl net.ipv4.ip_forward | sed -E 's/.*= //g')
-if [ "$FORWARDING" -eq 1 ]; then
-	[ "$IS_FORWARDING" -eq 0 ] && {
-		bash -c "$XDG_CONFIG_HOME/route_fwd.sh"
-		IS_FORWARDING=1
-	}
+if hash sysctl 2> /dev/null; then
+	FORWARDING=$(sysctl net.ipv4.ip_forward | sed -E 's/.*= //g')
+	if [ "$FORWARDING" -eq 1 ]; then
+		[ "$IS_FORWARDING" -eq 0 ] && {
+			bash -c "$XDG_CONFIG_HOME/route_fwd.sh"
+			IS_FORWARDING=1
+		}
+	fi
 fi
 
 
