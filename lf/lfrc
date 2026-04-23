@@ -7,7 +7,7 @@ set ifs "\n"
 # formats
 set cursorparentfmt "\033[7m"
 set cursorpreviewfmt ""
-set borderfmt "\033[39;49;1m"
+set borderfmt "\033[33m"
 set numberfmt "\033[30;49:1m"
 set timefmt "_2/Jan/2006 15:04"
 set infotimefmtnew "_2.Jan 15:04"

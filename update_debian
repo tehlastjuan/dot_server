@@ -105,6 +105,41 @@ CORE_PKG=(
   lsof
 )
 
+# CORE_PKGS=(
+#   ufw
+#   unattended-upgrades
+#   chrony
+#   rsync
+#   wget
+# 
+#   vim
+#   htop
+#   iotop
+#   nethogs
+#   netcat-traditional
+#   ncdu
+# 
+#   tree
+#   rsyslog
+#   cron
+#   jq
+#   gawk
+#   coreutils
+#   perl
+#   skopeo
+#   git
+# 
+#   apt-listchanges
+#   ca-certificates
+#   gnupg
+#   logrotate
+#   make
+# 
+#   ssh
+#   openssh-client
+#   openssh-server
+# )
+
 _install_core_pkg() {
   _prt_init_msg "Installing core packages..."
   if ! apt-get install -y -qq --no-install-recommends "${CORE_PKG[@]}"; then
