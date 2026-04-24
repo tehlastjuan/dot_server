@@ -16,8 +16,16 @@ export  XDG_STATE_HOME="$HOME/.local/state"
 
 [ -d "$XDG_CONFIG_HOME" ] || mkdir -m 0750 "$XDG_CONFIG_HOME"
 [ -d "$XDG_CACHE_HOME" ]  || mkdir -m 0750 "$XDG_CACHE_HOME"
-[ -d "$XDG_DATA_HOME" ]   || mkdir -m 0750 "$XDG_DATA_HOME"
-[ -d "$XDG_STATE_HOME" ]  || mkdir -m 0750 "$XDG_STATE_HOME"
+
+if [ ! -d "$XDG_DATA_HOME" ]; then
+	mkdir -p 0750 "$XDG_DATA_HOME"
+	chown 0750 "$XDG_DATA_HOME"
+fi
+
+if [ ! -d "$XDG_STATE_HOME" ]; then
+	mkdir -p 0750 "$XDG_STATE_HOME"
+	chown 0750 "$XDG_STATE_HOME"
+fi
 
 # Gnupg stuff
 export GNUPGHOME="$HOME/.local/share/gnupg"

@@ -1,17 +1,17 @@
 # add your ignored files/folders here
 *
 
-bash/
-bat/
-bin/
-lf/
-vim/
-wget/
+!bash/
+!bat/
+!bin/
+!lf/
+!vim/
+!wget/
 
-fetch_debian
-LICENSE
-README.md
-route_fwd.sh
-update_debian
-update_profile
-update_utils
+!fetch_debian
+!LICENSE
+!README.md
+!route_fwd.sh
+!update_debian
+!update_profile
+!update_utils
