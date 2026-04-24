@@ -2,30 +2,32 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$PWD"
 USER_HOME="$HOME"
-CONFIG_DIR="${USER_HOME}/.config"
-CONFIG_OLD="${USER_HOME}/.config.old"
-FILES=(
-    'bash/bashrc'
-    'bash/bash_logout'
-    'bash/profile'
-    'vim/vimrc'
-  )
 
-_install_dot_server() {
-  printf "Installing dot_server files... "
+CONFIG_DIR="${USER_HOME}/.config"
+CONFIG_DIR_OLD="${CONFIG_DIR}.old"
+
+FILES=(
+  'bash/bashrc'
+  'bash/bash_logout'
+  'bash/profile'
+  'vim/vimrc'
+)
+
+update_profile() {
+  if [ ! -d "$USER_HOME" ]; then return 1; fi
 
   if [ -d "$CONFIG_DIR" ]; then
     if git -C "$CONFIG_DIR" rev-parse --is-inside-work-tree &>/dev/null; then
-      [[ $(git -C "$CONFIG_DIR" remote get-url --no-all origin) != *dot_server* ]] && {
+      if [[ "$(git -C "$CONFIG_DIR" remote get-url --no-all origin)" != *dot_server* ]]; then
         echo "Unknown dot files installation. Aborting." && return 1
-      }
+      fi
     fi
-  fi
-
-  [ -d "${USER_HOME}/.local" ] || mkdir -p "${USER_HOME}/.local"
-  if [ -d "${USER_HOME}/dot_server" ]; then
-    mv "${USER_HOME}/dot_server" "$CONFIG_DIR"
+    if [ ! "$CONFIG_DIR" -ef "$SCRIPT_DIR" ]; then
+      mv "$CONFIG_DIR" "$CONFIG_DIR_OLD"
+      mv "$SCRIPT_DIR" "$CONFIG_DIR"
+    fi
   fi
 
   for _file in "${FILES[@]}"; do
@@ -36,75 +38,20 @@ _install_dot_server() {
     if [ -L "$home_filename" ]; then
       rm "$home_filename"
     elif [ -f "$home_filename" ]; then
-      [[ -d "$CONFIG_OLD" ]] || mkdir -p "$CONFIG_OLD"
-      mv "$home_filename" "${CONFIG_OLD}/${home_filename##/*}"
+      [ ! -d "$CONFIG_DIR_OLD" ] && mkdir -p "$CONFIG_DIR_OLD"
+      if [ -d "$CONFIG_DIR_OLD" ]; then
+        mv "$home_filename" "${CONFIG_DIR_OLD}/${home_filename##/*}"
+      fi
     fi
 
     ln -s "$dots_filename" "$home_filename"
   done
 
-  [ -e "${USER_HOME}/.viminfo" ] && rm "${USER_HOME}/.viminfo"
+  [ -f "${USER_HOME}/.viminfo" ] && rm "${USER_HOME}/.viminfo"
 
-  echo "Done."
-  return
+  printf 'Success.\n'
 }
 
-_install_dot_server_by_file(){
-  printf "Installing dot_server files... "
-
-  if [[ -d "${USER_HOME}/.config" ]]; then
-    if git -C "${USER_HOME}/.config" rev-parse --is-inside-work-tree &>/dev/null; then
-      if [[ $(git -C "${USER_HOME}/.config" remote get-url --no-all origin) != *dot_server* ]]; then
-        echo "Unknown dot files installation. Aborting." && return 1
-      fi
-    fi
-  fi
-
-  if [[ -L "${USER_HOME}/.bashrc" ]]; then
-    rm "${USER_HOME}/.bashrc"
-    ln -s "${USER_HOME}/.config/bash/bashrc" "${USER_HOME}/.bashrc"
-  elif [[ -f "${USER_HOME}/.bashrc" ]]; then
-    [[ -d "$CONFIG_OLD" ]] || mkdir -p "$CONFIG_OLD"
-    mv "${USER_HOME}/.bashrc" "$CONFIG_OLD/bashrc"
-    ln -s "${USER_HOME}/.config/bash/bashrc" "${USER_HOME}/.bashrc"
-  fi
-
-  if [[ -L "${USER_HOME}/.bash_logout" ]]; then
-    rm "${USER_HOME}/.bash_logout"
-    ln -s "${USER_HOME}/.config/bash/bash_logout" "${USER_HOME}/.bash_logout"
-  elif [[ -f "${USER_HOME}/.bash_logout" ]]; then
-    [[ -d "$CONFIG_OLD" ]] || mkdir -p "$CONFIG_OLD"
-    mv "${USER_HOME}/.bash_logout" "$CONFIG_OLD/bash_logout"
-    ln -s "${USER_HOME}/.config/bash/bash_logout" "${USER_HOME}/.bash_logout"
-  fi
-
-  if [[ -L "${USER_HOME}/.profile" ]]; then
-    rm "${USER_HOME}/.profile"
-    ln -s "${USER_HOME}/.config/bash/profile" "${USER_HOME}/.profile"
-  elif [[ -f "${USER_HOME}/.bash_logout" ]]; then
-    [[ -d "$CONFIG_OLD" ]] || mkdir -p "$CONFIG_OLD"
-    mv "${USER_HOME}/.profile" "$CONFIG_OLD/profile"
-    ln -s "${USER_HOME}/.config/bash/profile" "${USER_HOME}/.profile"
-  fi
-
-  if [[ -L "${USER_HOME}/.vimrc" ]]; then
-    rm "${USER_HOME}/.vimrc"
-    ln -s "${USER_HOME}/.config/vim/vimrc" "${USER_HOME}/.vimrc"
-  elif [[ -f "${USER_HOME}/.vimrc" ]]; then
-    [[ -d "$CONFIG_OLD" ]] || mkdir -p "$CONFIG_OLD"
-    mv "${USER_HOME}/.vimrc" "$CONFIG_OLD/vimrc"
-    ln -s "${USER_HOME}/.config/vim/vimrc" "${USER_HOME}/.vimrc"
-  fi
-
-  if [[ -L "${USER_HOME}/.viminfo" ]]; then
-    rm "${USER_HOME}/.viminfo"
-  elif [[ -f "${USER_HOME}/.viminfo" ]]; then
-    rm "${USER_HOME}/.viminfo"
-  fi
-
-  echo "Done."
-}
-
-if [[ "${#BASH_SOURCE[@]}" -eq 1 ]]; then
-  _install_dot_server
+if [ "${#BASH_SOURCE[@]}" -eq 1 ]; then
+  update_profile
 fi
