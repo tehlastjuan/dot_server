@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-USER_HOME="/home/$USER"
+USER_HOME="$HOME"
 CONFIG_DIR="${USER_HOME}/.config"
 CONFIG_OLD="${USER_HOME}/.config.old"
 FILES=(
