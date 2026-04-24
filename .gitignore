@@ -1,14 +1,17 @@
 # add your ignored files/folders here
+*
 
-debian/
-docker/
-pulse/
-xfce4/
-htop/
-go/
+bash/
+bat/
+bin/
+lf/
+vim/
+wget/
 
-wget/.wget-hsts
-
-bin/freeBSD/*
-bin/linux_amd64/*
-bin/linux_arm64/*
+fetch_debian
+LICENSE
+README.md
+route_fwd.sh
+update_debian
+update_profile
+update_utils

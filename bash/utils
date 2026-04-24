@@ -7,23 +7,3 @@ if hash zoxide 2>/dev/null; then
   export _ZO_DATA_DIR="$XDG_CACHE_HOME/zoxide"
   eval "$(zoxide init bash)"
 fi
-
-# Java, kotlin, gradle version manager
-sdk() {
-  if [ -f "$XDG_DATA_HOME/sdkman/bin/sdkman-init.sh" ]; then
-    if [[ "$XDG_DATA_HOME/sdkman/bin/sdkman-init.sh" != "${0}" ]]; then
-      . "$XDG_DATA_HOME/sdkman/bin/sdkman-init.sh"
-    fi
-    sdk "$@"
-  fi
-}
-
-# Node version manager
-nvm() {
-  if [ -f "$XDG_DATA_HOME/node/nvm.sh" ]; then
-    if [[ "$XDG_DATA_HOME/node/nvm.sh" != "${0}" ]]; then 
-      . "$XDG_DATA_HOME/node/nvm.sh"
-    fi
-    nvm "$@"
-  fi
-}

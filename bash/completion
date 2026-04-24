@@ -20,13 +20,3 @@ fi
 if [ -f "$XDG_CONFIG_HOME/bash/completion.d/git-prompt.sh" ]; then
   . "$XDG_CONFIG_HOME/bash/completion.d/git-prompt.sh"
 fi
-
-# docker completion
-# if [ -f "$XDG_CONFIG_HOME/bash/completion.d/docker-completion.sh" ]; then
-#   . "$XDG_CONFIG_HOME/bash/completion.d/docker-completion.sh"
-# fi
-
-# gradle completion
-if [ -f "$XDG_CONFIG_HOME/bash/completion.d/gradle-completion.bash" ]; then
-  . "$XDG_CONFIG_HOME/bash/completion.d/gradle-completion.sh"
-fi

@@ -115,38 +115,27 @@ if hash sysctl 2> /dev/null; then
 	fi
 fi
 
+if ! export -p | grep -q XDG_RUNTIME_DIR=; then
+  XDG_RUNTIME_DIR="/run/user/$(id -u "$USER")"
+  export XDG_RUNTIME_DIR
+fi
 
-#----- Dev Utilities
+#----- Utilities
 
-# docker config
-if [ ! -e "/.dockerenv" ]; then
-	if hash docker 2> /dev/null; then
-		export DOCKER_CONFIG="${XDG_CONFIG_HOME}"/docker
-	else
-		if [[ "$OSTYPE" == "freebsd"* ]]; then
-			USER_ID="$(id -u "$USER")"
-		fi
-		if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-			USER_ID="$(id --user)"
-		fi
-		export DOCKER_HOST=unix:///run/user/$USER_ID/docker.sock
-		export DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS="-p 0.0.0.0:2376:2376/tcp"
-	fi
+# docker rootless config
+export DOCKER_CONFIG="${XDG_CONFIG_HOME}"/docker
+export DOCKER_BIN="$HOME/.local/docker_bin"
+append_path "$DOCKER_BIN"
+
+if hash docker 2> /dev/null; then
+	export DOCKER_HOST=unix://${XDG_RUNTIME_DIR}/docker.sock
+	export DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS="-p 0.0.0.0:2376:2376/tcp"
 fi
 
 # Go config
 if hash go 2> /dev/null; then
 	export GOPATH="$XDG_DATA_HOME/go"
 	append_path "$GOPATH/bin"
-fi
-
-# rust
-if [ -d "$XDG_DATA_HOME/rustup" ]; then
-	export RUSTUP_HOME="$XDG_DATA_HOME/rustup"
-fi
-if [ -d "$XDG_DATA_HOME/cargo/bin" ]; then
-	export CARGO_HOME="$XDG_DATA_HOME/cargo"
-	append_path "$CARGO_HOME/bin"
 fi
 
 # python
@@ -159,76 +148,6 @@ if hash pipx 2> /dev/null; then
 	export PIPX_HOME="$XDG_DATA_HOME/python/pipx"
 	export PIPX_BIN_DIR="$XDG_DATA_HOME/python/pipx/bin"
 	append_path "$PIPX_BIN_DIR"
-fi
-
-if hash npm 2> /dev/null; then
-	export NPM_CONFIG_USERCONFIG="$XDG_CONFIG_HOME/npm/npmrc"
-fi
-
-# Pnpm
-if hash pnpm 2> /dev/null; then
-	export PNPM_HOME="$XDG_DATA_HOME/pnpm"
-	append_path "$PNPM_HOME"
-fi
-
-# yarn builder
-if hash yarn 2> /dev/null; then
-	export YARN_GLOBAL_FOLDER="$XDG_DATA_HOME/yarn/berry"
-	export YARN_CACHE_FOLDER="$XDG_CACHE_HOME/yarn"
-	export YARN_ENABLE_TELEMETRY=0
-	append_path "$XDG_DATA_HOME/yarn/global/node_modules/.bin"
-fi
-
-# JS Bun
-if hash bun 2> /dev/null; then
-	export BUN_INSTALL="$XDG_DATA_HOME/bun"
-	append_path "$BUN_INSTALL/bin"
-fi
-
-# php builder
-if hash composer 2> /dev/null; then
-	export COMPOSER_HOME="$XDG_CACHE_HOME/composer"
-fi
-
-# java, kotlin, gradle version manager
-if [ -s "$XDG_DATA_HOME/sdkman/bin/sdkman-init.sh" ]; then
-	export SDKMAN_DIR="$XDG_DATA_HOME/sdkman"
-fi
-
-# Java stuff
-if hash java 2> /dev/null; then
-
-	# Java XWayland blank screens fix
-	export _JAVA_AWT_WM_NONREPARENTING=1
-
-	# java TOOLS opts
-	_JAVA_TOOL_OPTS=(
-		"-Djava.util.prefs.userRoot=$HOME/.config/java"
-		"-Dconfig.override_with_env_vars=true"
-		"-Djava.net.preferIPv4Stack=true"
-		"-Duser.timezone=UTC"
-		"-Dquill.macro.log=false"
-		"-XX:+PerfDisableSharedMem"
-	)
-	export JAVA_TOOL_OPTIONS="${_JAVA_TOOL_OPTS[*]}"
-
-	# java JDK opts
-	_JDK_OPTS=(
-		"-Dawt.useSystemAAFontSettings=on"
-		"-Dawt.toolkit.name=WLToolkit"
-		"-Dswing.aatext=true"
-		"-Dswing.defaultlaf=com.sun.java.swing.plaf.gtk.GTKLookAndFeel"
-		"-Dswing.crossplatformlaf=com.sun.java.swing.plaf.gtk.GTKLookAndFeel"
-		"-Djdk.gtk.version=3"
-		"-Dorg.lwjgl.glfw.libname=/usr/lib/libglfw.so"
-		"-Dawt.java2d.uiScale.enabled=true"
-		"-Dsun.java2d.opengl=true"
-		"-Dsun.java2d.opengl.fbobject=false"
-	)
-	export JDK_JAVA_OPTIONS="${_JDK_OPTS[*]}"
-
-	# gradle builder
-	export GRADLE_USER_HOME="$XDG_DATA_HOME/gradle"
 fi
 
 # Unload our profile API functions

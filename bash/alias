@@ -14,10 +14,11 @@ alias grep='grep --color=auto --exclude-dir=.git'
 alias la='ls -hla --time-style=long-iso'
 alias ip='ip -color=always'
 
+if [[ "$OSTYPE" == "freebsd"* ]]; then
+  alias ls="LC_COLLATE=C ls --color=auto"
+fi
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   alias ls="LC_COLLATE=C ls --color=auto --group-directories-first"
-elif [[ "$OSTYPE" == "freebsd"* ]]; then
-  alias ls="LC_COLLATE=C ls --color=auto"
 fi
 
 #----- utils
