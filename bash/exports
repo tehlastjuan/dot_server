@@ -88,6 +88,9 @@ if hash vim 2> /dev/null; then
 	export SELECTED_EDITOR=$EDITOR
 	export VISUAL=$EDITOR
 	MANPAGER='vim +MANPAGER --not-a-term -'
+
+	[ -d ".local/state/vim/undo" ] ||
+		mkdir -p "${XDG_STATE_HOME}/vim/undo"
 fi
 
 export MANPAGER

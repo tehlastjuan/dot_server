@@ -71,19 +71,17 @@ autocmd BufReadPost *
 
 "Keep undo history across sessions, by storing in file.
 if has('persistent_undo')
-  if !isdirectory(expand('~') . '/.local/state/vim/undo')
-    call mkdir($HOME . '/.local/state/vim/undo', 'p', 0700)
-  else
+  if isdirectory(expand('~') . '/.local/state/vim/undo')
     set undodir=~/.local/state/vim/undo
     set undofile
   endif
 endif
 
 " netrw history
-if !isdirectory(expand('~') . '/.local/state/vim/')
-  call mkdir($HOME . '/.local/state/vim/', 'p', 0700)
+if isdirectory(expand('~') . '/.local/state/vim/')
+  let g:netrw_home=(expand('~') . '/.local/state/vim/')
 endif
-let g:netrw_home=(expand('~') . '/.local/state/vim/')
+
 
 " }
 
