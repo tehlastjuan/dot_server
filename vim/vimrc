@@ -282,12 +282,6 @@ set hlsearch
 " Set the commands to save in history default number is 20
 set history=10000
 
-" a gem found in /usr/share/vim/vimfiles/syntax/lf.vim
-let lfvim = system('! which lf')
-if filereadable(lfvim)
-   execute "source " . lfvim
-endif
-
 " }
 
 
