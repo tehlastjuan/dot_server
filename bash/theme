@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 if [ -z "$(LC_ALL=C type -t __git_ps1)" ]; then
-	__git_ps1() {
-		echo ''
-	}
+  __git_ps1() {
+    echo ''
+  }
 fi
 
 if [[ "$OSTYPE" == linux-gnu* ]]; then
@@ -31,11 +31,11 @@ PS4=$(build_ps4)
 build_ps1() {
   local domain_name='\u@\h'
   local hostname=
-	if [ -f "/etc/resolv.conf" ]; then
-		hostname="$(cat /etc/resolv.conf | grep -v '^#' | grep 'search' | cut -d ' ' -f 2 | sed 's/^.$//i')"
-	elif [ -f "/etc/hosts" ]; then
-		hostname="$(cat /etc/hosts | grep "$HOSTNAME" | cut -f 2)"
-	fi
+  if [ -f "/etc/resolv.conf" ]; then
+    hostname="$(cat /etc/resolv.conf | grep -v '^#' | grep 'search' | cut -d ' ' -f 2 | sed 's/^.$//i')"
+  elif [ -f "/etc/hosts" ]; then
+    hostname="$(cat /etc/hosts | grep "$HOSTNAME" | cut -f 2)"
+  fi
   [ -n "$hostname" ] && domain_name+=".${hostname}"
 
   local dir_name='\[\033[01;32m\]\W'

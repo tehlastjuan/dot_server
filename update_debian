@@ -670,6 +670,7 @@ _run() {
   local update_system="Update system packages?"
   if _confirm "$update_system"; then _update_system; fi
 
+  printf '%s\n' "${CORE_PKG[*]}"
   local packages_core="Install core packages?"
   if _confirm "$packages_core"; then _install_core_pkg; fi
 
@@ -679,6 +680,7 @@ _run() {
   local update_locale="Update locale to US-UTF-8?"
   if _confirm "$update_locale"; then _update_locale; fi
 
+  printf '%s\n' "${HARDENING_PKG[*]}"
   local packages_hardening="Install net & hardening packages?"
   if _confirm "$packages_hardening"; then _install_hardening_pkg; fi
 
