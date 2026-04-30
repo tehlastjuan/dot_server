@@ -87,7 +87,7 @@ if hash vim 2> /dev/null; then
   export SUDO_EDITOR=$EDITOR
 	export SELECTED_EDITOR=$EDITOR
 	export VISUAL=$EDITOR
-	MANPAGER='vim +MANPAGER --not-a-term -'
+	MANPAGER=$(printf '%s' "vim +MANPAGER -c \"set wrap\" --not-a-term -")
 
 	[ -d ".local/state/vim/undo" ] ||
 		mkdir -p "${XDG_STATE_HOME}/vim/undo"
