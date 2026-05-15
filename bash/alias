@@ -5,7 +5,13 @@
 
 alias c=clear
 alias so="source ${HOME}/.bashrc"
+alias sudo='sudo '
+alias watch='watch '
 alias wget="wget --hsts-file $XDG_CACHE_HOME/wget-hsts"
+alias ctl='systemctl'
+if [ -n "$BASH" ] && type _complete_alias &>/dev/null; then
+  complete -F _complete_alias ctl
+fi
 
 #----- colors
 
@@ -22,15 +28,7 @@ fi
 
 #----- utils
 
-alias whereami="curl -s https://am.i.mullvad.net/json | jq '.'"
 alias ipme="curl -s https://ip.me"
-
-#----- dirs
-
-alias uxh="cd $XDG_CONFIG_HOME"
-alias uxd="cd $XDG_DATA_HOME"
-alias uxc="cd $XDG_CACHE_HOME"
-alias uxs="cd $XDG_STATE_HOME"
 
 #----- git
 

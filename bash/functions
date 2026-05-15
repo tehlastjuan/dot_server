@@ -28,6 +28,11 @@ f() {
   fi
 }
 
+# get file stats
+fst() {
+  stat --format '%a' "${1-}"
+}
+
 # note ./here
 nh() {
   case "${1-}" in
@@ -36,55 +41,106 @@ nh() {
   esac
 }
 
+# git commit browser
+gcb() {
+  if git -C "$PWD" rev-parse --is-inside-work-tree &> /dev/null; then
+    git log --color=always \
+      --format="%C(auto)%h%d %s %C(blue)%C(bold)%ch" "$@" |
+      fzf --ansi --no-sort --reverse --tiebreak=index \
+        --bind=ctrl-s:toggle-sort \
+        --preview="(git show --color=always \$(echo {} | grep -o '[a-f0-9]\{7\}'))"
+  fi
+}
+
+# pretty-print journalctl
 jctl() {
-  local -i cols
-  local -i width
-  cols=$(tput cols)
-  width=$(if [ $cols -lt 121 ]; then echo 113; else echo $((cols - 4));   fi)
-  journalctl "$@" |
-    bat --style=plain --language=log --wrap=character --terminal-width=$width
+  local -i _cols
+  local -i _width
+  _cols=$(tput cols)
+  if [ $_cols -lt 121 ]; then : 113; else : $((_cols - 4)); fi
+  _width=$(printf '%s' "$_")
+
+  local -a _cmd=()
+  case "${1-}" in
+    -h|--help)
+      cat << EOT
+usage: jctl [OPTS]
+options:
+  --sudo  :run as sudo
+EOT
+      return
+      ;;
+    --sudo)
+      shift
+      _cmd+=("sudo")
+      ;;
+  esac
+  _cmd+=(
+    "journalctl"
+    "${@}"
+    "| bat --style=plain --language=log --wrap=character --terminal-width=${_width}"
+  )
+
+  bash -c "${_cmd[*]}"
 }
 
-# pretty-print journalctl with sudo
-sjctl() {
-  local -i cols
-  local -i width
-  cols=$(tput cols)
-  width=$(if [ $cols -lt 121 ]; then echo 113; else echo $((cols - 4));   fi)
-  sudo journalctl "$@" |
-    bat --style=plain --language=log --wrap=character --terminal-width=$width
-}
-
-# SHA256 file check
-chsum() {
-  local checksum=
-  local filename=
-
+# SHA256 check
+fsum() {
   __prt_info() {
     cat << EOT
-usage: chsum [ARGS]
-       chsum [FILE]              := read file l1 with "SHA256SUM  FILENAME"
-       chsum [STRING]            := read string "SHA256SUM  FILENAME"
-       chsum [SUM] [FILENAME]    := read string "SHA256SUM", read string "FILENAME"
+usage: fsum [ARGS]
+args:
+  [FILE]
+    read line 1 in [FILE] with "SHA256SUM  FILENAME"
+  [STRING]
+    read string "SHA256SUM  FILENAME"
+  [SUM] [FILENAME]
+    read \$1 "SHA256SUM", read \$2 "FILENAME"
 EOT
-    }
+  }
 
-  if [ -f "${1-}" ]; then
-    local line; line=$(cat "$1" | head -1)
-    checksum=${line%  *}
-    filename=${line##*  }
-  elif [ $# -eq 1 ]; then
-    checksum=${1%  *}
-    filename=${1##*  }
-  elif [ $# -eq 2 ]; then
-    checksum=${1}
-    filename=${2}
+  case "${1-}" in
+    -h|--help) __prt_info && return ;;
+  esac
+
+  local checksum filename
+  local -i result=1
+  set -x
+
+  if [ -f "${1-}" ] && [ -f "${2-}" ]; then
+    local _filepath_file _filepath_sum
+    _filepath_file=$(realpath "$1")
+    _filepath_sum=$(realpath "$2")
+
+    pushd "$(dirname "$_filepath_file")" &> /dev/null &&
+      checksum=$(sha256sum "${_filepath_file##*/}" &> /dev/null) &&
+      popd &> /dev/null || exit
+
+    if [[ "${3-}" =~ ^[0-9] ]] &&
+      [ "$checksum" = "$(sed "${3}q;d" "$_filepath_sum")" ]; then result=0; fi
+    if grep "$checksum" "$_filepath_sum" &> /dev/null; then result=0; fi
+
   else
-    __prt_info && return 1
+
+    case $# in
+      1)
+        checksum=${1%  *}; filename=${1##*  }
+        if [ "$(sha256sum "$filename" 2> /dev/null)" = "${checksum}  ${filename}" ]; then
+          result=0
+        fi
+        ;;
+      *)
+        checksum=$1; filename=$2
+        if [ "$(sha256sum "$filename" 2> /dev/null)" = "$checksum" ]; then
+          result=0
+        fi
+        ;;
+    esac
   fi
 
-  if [[ "$(sha256sum "$filename")" == "$checksum  $filename" ]]; then
-    echo "Checksum OK" >&2 && return
+  if [ $result -eq 0 ]; then
+    printf '%s\n' "Checksum OK" && return
   fi
-  echo "Checksum failed" >&2 && false
+  printf '%s\n' "Checksum failed" && false
+  set +x
 }

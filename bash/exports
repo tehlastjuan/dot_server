@@ -16,6 +16,7 @@ export  XDG_STATE_HOME="$HOME/.local/state"
 
 [ -d "$XDG_CONFIG_HOME" ] || mkdir -m 0750 "$XDG_CONFIG_HOME"
 [ -d "$XDG_CACHE_HOME" ]  || mkdir -m 0750 "$XDG_CACHE_HOME"
+[ -d "$HOME/.local" ]     || mkdir -m 0750 "$HOME/.local"
 [ -d "$XDG_DATA_HOME" ]   || mkdir -m 0750 "$XDG_DATA_HOME"
 [ -d "$XDG_STATE_HOME" ]  || mkdir -m 0750 "$XDG_STATE_HOME"
 
@@ -86,7 +87,10 @@ if hash vim 2> /dev/null; then
   export SUDO_EDITOR=$EDITOR
 	export SELECTED_EDITOR=$EDITOR
 	export VISUAL=$EDITOR
-	MANPAGER='vim +MANPAGER --not-a-term -'
+	MANPAGER=$(printf '%s' "vim +MANPAGER -c \"set wrap\" --not-a-term -")
+
+	[ -d ".local/state/vim/undo" ] ||
+		mkdir -p "${XDG_STATE_HOME}/vim/undo"
 fi
 
 export MANPAGER
@@ -101,36 +105,32 @@ if [ -f "$XDG_CONFIG_HOME/wget/wgetrc" ]; then
 	export WGETRC="$XDG_CONFIG_HOME/wget/wgetrc"
 fi
 
-# enable network connection forwarding, see route_fwd.sh
-export FORWARDING=0
-export IS_FORWARDING=0
-
-if hash sysctl 2> /dev/null; then
-	FORWARDING=$(sysctl net.ipv4.ip_forward | sed -E 's/.*= //g')
-	if [ "$FORWARDING" -eq 1 ]; then
-		[ "$IS_FORWARDING" -eq 0 ] && {
-			bash -c "$XDG_CONFIG_HOME/route_fwd.sh"
-			IS_FORWARDING=1
-		}
-	fi
+# set $XDG_RUNTIME_DIR
+if ! export -p | grep -q XDG_RUNTIME_DIR=; then
+	XDG_RUNTIME_DIR="/run/user/$(id -u "$USER")"
+	export XDG_RUNTIME_DIR
 fi
 
 
-#----- Dev Utilities
+#----- Utilities
 
 # docker config
-if [ ! -e "/.dockerenv" ]; then
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 	if hash docker 2> /dev/null; then
 		export DOCKER_CONFIG="${XDG_CONFIG_HOME}"/docker
-	else
-		if [[ "$OSTYPE" == "freebsd"* ]]; then
-			USER_ID="$(id -u "$USER")"
+
+		# check docker installation
+		if [ "$(docker info | grep 'Docker Root Dir' | cut -d ' ' -f 5)" != "/var/lib/docker" ]; then
+			if [ -f "$HOME/.local/docker_bin" ]; then
+				export DOCKER_BIN="$HOME/.local/docker_bin"
+				append_path "$DOCKER_BIN"
+
+				if hash docker 2> /dev/null; then
+					export DOCKER_HOST=unix://${XDG_RUNTIME_DIR}/docker.sock
+					export DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS="-p 0.0.0.0:2376:2376/tcp"
+				fi
+			fi
 		fi
-		if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-			USER_ID="$(id --user)"
-		fi
-		export DOCKER_HOST=unix:///run/user/$USER_ID/docker.sock
-		export DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS="-p 0.0.0.0:2376:2376/tcp"
 	fi
 fi
 

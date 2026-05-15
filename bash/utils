@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=1091
 
 # folder jump with z $FOLDERNAME
 if hash zoxide 2>/dev/null; then
@@ -10,20 +11,16 @@ fi
 
 # Java, kotlin, gradle version manager
 sdk() {
-  if [ -f "$XDG_DATA_HOME/sdkman/bin/sdkman-init.sh" ]; then
-    if [[ "$XDG_DATA_HOME/sdkman/bin/sdkman-init.sh" != "${0}" ]]; then
-      . "$XDG_DATA_HOME/sdkman/bin/sdkman-init.sh"
-    fi
-    sdk "$@"
+  if [[ "$XDG_DATA_HOME/sdkman/bin/sdkman-init.sh" != "${0}" ]]; then
+    . "$XDG_DATA_HOME/sdkman/bin/sdkman-init.sh"
   fi
+  sdk "$@"
 }
 
 # Node version manager
 nvm() {
-  if [ -f "$XDG_DATA_HOME/node/nvm.sh" ]; then
-    if [[ "$XDG_DATA_HOME/node/nvm.sh" != "${0}" ]]; then 
-      . "$XDG_DATA_HOME/node/nvm.sh"
-    fi
-    nvm "$@"
+  if [[ "$XDG_DATA_HOME/node/nvm.sh" != "${0}" ]]; then 
+    . "$XDG_DATA_HOME/node/nvm.sh"
   fi
+  nvm "$@"
 }
