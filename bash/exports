@@ -105,20 +105,7 @@ if [ -f "$XDG_CONFIG_HOME/wget/wgetrc" ]; then
 	export WGETRC="$XDG_CONFIG_HOME/wget/wgetrc"
 fi
 
-# enable network connection forwarding, see route_fwd.sh
-export FORWARDING=0
-export IS_FORWARDING=0
-
-if hash sysctl 2> /dev/null; then
-	FORWARDING=$(sysctl net.ipv4.ip_forward | sed -E 's/.*= //g')
-	if [ "$FORWARDING" -eq 1 ]; then
-		[ "$IS_FORWARDING" -eq 0 ] && {
-			bash -c "$XDG_CONFIG_HOME/route_fwd.sh"
-			IS_FORWARDING=1
-		}
-	fi
-fi
-
+# set $XDG_RUNTIME_DIR
 if ! export -p | grep -q XDG_RUNTIME_DIR=; then
   XDG_RUNTIME_DIR="/run/user/$(id -u "$USER")"
   export XDG_RUNTIME_DIR
@@ -126,14 +113,21 @@ fi
 
 #----- Utilities
 
-# docker rootless config
-export DOCKER_CONFIG="${XDG_CONFIG_HOME}"/docker
-export DOCKER_BIN="$HOME/.local/docker_bin"
-append_path "$DOCKER_BIN"
-
 if hash docker 2> /dev/null; then
-	export DOCKER_HOST=unix://${XDG_RUNTIME_DIR}/docker.sock
-	export DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS="-p 0.0.0.0:2376:2376/tcp"
+	export DOCKER_CONFIG="${XDG_CONFIG_HOME}"/docker
+
+	# check docker installation
+	if [ "$(docker info | grep 'Docker Root Dir' | cut -d ' ' -f 5)" != "/var/lib/docker" ]; then
+		if [ -f "$HOME/.local/docker_bin" ]; then
+			export DOCKER_BIN="$HOME/.local/docker_bin"
+			append_path "$DOCKER_BIN"
+
+			if hash docker 2> /dev/null; then
+				export DOCKER_HOST=unix://${XDG_RUNTIME_DIR}/docker.sock
+				export DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS="-p 0.0.0.0:2376:2376/tcp"
+			fi
+		fi
+	fi
 fi
 
 # Go config
