@@ -31,7 +31,10 @@ f() {
 # note ./here
 nh() {
   case "${1-}" in
-    -u|--unix) shift; $EDITOR "${1:-"note"}-$(date +%s).md" ;;
+    -u | --unix)
+               shift
+                      $EDITOR "${1:-"note"}-$(date +%s).md"
+                                                            ;;
     *) $EDITOR "${1:-"note"}-$(date +%Y%m%d-%H%M%S).md" ;;
   esac
 }
@@ -67,10 +70,11 @@ usage: chsum [ARGS]
        chsum [STRING]            := read string "SHA256SUM  FILENAME"
        chsum [SUM] [FILENAME]    := read string "SHA256SUM", read string "FILENAME"
 EOT
-    }
+  }
 
   if [ -f "${1-}" ]; then
-    local line; line=$(cat "$1" | head -1)
+    local line
+                line=$(cat "$1" | head -1)
     checksum=${line%  *}
     filename=${line##*  }
   elif [ $# -eq 1 ]; then

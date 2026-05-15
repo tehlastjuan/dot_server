@@ -50,7 +50,7 @@ Fetches / updates the "utils" binaries for arm64 and amd64 linux platforms.
 
 `bat` : [https://github.com/sharkdp/bat/releases](https://github.com/sharkdp/bat/releases)  
 `fzf` : [https://github.com/junegunn/fzf/releases](https://github.com/junegunn/fzf/releases)  
-`lf ` : [https://github.com/gokcehan/lf/releases](https://github.com/gokcehan/lf/releases)
+`lf` : [https://github.com/gokcehan/lf/releases](https://github.com/gokcehan/lf/releases)
 
 #### `update_debian.sh`
 
@@ -58,7 +58,7 @@ Updates and hardens a debian installation and installs the `docker` packages as 
 
 ---
 
-#### A note on safety:
+#### A note on safety
 
 _IMPORTANT!_ Read through **any** script downloaded from the internet before running them.  
 If you don't understand what they are doing, don't run them!

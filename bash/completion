@@ -8,7 +8,7 @@ fi
 
 # complete alias plugin
 if [ -f "$XDG_CONFIG_HOME/bash/completion.d/complete_alias" ]; then
- . "$XDG_CONFIG_HOME/bash/completion.d/complete_alias"
+  . "$XDG_CONFIG_HOME/bash/completion.d/complete_alias"
 fi
 
 # bash completion

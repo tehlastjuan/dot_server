@@ -54,7 +54,7 @@ alias ggu='git remote get-url --no-all origin'
 # completely remove all unreachable objects from the repository.
 alias ggc='git -c gc.reflogExpireUnreachable=now gc --prune=now'
 
-if [ -n "$BASH" ] && type __git_complete &>/dev/null; then
+if [ -n "$BASH" ] && type __git_complete &> /dev/null; then
   __git_complete gb _git_branch
   __git_complete gc _git_checkout
   __git_complete gd _git_diff
@@ -97,7 +97,7 @@ if hash docker 2> /dev/null; then
   {{range \$index, \$label := .Config.Labels}}  - {{\$index}}={{\$label}}
   {{end}}" $(docker ps -q)'
 
-  if [ -n "$BASH" ] && type _complete_alias &>/dev/null; then
+  if [ -n "$BASH" ] && type _complete_alias &> /dev/null; then
     complete -F _complete_alias dr
     complete -F _complete_alias dk
     complete -F _complete_alias dim

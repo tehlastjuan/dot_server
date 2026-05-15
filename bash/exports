@@ -23,14 +23,13 @@ export  XDG_STATE_HOME="$HOME/.local/state"
 # Gnupg stuff
 export GNUPGHOME="$HOME/.local/share/gnupg"
 
-
 #----- PATH Binaries
 
 # from /etc/profile
-append_path () {
+append_path()  {
 	case ":$PATH:" in
-		*:"$1":*) ;;
-		*) PATH="${PATH:+$PATH:}$1"
+	*:"$1":*) ;;
+	*) PATH="${PATH:+$PATH:}$1" ;;
 	esac
 }
 
@@ -43,19 +42,18 @@ if [[ "$OSTYPE" == "freebsd"* ]]; then
 fi
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-  ARCH="$(lscpu | grep 'Architecture' | cut -d ':' -f 2)"
-  ARCH="${ARCH#"${ARCH%%[![:space:]]*}"}"
+	ARCH="$(lscpu | grep 'Architecture' | cut -d ':' -f 2)"
+	ARCH="${ARCH#"${ARCH%%[![:space:]]*}"}"
 
-  case "$ARCH" in
-    x86_64) ARCH="amd64" ;;
-    aarch64) ARCH="arm64" ;;
-    *) ARCH="amd64" ;;
-  esac
+	case "$ARCH" in
+	x86_64)  ARCH="amd64" ;;
+	aarch64)  ARCH="arm64" ;;
+	*)  ARCH="amd64" ;;
+	esac
 
 	# adds .config/bin folder to PATH
 	append_path "$HOME/.config/bin/linux_${ARCH}"
 fi
-
 
 #----- Terminal utilities
 
@@ -84,7 +82,7 @@ if hash vim 2> /dev/null; then
 		export EDITOR=/usr/bin/vim
 		export SYSTEMD_EDITOR=$EDITOR
 	fi
-  export SUDO_EDITOR=$EDITOR
+	export SUDO_EDITOR=$EDITOR
 	export SELECTED_EDITOR=$EDITOR
 	export VISUAL=$EDITOR
 	MANPAGER=$(printf '%s' "vim +MANPAGER -c \"set wrap\" --not-a-term -")
@@ -107,8 +105,8 @@ fi
 
 # set $XDG_RUNTIME_DIR
 if ! export -p | grep -q XDG_RUNTIME_DIR=; then
-  XDG_RUNTIME_DIR="/run/user/$(id -u "$USER")"
-  export XDG_RUNTIME_DIR
+	XDG_RUNTIME_DIR="/run/user/$(id -u "$USER")"
+	export XDG_RUNTIME_DIR
 fi
 
 #----- Utilities

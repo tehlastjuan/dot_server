@@ -19,7 +19,7 @@ update_profile() {
   if [ ! -d "$USER_HOME" ]; then return 1; fi
 
   if [ -d "$CONFIG_DIR" ]; then
-    if git -C "$CONFIG_DIR" rev-parse --is-inside-work-tree &>/dev/null; then
+    if git -C "$CONFIG_DIR" rev-parse --is-inside-work-tree &> /dev/null; then
       if [[ "$(git -C "$CONFIG_DIR" remote get-url --no-all origin)" != *dot_server* ]]; then
         echo "Unknown dot files installation. Aborting." && return 1
       fi

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # folder jump with z $FOLDERNAME
-if hash zoxide 2>/dev/null; then
+if hash zoxide 2> /dev/null; then
   # print match path when jumping
   export _ZO_ECHO=1
   export _ZO_DATA_DIR="$XDG_CACHE_HOME/zoxide"
