@@ -111,18 +111,20 @@ fi
 
 #----- Utilities
 
-if hash docker 2> /dev/null; then
-	export DOCKER_CONFIG="${XDG_CONFIG_HOME}"/docker
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+	if hash docker 2> /dev/null; then
+		export DOCKER_CONFIG="${XDG_CONFIG_HOME}"/docker
 
-	# check docker installation
-	if [ "$(docker info | grep 'Docker Root Dir' | cut -d ' ' -f 5)" != "/var/lib/docker" ]; then
-		if [ -f "$HOME/.local/docker_bin" ]; then
-			export DOCKER_BIN="$HOME/.local/docker_bin"
-			append_path "$DOCKER_BIN"
+		# check docker installation
+		if [ "$(docker info | grep 'Docker Root Dir' | cut -d ' ' -f 5)" != "/var/lib/docker" ]; then
+			if [ -f "$HOME/.local/docker_bin" ]; then
+				export DOCKER_BIN="$HOME/.local/docker_bin"
+				append_path "$DOCKER_BIN"
 
-			if hash docker 2> /dev/null; then
-				export DOCKER_HOST=unix://${XDG_RUNTIME_DIR}/docker.sock
-				export DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS="-p 0.0.0.0:2376:2376/tcp"
+				if hash docker 2> /dev/null; then
+					export DOCKER_HOST=unix://${XDG_RUNTIME_DIR}/docker.sock
+					export DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS="-p 0.0.0.0:2376:2376/tcp"
+				fi
 			fi
 		fi
 	fi
