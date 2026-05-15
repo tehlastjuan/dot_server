@@ -1,17 +1,6 @@
 #!/usr/bin/env bash
 # adapted from github.com/rafi/.config
 
-set -eu
-
-FILE=
-WIDTH=
-HEIGHT=
-OFFSET=
-
-zebra_lines() {
-	gsed $'1~2s/^/\e[38;05;242m/;s/$/\e[m/' < /dev/stdin
-}
-
 # View binary hexyl/heksa/hexdump
 view_binary() {
 	local len="$((WIDTH * HEIGHT))"
