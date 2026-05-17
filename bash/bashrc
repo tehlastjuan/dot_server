@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-# shellcheck disable=1091
 
 # If not running interactively, don't do anything
 case $- in
@@ -7,31 +5,284 @@ case $- in
   *) return ;;
 esac
 
+#----- General
+
+# default file permissions
+umask 077
+
 # history
 shopt -s cmdhist         # Save multi-line commands in history as single line
 shopt -s histreedit      # Add failed commands to the bash history
 shopt -s histappend      # Append each session's history to $HISTFILE
 shopt -s histverify      # Edit a recalled history line before executing
 
-# prompt
-stty stop undef          # Remove the ^Q mapping
-stty start undef         # Remove the ^S mapping (See all: stty -a)
-shopt -s cdspell         # Auto-corrects cd misspellings
-shopt -s dotglob         # Include dotfiles in pathname expansion
-shopt -s expand_aliases  # Expand aliases
-shopt -s extglob         # Enable extended pattern-matching features
-
-if [[ $WAYLAND_DISPLAY || $DISPLAY ]]; then
-  shopt -s checkwinsize  # Update LINES and COLUMNS after each command
+# mappings
+if [[ -t 0 ]]; then
+  stty stop undef          # Remove the ^Q mapping
+  stty start undef         # Remove the ^S mapping (See all: stty -a)
 fi
 
-# Load env exports
-. "$HOME/.config/bash/exports"
+# Update LINES and COLUMNS after each command
+if [[ -t 1 ]]; then
+  shopt -s checkwinsize
+fi
 
-# Load shell settings and utilities
-. "$XDG_CONFIG_HOME/bash/functions"
-. "$XDG_CONFIG_HOME/bash/completion"
-. "$XDG_CONFIG_HOME/bash/theme"
-. "$XDG_CONFIG_HOME/bash/fzfrc"
-. "$XDG_CONFIG_HOME/bash/utils"
-. "$XDG_CONFIG_HOME/bash/alias"
+# Enable extended pattern-matching features
+shopt -s extglob
+
+#----- Environment
+
+export LANG="en_US.UTF-8"
+export LC_CTYPE="en_US.UTF-8"
+unset LC_ALL
+
+export COLORTERM=truecolor
+
+# XDG directories
+export XDG_CONFIG_HOME="/root/.config"
+export XDG_CACHE_HOME="/root/.cache"
+export XDG_DATA_HOME="/root/.local/share"
+export XDG_STATE_HOME="/root/.local/state"
+
+# Gnupg stuff
+export GNUPGHOME="$XDG_DATA_HOME/gnupg"
+
+# PATH Binaries
+export PATH='/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+
+
+#----- Terminal utilities
+
+export INPUTRC="$XDG_CONFIG_HOME/bash/inputrc"
+
+# History settings
+export HISTSIZE=5000
+if [[ "$BASH" ]]; then
+	export HISTFILE="$XDG_CACHE_HOME/bash_history"
+	export HISTFILESIZE=20000
+	export HISTCONTROL='ignoredups:erasedups'
+	export HISTTIMEFORMAT="%F %T "
+fi
+
+# Pager and Editor
+if command -v less >/dev/null 2>&1; then
+	PAGER="$(command -v less)"
+	MANPAGER=$PAGER
+	export PAGER
+	export MANPAGER
+fi
+
+if command -v vim >/dev/null 2>&1; then
+	EDITOR="$(command -v vim)"
+	export EDITOR
+	export VISUAL=$EDITOR
+	export SUDO_EDITOR=$EDITOR
+	export SYSTEMD_EDITOR=$EDITOR
+	export SELECTED_EDITOR=$EDITOR
+fi
+
+export LESS='-FRX'
+export LESSQUIET=1
+export LESSCHARSET="UTF-8"
+export LESSHISTFILE="$XDG_CACHE_HOME/less_history"
+
+# Wget stuff
+if [ -f "$XDG_CONFIG_HOME/wget/wgetrc" ]; then
+	export WGETRC="$XDG_CONFIG_HOME/wget/wgetrc"
+fi
+
+
+#----- Utilities
+
+if command -v docker > /dev/null 2>&1; then
+	export DOCKER_CONFIG="$XDG_CONFIG_HOME/docker"
+fi
+
+# python
+export PYTHON_COLORS=1
+
+
+#----- Shell functions
+
+# cd to current dir on lf quit
+r() {
+  command -v lf >/dev/null 2>&1 || {
+    printf 'r: lf not found\n'
+    return 127
+  }
+
+	local lf_cd_file dir
+
+  lf_cd_file="$(mktemp "${TMPDIR:-/tmp}/lfcd.XXXXXX")" || return
+  LF_CD_FILE="$lf_cd_file" command lf "$@"
+
+  if [[ -s $lf_cd_file ]]; then
+    dir="$(realpath -- "$(cat -- "$lf_cd_file")")" || {
+      rm -f -- "$lf_cd_file"
+      return 1
+    }
+
+    if [[ -d $dir && $dir != "$PWD" ]]; then
+      cd -- "$dir" || {
+        rm -f -- "$lf_cd_file"
+        return 1
+      }
+    fi
+  fi
+
+  rm -f -- "$lf_cd_file"
+}
+
+# get file stats
+fst() {
+  [[ $# -eq 1 ]] || {
+    printf 'usage: fst FILE\n' >&2
+    return 2
+  }
+
+  case "${OSTYPE:-}" in
+    linux-gnu*)
+      stat --format '%a' -- "$1"
+      ;;
+    freebsd*|darwin*)
+      stat -f '%Lp' -- "$1"
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+# pretty-print journalctl
+jctl() {
+  local cols width
+
+  cols="$(tput cols 2>/dev/null || printf '120')"
+
+  if (( cols < 121 )); then
+    width=113
+  else
+    width=$((cols - 4))
+  fi
+
+  if command -v bat >/dev/null 2>&1; then
+    journalctl --no-pager "$@" |
+			bat --style=plain --language=log --wrap=character --terminal-width="$width"
+  else
+    journalctl "$@"
+  fi
+}
+
+# file checksum
+fsum() {
+  case "${1-}" in
+    -h|--help|'')
+      cat <<'EOF'
+usage: fsum [ARGS]
+args:
+  fsum CHECKSUM_FILE
+  fsum SHA256 FILE
+  fsum "SHA256  FILE"
+EOF
+      return 0
+      ;;
+  esac
+
+  local expected file actual line
+
+  case $# in
+    1)
+      if [[ -f $1 ]]; then
+        sha256sum --check -- "$1"
+        return
+      fi
+
+      line=$1
+      expected="${line%%[[:space:]]*}"
+      file="$(printf '%s' "$line" | sed -E 's/^[[:xdigit:]]{64}[[:space:]]+\*?//')"
+
+      if [[ -z $expected || -z $file || $file == "$line" ]]; then
+        printf 'fsum: invalid checksum line\n' >&2
+        return 2
+      fi
+      ;;
+    2)
+      expected=$1
+      file=$2
+      ;;
+    *)
+      printf 'fsum: invalid arguments\n' >&2
+      return 2
+      ;;
+  esac
+
+  [[ -f $file ]] || {
+    printf 'fsum: file not found: %s\n' "$file" >&2
+    return 1
+  }
+
+  [[ $expected =~ ^[A-Fa-f0-9]{64}$ ]] || {
+    printf 'fsum: invalid SHA256: %s\n' "$expected" >&2
+    return 2
+  }
+
+  actual="$(sha256sum -- "$file" | awk '{print $1}')" || return
+
+  if [[ "${actual,,}" == "${expected,,}" ]]; then
+    printf 'Checksum OK\n'
+    return 0
+  fi
+
+  printf 'Checksum failed\n' >&2
+  printf 'expected: %s\nactual:   %s\n' "$expected" "$actual" >&2
+  return 1
+}
+
+work_dirs_provisioning() {
+	install -d -m 700 -o root -g root \
+		/root/.config \
+		/root/.cache \
+		/root/.local \
+		/root/.local/share \
+		/root/.local/state \
+		/root/.local/share/gnupg
+}
+
+#----- bash completion
+
+if [[ -r /usr/share/bash-completion/bash_completion ]]; then
+  . /usr/share/bash-completion/bash_completion
+elif [[ -r /etc/bash_completion ]]; then
+	#shellcheck disable=1091
+  . /etc/bash_completion
+fi
+
+#----- theme colors
+
+if [[ ${OSTYPE:-} == linux-gnu* ]] && command -v dircolors >/dev/null 2>&1; then
+  eval "$(dircolors -b "$XDG_CONFIG_HOME/bash/dircolors")"
+fi
+
+PS4='+ ${BASH_SOURCE##*/}:${LINENO}:${FUNCNAME[0]:-main}: '
+
+PS1='\[\033[01;31m\]\u@\h \[\033[01;32m\]\w \[\033[01;31m\]#\[\033[00m\] '
+
+
+#----- alias
+
+# general
+alias c='clear'
+
+# colors
+alias diff='diff --minimal --color=auto'
+alias grep='grep --color=auto --exclude-dir=.git'
+
+alias la='ls -hla'
+alias ip='ip -color=auto'
+
+if [[ "$OSTYPE" == "freebsd"* ]]; then
+  alias ls='LC_COLLATE=C ls --color=auto -G'
+fi
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  alias ls='LC_COLLATE=C ls --color=auto --group-directories-first'
+fi
+
+# vim: set ts=2 sw=2 tw=80 ft=sh noet :
