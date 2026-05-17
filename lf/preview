@@ -3,15 +3,9 @@
 
 set -u
 
-FILE="${1-}"
-WIDTH="${2:-$(tput cols 2> /dev/null | 120)}"
-HEIGHT="${3:-$(tput lines 2> /dev/null | 40)}"
-OFFSET="${lf_user_preview_offset:-1}"
-
 # View binary hexyl/hexdump
 view_binary() {
 	local len="$((WIDTH * HEIGHT))"
-
 	if hash hexyl 2> /dev/null; then
 		hexyl -n "$len" --border none "$FILE"
 	elif hash hexdump 2> /dev/null; then
@@ -41,29 +35,24 @@ view_sourcecode() {
       --wrap=never
       --line-range="${OFFSET}:"
     )
-
-    if [[ -f $FILE ]]; then
-			bat_preview+=( "--line-range=${OFFSET}:" )
-			bat "${bat_preview[@]}" "$FILE"
-    else
-      return 1
-    fi
+		bat "${bat_preview[@]}" "$FILE"
 
   else
-    if [[ -f $FILE ]]; then
-      sed -n "${OFFSET},$((OFFSET + HEIGHT))p" -- "$FILE"
-    else
-      return 1
-    fi
+		sed -n "${OFFSET},$((OFFSET + HEIGHT))p" -- "$FILE"
   fi
 }
 
 main() {
+	FILE="${1-}"
+	WIDTH="${2:-$(tput cols 2> /dev/null | 120)}"
+	HEIGHT="${3:-$(tput lines 2> /dev/null | 40)}"
+	OFFSET="${lf_user_preview_offset:-1}"
+
 	[[ -n $FILE ]] || exit 1
 
 	if [[ -d $FILE ]]; then
 		view_dir
-		exit $?
+		exit 1
 	fi
 
 	[[ -L "${FILE}" ]] && FILE="$(readlink "$FILE")"
@@ -80,6 +69,7 @@ main() {
       view_binary
       ;;
   esac
+	exit 1
 }
 
 main "$@"
