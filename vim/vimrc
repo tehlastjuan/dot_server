@@ -7,48 +7,73 @@
 " - https://github.com/noahfrederick/vim-noctu/blob/master/colors/noctu.vim
 
 
-" GENERAL {
+" GENERAL {{{
 
 " Disable vi compatibility, if for some reason it's on.
-if &compatible
-  set nocompatible
+set nocompatible
+
+" Default file encoding
+if has ('multi_byte')
+  "set fenc=utf-8
+  set encoding=utf-8
+  "set termencoding=utf-8
+  scriptencoding utf-8
+  set fileencodings=ucs-bom,utf-8,latin1
 endif
 
 " Default interface language
-let $LANG='en'
-set langmenu=en
+if has('multi_lang')
+  "let $LANG='en'
+  "set langmenu=en
+  silent! language messages C
+endif
 
-" Default file encoding
-set fenc=utf-8
-set encoding=utf-8
-set termencoding=utf-8
-scriptencoding utf-8
+if has('&langmenu')
+  set langmenu=none
+endif
 
 " Enable native mouse support
-if has('mouse')
+if has('&mouse')
   set mouse=a
-  set mousemodel=popup
+  " set mousemodel=popup
+endif
+
+" SGR mouse support for older Vim/terminal setups.
+" Modern Vim often auto-detects this; Neovim does not need this option.
+if exists('&ttymouse') && has('mouse_sgr')
   set ttymouse=sgr
 endif
 
 " Do not load tohtml.vim
 let g:loaded_2html_plugin = 1
 
-" }
+" Enable the :Man command shipped inside Vim's man filetype plugin.
+if exists(':Man') != 2 && !exists('g:loaded_man') && &filetype !=? 'man'
+  runtime ftplugin/man.vim
+endif
+
+" Use less for keywordprg
+if $MANPAGER != 'less*'
+  let $MANPAGER = 'less -R'
+endif
+
+if $PAGER != 'less*'
+  let $PAGER = 'less'
+endif
+
+augroup user_keywordprg
+  autocmd!
+  autocmd FileType vim setlocal keywordprg=:help
+augroup END
+
+" }}}
 
 
-" FILES {
+" FILES {{{
 
-" Enable type file detection
-filetype on
-
-" Enable plugins and load indent file for the detected file type
+" Enable type file detection &
+" enable plugins and load indent file for the detected file type
 filetype plugin indent on
-
-" Do not save backup files
-set nobackup
-set nowritebackup
-set noswapfile
 
 " Reload files changed outside vim
 set autoread
@@ -56,37 +81,91 @@ set autoread
 " Automatically :write before running commands
 set autowrite
 
-" less clutter at $HOME
-set viminfo+=n~/.local/state/vim/viminfo
-
-" Persist g:UPPERCASE variables, used by some plugins, in .viminfo.
-if !empty(&viminfo)
-  set viminfo^=!
-endif
-
 "Return to last edit position when opening files
-autocmd BufReadPost *
-      \ if line("'\"") > 1 && line("'\"") <= line("$") |
-      \ exe "normal! g`\"" | endif
+augroup user_go_to_last_position
+  autocmd!
+  autocmd BufReadPost *
+        \ if line("'\"") > 1 && line("'\"") <= line("$") |
+        \ execute "normal! g`\"" |
+        \ endif
+augroup END
 
-"Keep undo history across sessions, by storing in file.
-if has('persistent_undo')
-  if isdirectory(expand('~') . '/.local/state/vim/undo')
-    set undodir=~/.local/state/vim/undo
-    set undofile
+" vim state dir
+let s:vim_state = expand('~/.local/state/vim')
+
+if !empty(s:vim_state)
+  try
+    call mkdir(s:vim_state, 'p', 0700)
+  catch
+  endtry
+endif
+
+" Do not save backup files
+set nobackup
+set nowritebackup
+set noswapfile
+
+" Save backup files
+"if isdirectory(s:vim_state)
+"  let s:backup_dir = s:vim_state . '/backup'
+"  let s:swap_dir = s:vim_state . '/swap'
+"
+"  try
+"    call mkdir(s:backup_dir, 'p', 0700)
+"    call mkdir(s:swap_dir, 'p', 0700)
+"  catch
+"  endtry
+"
+"  if isdirectory(s:backup_dir)
+"    set backup
+"    set writebackup
+"    let &backupdir = s:backup_dir . '//'
+"  endif
+"
+"  if isdirectory(s:swap_dir)
+"    set swapfile
+"    let &directory = s:swap_dir . '//'
+"  endif
+"endif
+
+" Store vim state
+if isdirectory(s:vim_state)
+
+  " less clutter at $HOME
+  if exists('&viminfo')
+    let &viminfo .= ',n' . s:vim_state . '/viminfo'
+
+    " Persist g:UPPERCASE variables, used by some plugins.
+    if &viminfo !~# '!'
+      set viminfo^=!
+    endif
   endif
+
+  "Keep undo history across sessions, by storing in file.
+  if has('persistent_undo')
+    let s:undo_dir = s:vim_state . '/undo'
+    try
+      call mkdir(s:undo_dir, 'p', 0700)
+    catch
+    endtry
+
+    if isdirectory(s:undo_dir)
+      let &undodir = s:undo_dir . '//'
+      set undofile
+    endif
+  endif
+
+  " netrw history
+  let g:netrw_home = s:vim_state
 endif
 
-" netrw history
-if isdirectory(expand('~') . '/.local/state/vim/')
-  let g:netrw_home=(expand('~') . '/.local/state/vim/')
-endif
+" }}}
 
 
-" }
+" EDITOR {{{
 
-
-" EDITOR {
+" Virtual edit is useful for visual block edit
+set virtualedit=block
 
 " Allow backspace in insert mode
 set backspace=indent,eol,start
@@ -94,9 +173,9 @@ set backspace=indent,eol,start
 "Time out on key codes but not mappings.
 "Basically this makes terminal Vim work sanely
 set notimeout
+set timeoutlen=800
 set ttimeout
-set ttimeoutlen=10
-set timeoutlen=800              "By default timeoutlen is 1000 ms
+set ttimeoutlen=100
 
 " Max num of open tabs
 set tabpagemax=50
@@ -106,46 +185,78 @@ set hidden
 
 " Saving options in session and view files causes more problems than it
 " solves, so disable it.
-set sessionoptions-=options
-set viewoptions-=options
+if exists('&sessionoptions')
+  set sessionoptions-=options
+endif
 
+if exists('&viewoptions')
+  set viewoptions-=options
+endif
+
+" Ignore certain files and folders when globbing
 " Wild menu will ignore files with these extensions.
-set wildignore=*.docx,*.jpg,*.png,*.gif,*.pdf,*.pyc,*.exe,*.flv,*.img,*.xlsx
+set wildignore+=*.docx,*.jpg,*.png,*.gif,*.pdf
+set wildignore+=*.pyc,*.exe,*.flv,*.img,*.xlsx
+set wildignore+=*.o,*.obj,*.bin,*.dll,*.exe
+set wildignore+=*/.git/*,*/.svn/*,*/__pycache__/*,*/build/*
+set wildignore+=*.pyc
+set wildignore+=*.DS_Store
+set wildignore+=*.aux,*.bbl,*.blg,*.brf,*.fls,*.fdb_latexmk,*.synctex.gz
 
 " Delete comment character when joining commented lines.
-set formatoptions+=tcqj
+set formatoptions+=c
+set formatoptions+=q
+set formatoptions+=j
 
 " Correctly break multi-byte characters such as CJK,
 " see https://stackoverflow.com/q/32669814/6064933
-set formatoptions+=mM
-
-" folds
-augroup vimfile_setting
-  autocmd!
-  autocmd FileType vim setlocal foldmethod=expr foldlevel=0 foldlevelstart=-1
-        \ foldexpr=VimFolds(v:lnum) foldtext=MyFoldText()
-        \ keywordprg=:help formatoptions-=o formatoptions-=r
-augroup END
+set formatoptions+=m
+set formatoptions+=M
 
 " Disable auto commenting in a new line
-autocmd Filetype * setlocal formatoptions-=c formatoptions-=r  formatoptions-=o
+augroup user_format_opts
+  autocmd!
+  autocmd Filetype * setlocal formatoptions-=c
+        \ formatoptions-=r
+        \ formatoptions-=o
+augroup END
+
+" folds
+augroup user_fold_opts
+  autocmd!
+  autocmd FileType vim setlocal foldmethod=marker
+        \ foldlevel=0
+        \ foldlevelstart=-1
+        \ keywordprg=:help
+        \ formatoptions-=o
+        \ formatoptions-=r
+        \ endif
+augroup END
 
 " enable fast tty support
-set ttyfast
+if exists('&ttyfast')
+  set ttyfast
+endif
 
 " For regular expressions backwards comp
 set magic
 
 " Set regular expression engine automatically
-set regexpengine=0
+if exists('&regexpengine')
+  set regexpengine=0
+endif
 
 " base number when c-A & C-x for adds and subs
 set nrformats-=octal
 
-" Use Bash shell, if there is
-if executable('/usr/bin/bash')
-  set shell=/usr/bin/env\ bash
-else
+" Do not override restricted/nologin shells.
+if exists('$SHELL') && $SHELL =~# '\v/(false|nologin)$'
+  " Keep Vim's restricted behavior.
+elseif executable('/usr/bin/bash')
+  set shell=/usr/bin/bash
+elseif executable('/bin/bash')
+  set shell=/bin/bash
+elseif executable('/bin/sh')
   set shell=/bin/sh
 endif
 
@@ -158,48 +269,51 @@ set shortmess+=A
 set nojoinspaces
 
 " Specify the behavior when switching between buffers
-try
+if exists('&switchbuf')
   set switchbuf=useopen,usetab,newtab
-  set stal=2
-catch
-endtry
+endif
+if exists('&showtabline')
+  set showtabline=2
+endif
 
 " Disable a legacy behavior that can break plugin maps.
-if has('langmap') && exists('+langremap') && &langremap
+if exists('&langremap') && &langremap
   set nolangremap
 endif
 
 " Load matchit.vim, but only if the user hasn't installed a newer version.
-if !exists('g:loaded_matchit') && findfile('plugin/matchit.vim', &rtp) ==# ''
-  runtime! macros/matchit.vim
-endif
-
-" Enable the :Man command shipped inside Vim's man filetype plugin.
-if exists(':Man') != 2 && !exists('g:loaded_man') && &filetype !=? 'man' && !has('nvim')
-  runtime ftplugin/man.vim
+if !exists('g:loaded_matchit')
+  silent! runtime macros/matchit.vim
 endif
 
 " Open help vertically
 command! -nargs=* -complete=help Help vertical belowright help <args>
-autocmd FileType help wincmd L
+
+augroup user_move_help
+  autocmd!
+  autocmd FileType help wincmd L
+augroup END
 
 " Remove trailing white space, see https://vi.stackexchange.com/a/456/15292
 function! StripTrailingWhitespaces() abort
   let l:save = winsaveview()
-  keeppatterns %s/\v\s+$//e
+  "keeppatterns silent! %s/\v\s+$//e
+  keeppatterns silent! %s/[ \t]\+$//e
   call winrestview(l:save)
 endfunction
 
-" }
+" command! StripTrailingWhitespaces call StripTrailingWhitespaces()
+
+" }}}
 
 
-" INDENTATION {
+" INDENTATION {{{
 
 " Disable autoindentation
-set noautoindent
-
-" Indentation
-set smartindent
+"set noautoindent
+"set smartindent
+set autoindent
+set nosmartindent
 
 " Set shift width to 2 spaces.
 set shiftwidth=2
@@ -208,42 +322,54 @@ set shiftwidth=2
 set tabstop=2
 
 " Spaces a tab counts while editing
-set softtabstop=2
-
-" Inserts blanks according to shiftwidth
-set smarttab
+set softtabstop=-1
 
 " Use space characters instead of tabs.
 set expandtab
 
-" Do not let cursor scroll below or above N number of lines when scrolling.
-set scrolloff=8
+" Inserts blanks according to shiftwidth
+set smarttab
+
+" Align indent to next multiple value of shiftwidth. For its meaning,
+" see http://vim.1045645.n5.nabble.com/shiftround-option-td5712100.html
+set shiftround
 
 " Do not wrap lines. Allow long lines to extend as far as the line goes.
 set nowrap
 
 " Alt: Wrap lines at convenient points
-" set wrap
-" set textwidth=120 # chars
-" set linebreak
-" set showbreak=~>
+"set wrap
+"set textwidth=120 # chars
+"set linebreak
+"set showbreak=~>
 
 " Display tabs and trailing spaces
-set listchars=tab:┆\ ,space:·,trail:-,extends:>,precedes:<,nbsp:␣
+if &encoding ==# 'utf-8'
+  set listchars=tab:┆\ ,trail:_,extends:>,precedes:<,nbsp:␣
+  "set listchars=tab:┆\ ,space:·,trail:-,extends:>,precedes:<,nbsp:␣
+else
+  set listchars=tab:>\ ,trail:_,extends:>,precedes:<,nbsp:+
+endif
+
 set list " or set invlist
 
-" }
+" }}}
 
 
-" TERMINAL {
+" TERMINAL {{{
 
 " Do not use smart case in command line mode,
 " extracted from https://vi.stackexchange.com/q/16509/15292
 if exists('##CmdLineEnter')
-  augroup dynamic_smartcase
+  augroup user_cmdline_smartcase
     autocmd!
-    autocmd CmdLineEnter : set nosmartcase
-    autocmd CmdLineLeave : set smartcase
+    " autocmd CmdLineEnter : set nosmartcase
+    " autocmd CmdLineLeave : set smartcase
+    autocmd CmdLineEnter : let s:save_smartcase = &smartcase | set nosmartcase
+    autocmd CmdLineLeave : if exists('s:save_smartcase') |
+          \ let &smartcase = s:save_smartcase |
+          \ unlet s:save_smartcase |
+          \ endif
   augroup END
 endif
 
@@ -251,30 +377,32 @@ if exists('##TermOpen')
   augroup term_settings
     autocmd!
     " Do not use number and relative number for terminal inside vim
-    autocmd TermOpen * setlocal norelativenumber nonumber | startinsert
+    autocmd TermOpen * setlocal norelativenumber nonumber
+    autocmd TermOpen * startinsert
     " Go to insert mode by default to start typing command
-    autocmd BufLeave term://* stopinsert
+    "autocmd BufLeave term://* stopinsert
+    autocmd BufEnter * if &buftype ==# 'terminal' <bar> startinsert <bar> endif
   augroup END
 endif
 
-" }
+" }}}
 
 
-" SEARCH {
+" SEARCH {{{
 
 " While searching though a file incrementally highlight
 " matching characters as you type.
 set incsearch
 
-" Ignore capital letters during search
-" set ignorecase
+" Ignore case in pattern by default
+set ignorecase
 
-" Override the ignorecase option if searching for capital letters
-" This will allow you to search specifically for capital letters
+" Use case-sensitive to search specifically for capital letters
 set smartcase
 
 " Show matching words during a search
 set showmatch
+set matchtime=2
 
 " Use highlighting when doing a search
 set hlsearch
@@ -282,115 +410,118 @@ set hlsearch
 " Set the commands to save in history default number is 20
 set history=10000
 
-" }
+" }}}
 
 
-" COMPLETION {
+" COMPLETION {{{
 
 " Disable completing keywords in included files (e.g., #include in C).
 " When configured properly, this can result in the slow, recursive scanning of
 " hundreds of files of dubious relevance.
 set complete-=i
 
-" Enable Spelling Suggestions for Auto-Completion
-set complete+=k complete+=kspell
-set complete-=w complete-=b complete-=u complete-=t
+" Avoid scanning unloaded buffers
+set complete-=u
+
+" Avoid tag completion
+set complete-=t
+
+set complete-=w
+set complete-=b
 
 " Scan files given by `dictionary` option
-" set completefunc=menu,menuone,noinsert
+set complete+=k
 
-" Completion behaviour
-set completeopt+=menuone  " Show menu even if there is only one item
-set completeopt-=preview  " Disable the preview window
+" Enable Spelling Suggestions for Auto-Completion
+"set complete+=kspell
+
+" Show menu even if there is only one item
+set completeopt+=menu,menuone
+
+" Disable the preview window
+set completeopt-=preview
 
 " spell languages
 set spelllang=en
 
-" Align indent to next multiple value of shiftwidth. For its meaning,
-" see http://vim.1045645.n5.nabble.com/shiftround-option-td5712100.html
-set shiftround
-
-" Virtual edit is useful for visual block edit
-set virtualedit=block
-
 " Enable omni complete features
-set omnifunc=syntaxcomplete#Complete
-set completefunc=syntaxcomplete#Complete
+augroup user_completion
+  autocmd!
+  autocmd FileType * if empty(&l:omnifunc) && exists('*syntaxcomplete#Complete') |
+        \ setlocal omnifunc=syntaxcomplete#Complete |
+        \ endif
+augroup END
 
 " Enhanced command-line completion mode w\ popup menu
 set wildmenu
-set pumheight=8
 
 " List all matches without completing, then each full match >vim
 set wildmode=list:longest,full
 
-" Ignore certain files and folders when globbing
-set wildignore+=*.o,*.obj,*.bin,*.dll,*.exe
-set wildignore+=*/.git/*,*/.svn/*,*/__pycache__/*,*/build/**
-set wildignore+=*.pyc
-set wildignore+=*.DS_Store
-set wildignore+=*.aux,*.bbl,*.blg,*.brf,*.fls,*.fdb_latexmk,*.synctex.gz,*.pdf
+" Popup menu height
+set pumheight=8
 
-" Replace the check for a tags file in the parent directory of the current
-" file with a check in every ancestor directory.
+" Search for ./tags upward through ancestor directories.
 if has('path_extra') && (',' . &g:tags . ',') =~# ',\./tags,'
   setglobal tags-=./tags tags-=./tags; tags^=./tags;
 endif
 
 " Minimalist-Tab Complete
 inoremap <expr> <Tab> TabComplete()
-fun! TabComplete()
-  if getline('.')[col('.') - 2] =~ '\K' || pumvisible()
-    return "\<C-N>"
-  else
-    return "\<Tab>"
+
+fun! TabComplete() abort
+  if pumvisible()
+    return "\<C-n>"
   endif
+
+  let l:col = col('.') - 1
+  if l:col > 0 && getline('.')[l:col - 1] =~ '\K'
+    return "\<C-N>"
+  endif
+
+  return "\<Tab>"
 endfun
 
-" }
+" }}}
 
 
-" MAPPINGS {
+" MAPPINGS {{{
 
 let g:mapleader = " "
+let g:maplocalleader = ';'
 
 " Source current file
-map <silent> <leader>cs :source %<CR>
+nnoremap <silent> <leader>cs :source %<CR>
 
-" easy mode
-nnoremap <up>    ;<CR>
-nnoremap <down>  ;<CR>
-nnoremap <right> ;<CR>
-nnoremap <left>  ;<CR>
-
-" quit
-map <leader>qq :qa<cr>
+" Quit
+nnoremap <leader>qq :quitall<cr>
 
 " Disable highlight
-nnoremap <silent> <leader>h :noh<cr><ESC>
+nnoremap <silent> <leader>h :nohlsearch<CR>
+nnoremap <silent> <Esc><Esc> :nohlsearch<CR>
+
+" Redraw window
+nnoremap <silent> <leader>r :redraw!<CR>
 
 " Close the current buffer
-map <leader>bd :bdelete<cr>
+nnoremap <silent> <leader>bd :bdelete<CR>
 
 " ESC in insert mode
-verbose inoremap jk <ESC>
-verbose inoremap kj <ESC>
-
-" make Y consistent with C and D
-nnoremap Y y$
+inoremap <silent> jk <ESC>
+inoremap <silent> kj <ESC>
 
 " Resize windows with arrow keys
 " https://vim.fandom.com/wiki/Fast_window_resizing_with_plus/minus_keys
-nnoremap <silent> <C-Down> <C-w>+
-nnoremap <silent> <C-Up> <C-w>-
-nnoremap <silent> <C-Left> <C-w><
-nnoremap <silent> <C-Right>  <C-w>>
+nnoremap <silent> <C-Down>  <C-w>+
+nnoremap <silent> <C-Up>    <C-w>-
+nnoremap <silent> <C-Left>  <C-w><
+nnoremap <silent> <C-Right> <C-w>>
 
 " Move between windows
-map <C-j> <C-w>j
-map <C-k> <C-w>k
-map <C-h> <C-w>h
-map <C-l> <C-w>l
+nnoremap <silent> <C-j> <C-w>j
+nnoremap <silent> <C-k> <C-w>k
+nnoremap <silent> <C-h> <C-w>h
+nnoremap <silent> <C-l> <C-w>l
 
 " Continuous visual shifting (does not exit Visual mode), `gv` means
 " to reselect previous visual area, see https://superuser.com/q/310417/736190
@@ -398,34 +529,44 @@ xnoremap < <gv
 xnoremap > >gv
 
 " Buffer prev/nexT
-map <silent> <leader>j :bprev<cr>
-map <silent> <leader>k :bnext<cr>
-nnoremap <silent> <C-,> :bnext<CR>
-nnoremap <silent> <C-.> :bprev<cr>
+nnoremap <silent> <leader>j :bprev<cr>
+nnoremap <silent> <leader>k :bnext<cr>
+nnoremap <silent> <C-,> :bprev<cr>
+nnoremap <silent> <C-.> :bnext<CR>
 
 " Move the cursor based on physical lines, not the actual lines.
-nnoremap <silent> <expr> j (v:count == 0 ? 'gj' : 'j')
-nnoremap <silent> <expr> k (v:count == 0 ? 'gk' : 'k')
-nnoremap <silent> ^ g^
-nnoremap <silent> 0 g0
+nnoremap <silent> <expr> j v:count == 0 ? 'gj' : 'j'
+nnoremap <silent> <expr> k v:count == 0 ? 'gk' : 'k'
+nnoremap <silent> <expr> 0 v:count == 0 ? 'g0' : '0'
+nnoremap <silent> <expr> ^ v:count == 0 ? 'g^' : '^'
+nnoremap <silent> <expr> $ v:count == 0 ? 'g$' : '$'
 
-" make wrapped lines more intuitive
-noremap <silent> k gk
-noremap <silent> j gj
-noremap <silent> 0 g0
-noremap <silent> $ g$
+" make Y consistent with C and D
+nnoremap Y y$
 
 " autoindent format
-nnoremap <leader>cf :normal! gg=G<CR>
+nnoremap <silent> <leader>cf :normal! mzgg=G`z<CR>
+"nnoremap <silent> <leader>cf :normal! gg=G<CR>
 
 " enable/disable paste mode, allows usign shortcuts like jk
-set pastetoggle=<C-p>
+if exists('&pastetoggle')
+  set pastetoggle=<F2>
+endif
+
+""" Diffing
 
 " From `:help :DiffOrig`.
-if exists(":DiffOrig") != 2
-  command DiffOrig vert new | set bt=nofile | r ++edit # | 0d_
-        \ | diffthis | wincmd p | diffthis
+if exists(':DiffOrig') != 2
+  command! DiffOrig vertical new |
+        \ set bt=nofile |
+        \ r ++edit # |
+        \ 0d_ |
+        \ diffthis |
+        \ wincmd p |
+        \ diffthis
 endif
+
+""" File navigation
 
 " Netrw opts
 let g:netrw_banner=0
@@ -433,114 +574,172 @@ let g:netrw_liststyle = 3  " default directory view. Cycle with i
 let g:netrw_browse_split=4
 let g:netrw_altv = 1
 let g:netrw_sort_sequence = '[\/]$,*'
-let g:netrw_keepdir=0
-let g:netrw_winsize=25
+let g:netrw_keepdir = 0
+let g:netrw_winsize = 25
 
 " Open Netrw window
-function! ToggleVExplorer()
-  Lexplore
-endfunction
-map <silent> <leader>e :call ToggleVExplorer()<CR>
+nnoremap <silent> <leader>e :Lexplore<CR>
+
+""" Terminal
 
 " Open a terminal window
-map <c-/> :ter<CR>
+if exists(':terminal') == 2
+  noremap <silent> <C-/> :terminal<CR>
+endif
 
-" Closing the terminal window
-tnoremap <c-/> exit<CR>
+" Close the terminal window
+tnoremap <silent> <C-/> <C-\><C-n>:bdelete!<CR>
 
 " Esc to make the terminal scrollable and I to input mode
-tnoremap <Esc> <C-\><C-n>
+tnoremap <silent> <Esc> <C-\><C-n>
 
-" lf to navigate files
-nnoremap <leader>l :LF<cr>
+""" Highlights info
 
-" show highlight group
-map <leader>j :call SynStack()<cr>
+" Show highlight group
+map <leader>; :call SynStack()<CR>
+
+function! SynStack() abort
+  if !exists("*synstack")
+    echo 'synstack() is not available'
+    return
+  endif
+
+  let l:stack = map(synstack(line('.'), col('.')), 'synIDattr(v:val, "name")')
+  if empty(l:stack)
+    echo 'No syntax group under cursor'
+    return
+  else
+    echo 'stack: ' . join(l:stack, ' -> ')
+  endif
+
+  let l:id = synID(line('.'), col('.'), 1)
+  echo 'effective: ' . synIDattr(l:id, 'name') . ' -> ' . synIDattr(synIDtrans(l:id), 'name')
+endfunc
+
+" Toggle comments
 
 " Commenting blocks of code.
 " https: //stackoverflow.com/questions/1676632/whats-a-quick-way-to-comment-uncomment-lines-in-vim
 let s:comment_map = {
-      \   "c": '\/\/',
-      \   "cpp": '\/\/',
-      \   "go": '\/\/',
-      \   "java": '\/\/',
-      \   "javascript": '\/\/',
-      \   "lua": '--',
-      \   "scala": '\/\/',
-      \   "php": '\/\/',
-      \   "python": '#',
-      \   "ruby": '#',
-      \   "rust": '\/\/',
-      \   "sh": '#',
-      \   "desktop": '#',
-      \   "fstab": '#',
-      \   "conf": '#',
-      \   "profile": '#',
-      \   "bashrc": '#',
-      \   "bash_profile": '#',
-      \   "mail": '>',
-      \   "eml": '>',
-      \   "bat": 'REM',
-      \   "ahk": ';',
-      \   "vim": '"',
-      \   "tex": '%',
+      \ 'ahk': ';',
+      \ 'bash_profile': '#',
+      \ 'bashrc': '#',
+      \ 'bat': 'REM',
+      \ 'c': '//',
+      \ 'conf': '#',
+      \ 'cpp': '//',
+      \ 'desktop': '#',
+      \ 'eml': '>',
+      \ 'fstab': '#',
+      \ 'go': '//',
+      \ 'java': '//',
+      \ 'javascript': '//',
+      \ 'lua': '--',
+      \ 'mail': '>',
+      \ 'php': '//',
+      \ 'profile': '#',
+      \ 'python': '#',
+      \ 'ruby': '#',
+      \ 'rust': '//',
+      \ 'scala': '//',
+      \ 'sh': '#',
+      \ 'tex': '%',
+      \ 'vim': '"',
       \ }
 
-function! ToggleComment()
-  if has_key(s:comment_map, &filetype)
-    let comment_leader = s:comment_map[&filetype]
-    if getline('.') =~ "^\\s*" . comment_leader . " "
-      " Uncomment the line
-      execute "silent s/^\\(\\s*\\)" . comment_leader . " /\\1/"
-    else
-      if getline('.') =~ "^\\s*" . comment_leader
-        " Uncomment the line
-        execute "silent s/^\\(\\s*\\)" . comment_leader . "/\\1/"
-      else
-        " Comment the line
-        execute "silent s/^\\(\\s*\\)/\\1" . comment_leader . " /"
-      end
-    end
-  else
-    echo "No comment leader found for filetype"
-  end
+function! s:CommentLeader() abort
+  if &commentstring =~# '%s'
+    let l:leader = substitute(&commentstring, '\s*%s.*$', '', '')
+    if !empty(l:leader)
+      return l:leader
+    endif
+  endif
+  return get(s:comment_map, &filetype, '')
 endfunction
 
-nnoremap gcc :call ToggleComment()<cr>
-vnoremap gc :call ToggleComment()<cr>
+function! ToggleCommentRange(first, last) abort
+  let l:leader = s:CommentLeader()
 
-" }
+  if empty(l:leader)
+    echo 'No comment leader found for filetype: ' . &filetype
+    return
+  endif
+
+  let l:leader_re = escape(l:leader, '\.^$~[]*')
+  let l:all_commented = 1
+
+  for l:num in range(a:first, a:last)
+    let l:line = getline(l:num)
+
+    if l:line =~# '^\s*$'
+      continue
+    endif
+
+    if l:line !~# '^\s*' . l:leader_re
+      let l:all_commented = 0
+      break
+    endif
+  endfor
+
+  for l:num in range(a:first, a:last)
+    let l:line = getline(l:num)
+
+    if l:line =~# '^\s*$'
+      continue
+    endif
+
+    if l:all_commented
+      call setline(l:num, substitute(l:line, '^\(\s*\)' . l:leader_re . '\s\?', '\1', ''))
+    else
+      call setline(l:num, substitute(l:line, '^\(\s*\)', '\1' . l:leader . ' ', ''))
+    endif
+  endfor
+endfunction
+
+nnoremap <silent> gcc :call ToggleCommentRange(line('.'), line('.'))<CR>
+xnoremap <silent> gc :<C-u>call ToggleCommentRange(line("'<"), line("'>"))<CR>
+" nnoremap gcc :call ToggleComment()<cr>
+" vnoremap gc :call ToggleComment()<cr>
+
+" }}}
 
 
-" UI {
+" UI {{{
 
 " Show partial command you type in the last line of the screen.
 set showcmd
 
-" Show the mode you are on the last line.
+" Hide the mode, we have a statusline
 set noshowmode
 
 " Show current line number
 set number
 
-" Shoe line numbers
+" Show relative line numbers
 set relativenumber
 
 " Show the cursor position all the time
 set ruler
 
+" Do not let cursor scroll below or above N number of lines when scrolling.
+set scrolloff=8
+
 " Disable column highlight
 set nocursorcolumn
 
-" Disable line highlight
-set cursorline
-set cursorlineopt=number
+" Highlight current line number
+if exists('&cursorlineopt')
+  set cursorline
+  set cursorlineopt=number
+endif
 
 " Disable bells
 set noerrorbells
 set novisualbell
-set t_vb=
-set tm=500
+
+if exists('&t_vb')
+  set t_vb=
+endif
 
 " Disable modelines as a security precaution
 set modelines=0
@@ -559,167 +758,209 @@ set cmdheight=1
 " Adds 1 col space left to the numbers
 set foldcolumn=1
 
-set scrolloff=8
+" Horizontal scrolling
 set sidescroll=1
 set sidescrolloff=2
-set display+=lastline
+
+set display=lastline
 set display+=truncate
 
 " have a fixed column for the diagnostics to appear in
 " this removes the jitter when warnings/errors flow in
-set signcolumn=yes
+if exists('&signcolumn')
+  set signcolumn=yes
+endif
 
-" hide tabltine
-set showtabline=1
+" hide tabline
+set showtabline=0
 
 " https://github.com/amix/vimrc/blob/master/vimrcs/basic.vim
 " Don't redraw while executing macros (good performance config)
 set lazyredraw
 
 " Cursor modes: Normal - Insert
-let &t_SI = "\<esc>[6 q"
-let &t_EI = "\<esc>[2 q"
-if exists('&t_SR')
-  let &t_SR = "\<esc>[4 q"
+if !has('gui_running') && &term =~# '\v(xterm|screen|tmux|rxvt|st|alacritty|foot|kitty|linux|wezterm)'
+  let &t_SI = "\<esc>[6 q"
+  let &t_EI = "\<esc>[2 q"
+
+  if exists('&t_SR')
+    let &t_SR = "\<esc>[4 q"
+  endif
 endif
 
-" }
+" https://stackoverflow.com/questions/6488683/how-to-change-the-cursor-between-normal-and-insert-modes-in-vim
+" reset the cursor on start (for older versions of vim, usually not required)
+" augroup user_cursor_shape
+"   autocmd!
+"   "autocmd VimEnter * silent !echo -ne "\e[2 q"
+"   "autocmd VimLeave * silent !echo -ne "\e[2 q"
+"   autocmd VimLeave * silent! set t_me&
+" augroup END
+
+" }}}
 
 
-" HIGHLIGHTS {
+" HIGHLIGHTS {{{
 
 " Turn syntax highlighting on.
-syntax on
-
+syntax enable
 syntax sync minlines=256
-set synmaxcol=300
-set re=1
+
+if exists('&synmaxcol')
+  set synmaxcol=300
+endif
 
 " Correctly highlight $() and other modern affordances in filetype=sh.
-if !exists('g:is_posix') && !exists('g:is_bash') && !exists('g:is_kornshell') && !exists('g:is_dash')
+if !exists('g:is_posix') &&
+      \ !exists('g:is_bash') &&
+      \ !exists('g:is_kornshell')
+      \ && !exists('g:is_dash')
   let g:is_posix = 1
+  " let g:is_bash = 1
 endif
 
 " Allow color schemes to do bright colors without forcing bold.
-if !empty(&t_Co)
-  set t_Co=16
-endif
-
-if !has('gui_running')
-  augroup MyColors
-    autocmd!
-    autocmd ColorScheme * call CustomHighlights()
-  augroup END
-else
-  set guioptions-=T
-  set guioptions-=m
-  set guioptions-=r
-  set guioptions-=L
+if !has('gui_running') && &t_Co < 256
+  set t_Co=256
 endif
 
 function! CustomHighlights() abort
-  highlight! clear
-
   " custom highlights
-  hi user1               ctermfg=7     ctermbg=0      cterm=none
-  hi user2               ctermfg=7     ctermbg=8      cterm=none
-  hi user3               ctermfg=10    ctermbg=8      cterm=none
+  hi user1               ctermfg=7     ctermbg=0      cterm=NONE
+  hi user2               ctermfg=7     ctermbg=8      cterm=NONE
+  hi user3               ctermfg=10    ctermbg=8      cterm=NONE
   hi user4               ctermfg=0     ctermbg=2      cterm=bold
   hi user5               ctermfg=3     ctermbg=0      cterm=bold
   hi! link user6  linenr
+  hi user7               ctermfg=NONE  ctermbg=NONE
 
   " status line
-  hi StatusLine          ctermfg=0     ctermbg=none   cterm=bold
-  hi StatusLineNC        ctermfg=0     ctermbg=none   cterm=italic
-  hi StatusLineTerm      ctermfg=0     ctermbg=none   cterm=none
-  hi StatusLineTermNC    ctermfg=0     ctermbg=none   cterm=none
+  hi StatusLine          ctermfg=0     ctermbg=NONE   cterm=bold
+  hi StatusLineNC        ctermfg=NONE  ctermbg=NONE   cterm=italic
+  hi StatusLineTerm      ctermfg=NONE  ctermbg=NONE   cterm=NONE
+  hi StatusLineTermNC    ctermfg=NONE  ctermbg=NONE   cterm=NONE
+
   hi NormalMode          ctermfg=0     ctermbg=2      cterm=bold
   hi InsertMode          ctermfg=0     ctermbg=12     cterm=bold
   hi ReplaceMode         ctermfg=0     ctermbg=11     cterm=bold
   hi VisualMode          ctermfg=0     ctermbg=5      cterm=bold
-  hi CommandMode         ctermfg=0     ctermbg=2      cterm=bold
-  hi Warnings            ctermfg=8     ctermbg=0      cterm=bold
+  hi CommandMode         ctermfg=0     ctermbg=12     cterm=bold
+  hi Warnings            ctermfg=3     ctermbg=0      cterm=bold
 
-  hi Normal              ctermfg=7     ctermbg=none   cterm=none
-  hi Cursor              ctermfg=none  ctermbg=none   cterm=reverse
-  hi CursorIM            ctermfg=none  ctermbg=none   cterm=reverse
-  hi CursorLine          ctermfg=none  ctermbg=none   cterm=none
-  hi CursorLineNr        ctermfg=6     ctermbg=none   cterm=none
-  hi CursorLineSign      ctermfg=13    ctermbg=none   cterm=none
-  hi matchparen          ctermfg=15    ctermbg=none   cterm=underline
-  hi pmenu               ctermfg=8     ctermbg=none
-  hi pmenuthumb          ctermfg=8     ctermbg=none
-  hi pmenusbar           ctermfg=7     ctermbg=none
-  hi pmenusel            ctermfg=4     ctermbg=none
-  hi colorcolumn         ctermfg=8     ctermbg=0
-  hi spellbad            ctermfg=1     ctermbg=none   cterm=underline
-  hi spellcap            ctermfg=10    ctermbg=none   cterm=underline
-  hi spellrare           ctermfg=11    ctermbg=none   cterm=underline
-  hi spelllocal          ctermfg=13    ctermbg=none   cterm=underline
-  hi nontext             ctermfg=8
-  hi linenr              ctermfg=8     ctermbg=none   cterm=none
-  hi visual              ctermfg=none  ctermbg=0      cterm=none
-  hi incsearch           ctermfg=0     ctermbg=13     cterm=none
-  hi search              ctermfg=0     ctermbg=11
-  hi vertsplit           ctermfg=0     ctermbg=none   cterm=none
-  hi tabline             ctermfg=0     ctermbg=none   cterm=none
-  hi tablinefill         ctermfg=0     ctermbg=none   cterm=none
-  hi tablinesel          ctermfg=7     ctermbg=0
-  hi folded              ctermfg=6     ctermbg=0      cterm=bold
-  hi conceal             ctermfg=8     ctermbg=none
-  hi directory           ctermfg=4                    cterm=bold
-  hi title               ctermfg=3                    cterm=bold
-  hi errormsg            ctermfg=9     ctermbg=none
-  hi diffadd             ctermfg=0     ctermbg=10     cterm=bold
-  hi diffchange          ctermfg=0     ctermbg=11     cterm=bold
-  hi diffdelete          ctermfg=0     ctermbg=9      cterm=bold
-  hi difftext            ctermfg=0     ctermbg=13     cterm=bold
-  hi wildmenu            ctermfg=6     ctermbg=none   cterm=bold
-  hi EndOfBuffer         ctermfg=0     ctermbg=none   cterm=bold
-  hi TrailingWhitespace  ctermfg=0     ctermbg=none
-  hi ExtraWhitespace     ctermfg=0     ctermbg=none
-  hi Whitespace          ctermfg=0     ctermbg=none
-  hi SpecialKey          ctermfg=0     ctermbg=none
+  hi Normal              ctermfg=7     ctermbg=NONE   cterm=NONE
+  hi Cursor              ctermfg=NONE  ctermbg=NONE   cterm=reverse
+  hi CursorIM            ctermfg=NONE  ctermbg=NONE   cterm=reverse
+  hi CursorLine          ctermfg=NONE  ctermbg=NONE   cterm=NONE
+  hi CursorLineNr        ctermfg=6     ctermbg=NONE   cterm=NONE
+  hi CursorLineSign      ctermfg=13    ctermbg=NONE   cterm=NONE
+  hi Matchparen          ctermfg=15    ctermbg=NONE   cterm=underline
+  hi Pmenu               ctermfg=8     ctermbg=NONE
+  hi PmenuThumb          ctermfg=8     ctermbg=NONE
+  hi PmenuSbar           ctermfg=7     ctermbg=NONE
+  hi PmenuSel            ctermfg=4     ctermbg=NONE
+  hi ColorColumn         ctermfg=8     ctermbg=0
+  hi SpellBad            ctermfg=1     ctermbg=NONE   cterm=underline
+  hi SpellCap            ctermfg=10    ctermbg=NONE   cterm=underline
+  hi SpellRare           ctermfg=11    ctermbg=NONE   cterm=underline
+  hi SpellLocal          ctermfg=13    ctermbg=NONE   cterm=underline
+  hi NonText             ctermfg=8
+  hi LineNr              ctermfg=8     ctermbg=NONE   cterm=none
+  hi Visual              ctermfg=NONE  ctermbg=0      cterm=none
+  hi IncSearch           ctermfg=0     ctermbg=13     cterm=none
+  hi Search              ctermfg=0     ctermbg=11
+  hi VertSplit           ctermfg=0     ctermbg=NONE   cterm=none
+  hi TabLine             ctermfg=0     ctermbg=NONE   cterm=none
+  hi TabLineFill         ctermfg=0     ctermbg=NONE   cterm=none
+  hi TabLineSel          ctermfg=7     ctermbg=0
+  hi Folded              ctermfg=6     ctermbg=0      cterm=bold
+  hi Conceal             ctermfg=8     ctermbg=NONE
+  hi Directory           ctermfg=4                    cterm=bold
+  hi Title               ctermfg=3                    cterm=bold
+  hi ErrorMsg            ctermfg=9     ctermbg=NONE
+  hi DiffAdd             ctermfg=0     ctermbg=10     cterm=bold
+  hi DiffChange          ctermfg=0     ctermbg=11     cterm=bold
+  hi DiffDelete          ctermfg=0     ctermbg=9      cterm=bold
+  hi DiffText            ctermfg=0     ctermbg=13     cterm=bold
+  hi WildMenu            ctermfg=6     ctermbg=NONE   cterm=bold
+  hi EndOfBuffer         ctermfg=0     ctermbg=NONE   cterm=bold
+  hi TrailingWhitespace  ctermfg=8     ctermbg=0
+  hi ExtraWhitespace     ctermfg=8     ctermbg=0
+  hi Whitespace          ctermfg=0     ctermbg=NONE
+  hi SpecialKey          ctermfg=0     ctermbg=NONE
 
-  hi! link cursorcolumn  cursorline
-  hi! link signcolumn    linenr
-  hi! link foldcolumn    signcolumn
-  hi! link warningmsg    errormsg
-  hi! link moremsg       title
-  hi! link question      moremsg
-  hi! link modemsg       moremsg
+  hi! link CursorColumn  CursorLine
+  hi! link SignColumn    LineNr
+  hi! link FoldColumn    SignColumn
+  hi! link WarningMsg    ErrorMsg
+  hi! link MoreMsg       Title
+  hi! link Question      MoreMsg
+  hi! link ModeMsg       MoreMsg
   " hi! link tablinefill   vertsplit
   " hi! link specialkey    nontext
 
   " generic syntax
-  hi comment             ctermfg=8     ctermbg=none   cterm=none
-  hi constant            ctermfg=14    ctermbg=none   cterm=none
-  hi string              ctermfg=2     ctermbg=none   cterm=none
-  hi! link character     string
-  hi number              ctermfg=3     ctermbg=none   cterm=none
-  hi! link boolean       number
-  hi! link float         number
-  hi identifier          ctermfg=7     ctermbg=none   cterm=none
-  hi function            ctermfg=4     ctermbg=none   cterm=none
-  hi statement           ctermfg=5     ctermbg=none   cterm=none
-  hi! link operator      identifier
-  hi keyword             ctermfg=9
-  hi preproc             ctermfg=9     ctermbg=none   cterm=none
-  hi include             ctermfg=5     ctermbg=none   cterm=none
-  hi! link define        include
-  hi! link macro         include
-  hi! link precondit     include
-  hi type                ctermfg=3     ctermbg=none   cterm=none
-  hi special             ctermfg=9     ctermbg=none   cterm=none
-  hi specialchar         ctermfg=6     ctermbg=none   cterm=none
-  hi! link tag special
-  hi! link delimiter     identifier
-  hi specialcomment      ctermfg=8     ctermbg=none   cterm=italic
-  hi debug               ctermfg=11    ctermbg=none   cterm=bold,italic
-  hi underlined          ctermfg=4     ctermbg=none   cterm=underline
-  hi ignore              ctermfg=7     ctermbg=none   cterm=none
-  hi! link error         errormsg
-  hi todo                ctermfg=6     ctermbg=none   cterm=bold,italic
+  hi Comment             ctermfg=8     ctermbg=NONE   cterm=NONE
+  hi Constant            ctermfg=14    ctermbg=NONE   cterm=NONE
+  hi String              ctermfg=2     ctermbg=NONE   cterm=NONE
+  hi! link Character     String
+  hi Number              ctermfg=3     ctermbg=NONE   cterm=NONE
+  hi! link Boolean       Number
+  hi! link Float         Number
+  hi Identifier          ctermfg=7     ctermbg=NONE   cterm=NONE
+  hi Function            ctermfg=4     ctermbg=NONE   cterm=NONE
+  hi Statement           ctermfg=5     ctermbg=NONE   cterm=NONE
+  hi! link Operator      Identifier
+  hi Keyword             ctermfg=9
+  hi Preproc             ctermfg=9     ctermbg=NONE   cterm=NONE
+  hi Include             ctermfg=5     ctermbg=NONE   cterm=NONE
+  hi! link Define        Include
+  hi! link Macro         Include
+  hi! link PreCondit     Include
+  hi Type                ctermfg=3     ctermbg=NONE   cterm=NONE
+  hi Special             ctermfg=9     ctermbg=NONE   cterm=NONE
+  hi SpecialChar         ctermfg=6     ctermbg=NONE   cterm=NONE
+  hi! link Tag           Special
+  hi! link Delimiter     Identifier
+  hi SpecialComment      ctermfg=8     ctermbg=NONE   cterm=italic
+  hi Debug               ctermfg=11    ctermbg=NONE   cterm=bold,italic
+  hi Underlined          ctermfg=4     ctermbg=NONE   cterm=underline
+  hi Ignore              ctermfg=7     ctermbg=NONE   cterm=NONE
+  hi! link Error         ErrorMsg
+  hi Todo                ctermfg=6     ctermbg=NONE   cterm=bold,italic
+
+  " help
+  hi! link HelpExample                 String
+  hi! link HelpHeadline                Title
+  hi! link HelpSectionDelim            Comment
+  hi! link HelpHypertextEntry          Statement
+  hi! link HelpHypertextJump           Underlined
+  hi! link HelpUrl                     Underlined
+
+  " vim
+  hi! link VimSetSep                   Delimiter
+  hi! link VimContinue                 Delimiter
+  hi! link VimHiAttrib                 Constant
+
+  " netrw
+  hi netrwExe                          ctermfg=9
+  hi netrwClassify                     ctermfg=8  cterm=bold
+
+  " diff
+  hi DiffAdded                         ctermfg=2
+  hi DiffRemoved                       ctermfg=1
+  hi! link DiffFile                    preproc
+  hi! link DiffLine                    title
+
+  " git
+  hi GitCommitBranch                   ctermfg=3
+  hi GitCommitSelectedtype             ctermfg=10
+  hi GitCommitSelectedfile             ctermfg=2
+  hi GitCommitUnmergedtype             ctermfg=9
+  hi GitCommitUnmergedfile             ctermfg=1
+  hi! link GitCommitFile               Directory
+  " hi! link GitCommitUntrackedfile      GitcommitUnmergedFile
+  " hi! link GitCommitDiscardedtype      GitcommitUnmergedType
+  " hi! link GitCommitDiscardedfile      GitcommitUnmergedFile
 
   " html
   hi htmltagname                       ctermfg=2
@@ -733,7 +974,7 @@ function! CustomHighlights() abort
   hi htmlboldunderline                 cterm=bold,underline
   hi htmlunderlineitalic               cterm=underline
   hi htmlboldunderlineitalic           cterm=bold,underline
-  hi! link htmllink                    underlined
+  hi! link htmllink                    Underlined
   hi! link htmlendtag                  htmltag
 
   " xml
@@ -745,160 +986,72 @@ function! CustomHighlights() abort
   hi! link xmlequal                    xmltag
 
   " javascript
-  hi! link javascript                  normal
-  hi! link javascriptbraces            delimiter
+  hi! link javascript                  Normal
+  hi! link javascriptbraces            Delimiter
 
   " php
   hi phpspecialfunction                ctermfg=5
   hi phpidentifier                     ctermfg=11
   hi phpparent                         ctermfg=8
-  hi! link phpvarselector              phpidentifier
-  hi! link phpheredoc                  string
-  hi! link phpdefine                   statement
+  hi! link phpvarselector              Phpidentifier
+  hi! link phpheredoc                  String
+  hi! link phpdefine                   Statement
 
   " markdown
-  hi! link markdownheadingrule         nontext
+  hi! link markdownheadingrule         Nontext
   hi! link markdownheadingdelimiter    markdownheadingrule
-  hi! link markdownlinkdelimiter       delimiter
-  hi! link markdownurldelimiter        delimiter
-  hi! link markdowncodedelimiter       nontext
+  hi! link markdownlinkdelimiter       Delimiter
+  hi! link markdownurldelimiter        Delimiter
+  hi! link markdowncodedelimiter       Nontext
   hi! link markdownlinktextdelimiter   markdownlinkdelimiter
   hi! link markdownurl                 markdownlinktext
   hi! link markdownautomaticlink       markdownlinktext
-  hi! link markdowncodeblock           string
+  hi! link markdowncodeblock           String
   hi markdowncode                      cterm=bold
   hi markdownbold                      cterm=bold
   hi markdownitalic                    cterm=underline
-
-  " ruby
-  hi! link rubydefine                  statement
-  hi! link rubylocalvariableormethod   identifier
-  hi! link rubyconstant                constant
-  hi! link rubyinstancevariable        number
-  hi! link rubystringdelimiter         rubystring
-
-  " git
-  hi gitcommitbranch                   ctermfg=3
-  hi gitcommitselectedtype             ctermfg=10
-  hi gitcommitselectedfile             ctermfg=2
-  hi gitcommitunmergedtype             ctermfg=9
-  hi gitcommitunmergedfile             ctermfg=1
-  hi! link gitcommitfile               directory
-  hi! link gitcommituntrackedfile      gitcommitunmergedfile
-  hi! link gitcommitdiscardedtype      gitcommitunmergedtype
-  hi! link gitcommitdiscardedfile      gitcommitunmergedfile
-
-  " vim
-  hi! link vimsetsep                   delimiter
-  hi! link vimcontinue                 delimiter
-  hi! link vimhiattrib                 constant
-
-  " less
-  hi lessvariable                      ctermfg=11
-  hi! link lessvariablevalue           normal
-
-  " nerdtree
-  hi! link nerdtreehelp                comment
-  hi! link nerdtreeexecfile            string
-
-  " vimwiki
-  hi! link vimwikiheaderchar           markdownheadingdelimiter
-  hi! link vimwikilist                 markdownlistmarker
-  hi! link vimwikicode                 markdowncode
-  hi! link vimwikicodechar             markdowncodedelimiter
-
-  " help
-  hi! link helpexample                 string
-  hi! link helpheadline                title
-  hi! link helpsectiondelim            comment
-  hi! link helphypertextentry          statement
-  hi! link helphypertextjump           underlined
-  hi! link helpurl                     underlined
-
-  " ctrlp
-  hi! link ctrlpmatch                  string
-  hi! link ctrlplinepre                comment
-
-  " mustache
-  hi mustachesection                   ctermfg=14  cterm=bold
-  hi mustachemarker                    ctermfg=6
-  hi mustachevariable                  ctermfg=14
-  hi mustachevariableunescape          ctermfg=9
-  hi mustachepartial                   ctermfg=13
-
-  " shell
-  hi shderefsimple                     ctermfg=11
-  hi! link shderefvar                  shderefsimple
-
-  " syntastic
-  hi syntasticwarningsign              ctermfg=3  ctermbg=none
-  hi syntasticerrorsign                ctermfg=1  ctermbg=none
-  hi syntasticstylewarningsign         ctermfg=2  ctermbg=none
-  hi syntasticstyleerrorsign           ctermfg=4  ctermbg=none
-
-  " netrw
-  hi netrwexe                          ctermfg=9
-  hi netrwclassify                     ctermfg=8  cterm=bold
-
-  " ledger
-  hi ledgeraccount                     ctermfg=11
-  hi! link ledgermetadata              comment
-  hi! link ledgertransactionstatus     statement
-
-  " diff
-  hi diffadded                         ctermfg=2
-  hi diffremoved                       ctermfg=1
-  hi! link difffile                    preproc
-  hi! link diffline                    title
-
-  " plug
-  hi plugsha                           ctermfg=3
-
-  " blade
-  hi! link bladestructure              preproc
-  hi! link bladeparen                  phpparent
-  hi! link bladeechodelim              preproc
 endfunction
 
-" Highlight trailing white spaces and leading tabs
-if has('gui_running')
-  hi Warnings ctermfg=1 ctermbg=8
-endif
-set background=dark
-colorscheme default
-
-" If we want to use true colors, we must a color scheme which support
-call matchadd("Warnings", '\s\+$')
-call matchadd("Warnings", '^\t\+')
-
-autocmd Syntax * syn match ExtraWhitespace /\s\+$\| \+\ze\t/
-
-" More accurate syntax highlighting? (see `:h syn-sync`)
-" augroup accurate_syn_highlight
-"   autocmd!
-"   autocmd BufEnter * if getfsize(expand('%')) > 500000 | syntax sync minlines=300 | else | syntax sync fromstart | endif
-" augroup END
-
-" disable syntax on large files
-augroup highlight_large_files
+augroup user_highlights
   autocmd!
-  autocmd BufReadPre * if getfsize(expand('%')) > 500000 | set syntax=off | endif
+  autocmd ColorScheme * call CustomHighlights()
 augroup END
 
-function! SynStack()
-  " if !exists("*synstack")
-  "   return
-  " endif
-  " echo map(synstack(line('.'), col('.')), 'synIDattr(v:val, "name")')
+set background=dark
+colorscheme default
+call CustomHighlights()
 
-  let l:s = synID(line('.'), col('.'), 1)
-  echo synIDattr(l:s, 'name') . ' -> ' . synIDattr(synIDtrans(l:s), 'name')
-endfunc
+function! s:SetupWhitespaceMatches() abort
+  if exists('w:trailing_whitespace_match')
+    silent! call matchdelete(w:trailing_whitespace_match)
+  endif
+  if exists('w:leading_tabs_match')
+    silent! call matchdelete(w:leading_tabs_match)
+  endif
 
-" }
+  let w:trailing_whitespace_match = matchadd('TrailingWhitespace', '\s\+$')
+  let w:leading_tabs_match = matchadd('ExtraWhitespace', '^\t\+')
+endfunction
+
+augroup user_whitespace_matches
+  autocmd!
+  autocmd WinEnter,BufWinEnter * call s:SetupWhitespaceMatches()
+augroup END
+
+call s:SetupWhitespaceMatches()
+
+" disable syntax on large files
+augroup user_highlight_large_files
+  autocmd!
+  autocmd BufReadPost * if getfsize(expand('%:p')) > 500000 |
+        \ setlocal syntax=off |
+        \ endif
+augroup END
+
+" }}}
 
 
-" STATUSLINE {
+" STATUSLINE {{{
 
 " always display statusline
 set laststatus=2
@@ -907,7 +1060,7 @@ set laststatus=2
 set statusline=
 
 " Statusline functions
-function! StatuslineLoad(mode)
+function! StatuslineLoad(mode) abort
   if a:mode ==# 'active'
     setlocal statusline=%!StatuslineActive()
   else
@@ -915,86 +1068,178 @@ function! StatuslineLoad(mode)
   endif
 endfunction
 
-function! StatuslineActive()
-  " reset statusline
-  set statusline=
-  " add buffer num
-  set statusline+=%1*\ %n\ 
-  " add vim mode & color
-  set statusline+=%4*\ %{StatuslineMode()}
-  " add server hostname
-  set statusline+=%5*\%{exists('$SSH_TTY')?'\ \ \@'.hostname().'':''}
-  " add filename
-  set statusline+=%1*\ %{fnamemodify(getcwd(),':~')}%<\/%f
-  " add file modified/readonly/top-bottom flag
-  set statusline+=\ %m%r%w
-  " add separation
-  set statusline+=\ %1*\ %=
-  " add paste indicator
-  set statusline+=%5*\ \ %{&paste?'[PASTE]\ ':''}
-  " add file encoding + format + filetype
-  set statusline+=%2*\ \ %{&fileencoding?&filencoding:&encoding}
-  set statusline+=%2*\ \ %(%{&fileformat}%)
-  set statusline+=%3*\ \ %(%{&filetype}%)\ \ 
-  " add row:col
-  set statusline+=%4*\ \ %l:%c\ \ %6*
-endfunction
+function! StatuslineActive() abort
+  let l:line = ''
 
-function! StatuslineInactive()
-  " reset statusline
-  set statusline=
   " add buffer num
-  set statusline=%6*\ %n
-endfunction
-
-function! StatuslineMode()
-  let l:CurrentMode=mode()
-  if l:CurrentMode==#"n"
-    let b:CurrentMode = "NORMAL "
-    execute 'hi user4 ctermbg=2'
-  elseif l:CurrentMode==#"i"
-    let b:CurrentMode = "INSERT "
-    execute 'hi user4 ctermbg=12'
-  elseif l:CurrentMode==#"c"
-    execute 'hi user4 ctermbg=11'
-    let b:CurrentMode = "COMMAND "
-  elseif l:CurrentMode==#"v"
-    execute 'hi user4 ctermbg=13'
-    let b:CurrentMode = "VISUAL "
-  elseif l:CurrentMode==#"V"
-    execute 'hi user4 ctermbg=13'
-    let b:CurrentMode = "V-LINE "
-  elseif l:CurrentMode==#"\<C-v>"
-    execute 'hi user4 ctermbg=5'
-    let b:CurrentMode = "V-BLOCK "
-  elseif l:CurrentMode==#"R"
-    execute 'hi user4 ctermbg=14'
-    let b:CurrentMode = "REPLACE "
-  elseif l:CurrentMode==#"s"
-    execute 'hi user4 ctermbg=6'
-    let b:CurrentMode = "SELECT "
-  elseif l:CurrentMode==#"t"
-    execute 'hi user4 ctermbg=0'
-    let b:CurrentMode = "TERM "
-  elseif l:CurrentMode==#"!"
-    execute 'hi user4 ctermbg=8'
-    let b:CurrentMode = "SHELL "
+  if &buftype ==# 'terminal' ||
+        \ &filetype ==# 'netrw' ||
+        \ &filetype ==# 'help'
+    return '%7* '
+  else
+    let l:line .= '%1* %n '
   endif
-  return b:CurrentMode
+  " add vim mode & color
+  let l:line .= StatuslineMode()
+  " add git branch
+  let l:branch = StatuslineGit()
+  if !empty(l:branch)
+    let l:line .= '%3* ' . l:branch . ' '
+  endif
+  " add server hostname
+  if exists('$SSH_TTY')
+    let l:line .= '%5* @' . hostname() . ' '
+  endif
+  " add filename
+  let l:line .= '%1* %{StatuslineFile()}'
+  " add file modified/readonly/top-bottom flag
+  let l:line .= ' %m%r%w'
+  " add separation
+  let l:line .= '%1* %='
+  " add paste indicator
+  let l:line .= '%5*  %{&paste ? " [PASTE] " : ""}'
+  " add file encoding + format + filetype
+  let l:line .= '%2*  %{empty(&fileencoding) ? &encoding : &fileencoding}'
+  let l:line .= '%2*  %{&fileformat}'
+  let l:line .= '%3*  %{empty(&filetype) ? "noft" : &filetype}  '
+  " add row:col
+  let l:line .= '%4*  %l:%c  %6*'
+
+  return l:line
+endfunction
+
+function! StatuslineInactive() abort
+  return '%7* '
+endfunction
+
+function! StatuslineMode() abort
+  let l:mode=mode(1)
+
+  if l:mode ==# 'n'
+    return '%#NormalMode# NORMAL '
+  elseif l:mode ==# 'i'
+    return '%#InsertMode# INSERT '
+  elseif l:mode ==# 'c'
+    return '%#CommandMode# COMMAND '
+  elseif l:mode ==# 'v'
+    return '%#VisualMode# VISUAL '
+  elseif l:mode ==# 'V'
+    return '%#VisualMode# V-LINE '
+  elseif l:mode ==# "\<C-v>"
+    return '%#VisualMode# V-BLOCK '
+  elseif l:mode ==# 'R'
+    return '%#ReplaceMode# REPLACE '
+  elseif l:mode ==# 'Rv'
+    return '%#ReplaceMode# V-REPLACE '
+  elseif l:mode ==# 's'
+    return '%#VisualMode# SELECT '
+  elseif l:mode ==# 'S'
+    return '%#VisualMode# S-LINE '
+  elseif l:mode ==# "\<C-s>"
+    return '%#VisualMode# S-BLOCK '
+  elseif l:mode ==# 't'
+    return '%#StatusLineTerm# TERM '
+  elseif l:mode ==# '!'
+    return '%#Warnings# SHELL '
+  endif
+  return '%#Statusline# ' . l:mode . ' '
+endfunction
+
+function! StatuslineFile() abort
+  if empty(expand('%'))
+    return '[No file]'
+  endif
+
+  return fnamemodify(getcwd(), ':~') . '/' . expand('%')
+endfunction
+
+" return git branch
+function! GitBranch() abort
+  let l:dir = expand('%:p:h')
+  if empty(l:dir)
+    let l:dir = getcwd()
+  endif
+
+  let l:git_dir = finddir('.git', l:dir . ';')
+  if empty(l:git_dir)
+    return ''
+  endif
+
+  let l:head = fnamemodify(l:git_dir, ':h') . './.git/HEAD'
+  if !filereadable(l:head)
+    return ''
+  endif
+
+  let l:line = get(readfile(l:head, '', 1), 0, '')
+  if l:line =~# '^ref: refs/heads/'
+    return substitute(l:line, '^ref: refs/heads', '', '')
+  endif
+
+  if !empty(l:line)
+    return strpart(l:line, 0, 7)
+  endif
+
+  return ''
+  "return system("git rev-parse --abbrev-ref HEAD 2>/dev/null | tr -d '\n'")
+endfunction
+
+" show git branch if any
+function! StatuslineGit() abort
+  let l:branch = GitBranch()
+  return empty(l:branch) ? '' : l:branch . '*'
 endfunction
 
 " autocommands to disable statusline for terminal, netwr and help buffers
-augroup statusline_startup
+augroup user_statusline
   autocmd!
   autocmd WinEnter,BufWinEnter * call StatuslineLoad('active')
   autocmd WinLeave,BufWinLeave * call StatuslineLoad('inactive')
-  "autocmd ModeChanged * call StatuslineMode()
-  autocmd CmdlineEnter,CmdlineLeave * call StatuslineMode()
-  autocmd FileType netrw,help setlocal statusline=%6*
-  autocmd FileType netrw set nolist
-  autocmd FileType *\(netwr\|help\)\@<! :call StatuslineMode()
+  autocmd ModeChanged * redrawstatus
+  autocmd FileType netrw setlocal nolist
 augroup END
 
-" }
+call StatuslineLoad('active')
+
+" }}}
+
+
+
+" LF INTEGRATION {{{
+
+" a gem found in /usr/share/vim/vimfiles/syntax/lf.vim
+
+if !empty('lf')
+
+  function! LF() abort
+    let temp = tempname()
+
+    exec 'silent !lf -selection-path=' . shellescape(temp)
+    if !filereadable(temp)
+        redraw!
+        return
+    endif
+
+    let names = readfile(temp)
+    if empty(names)
+      redraw!
+      return
+    endif
+
+    exec 'edit ' . fnameescape(names[0])
+    for name in names[1:]
+        exec 'argadd ' . fnameescape(name)
+    endfor
+    redraw!
+  endfunction
+
+  "command! -bar LF call LF()
+
+  " Open lf to navigate files
+  " nnoremap <silent> <leader>l :LF<CR>
+  nnoremap <silent> <leader>l :call LF()<CR>
+endif
+
+
+" }}}
 
 " vim:et:ts=2:sw=2:fdm=marker:fmr={{{,}}}
