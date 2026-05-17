@@ -48,16 +48,16 @@ endif
 let g:loaded_2html_plugin = 1
 
 " Enable the :Man command shipped inside Vim's man filetype plugin.
-if exists(':Man') != 2 && !exists('g:loaded_man') && &filetype !=? 'man'
+if exists(':Man') != 2 && !exists('g:loaded_man')
   runtime ftplugin/man.vim
 endif
 
 " Use less for keywordprg
-if $MANPAGER != 'less*'
+if empty($MANPAGER) || $MANPAGER !~# '^less\>'
   let $MANPAGER = 'less -R'
 endif
 
-if $PAGER != 'less*'
+if empty($PAGER) || $PAGER !~# '^less\>'
   let $PAGER = 'less'
 endif
 
@@ -82,12 +82,18 @@ set autoread
 set autowrite
 
 "Return to last edit position when opening files
+function! GoToLastPosition() abort
+  if &buftype !=# ''
+    return
+  endif
+  if line("'\"") > 1 && line("'\"") <= line("$")
+    silent! normal! g`"
+  endif
+endfunction
+
 augroup user_go_to_last_position
   autocmd!
-  autocmd BufReadPost *
-        \ if line("'\"") > 1 && line("'\"") <= line("$") |
-        \ execute "normal! g`\"" |
-        \ endif
+  autocmd BufReadPost * call GoToLastPosition()
 augroup END
 
 " vim state dir
@@ -230,7 +236,6 @@ augroup user_fold_opts
         \ keywordprg=:help
         \ formatoptions-=o
         \ formatoptions-=r
-        \ endif
 augroup END
 
 " enable fast tty support
@@ -345,8 +350,7 @@ set nowrap
 
 " Display tabs and trailing spaces
 if &encoding ==# 'utf-8'
-  set listchars=tab:┆\ ,trail:_,extends:>,precedes:<,nbsp:␣
-  "set listchars=tab:┆\ ,space:·,trail:-,extends:>,precedes:<,nbsp:␣
+  set listchars=tab:┆\ ,trail:·,extends:>,precedes:<,nbsp:␣
 else
   set listchars=tab:>\ ,trail:_,extends:>,precedes:<,nbsp:+
 endif
@@ -363,8 +367,6 @@ set list " or set invlist
 if exists('##CmdLineEnter')
   augroup user_cmdline_smartcase
     autocmd!
-    " autocmd CmdLineEnter : set nosmartcase
-    " autocmd CmdLineLeave : set smartcase
     autocmd CmdLineEnter : let s:save_smartcase = &smartcase | set nosmartcase
     autocmd CmdLineLeave : if exists('s:save_smartcase') |
           \ let &smartcase = s:save_smartcase |
@@ -425,7 +427,6 @@ set complete-=u
 
 " Avoid tag completion
 set complete-=t
-
 set complete-=w
 set complete-=b
 
@@ -494,17 +495,10 @@ let g:maplocalleader = ';'
 nnoremap <silent> <leader>cs :source %<CR>
 
 " Quit
-nnoremap <leader>qq :quitall<cr>
-
-" Disable highlight
-nnoremap <silent> <leader>h :nohlsearch<CR>
-nnoremap <silent> <Esc><Esc> :nohlsearch<CR>
+nnoremap <silent> <leader>qq :quitall<cr>
 
 " Redraw window
 nnoremap <silent> <leader>r :redraw!<CR>
-
-" Close the current buffer
-nnoremap <silent> <leader>bd :bdelete<CR>
 
 " ESC in insert mode
 inoremap <silent> jk <ESC>
@@ -523,16 +517,14 @@ nnoremap <silent> <C-k> <C-w>k
 nnoremap <silent> <C-h> <C-w>h
 nnoremap <silent> <C-l> <C-w>l
 
-" Continuous visual shifting (does not exit Visual mode), `gv` means
-" to reselect previous visual area, see https://superuser.com/q/310417/736190
-xnoremap < <gv
-xnoremap > >gv
-
-" Buffer prev/nexT
+" Buffer prev/next
 nnoremap <silent> <leader>j :bprev<cr>
 nnoremap <silent> <leader>k :bnext<cr>
 nnoremap <silent> <C-,> :bprev<cr>
 nnoremap <silent> <C-.> :bnext<CR>
+
+" Close the current buffer
+nnoremap <silent> <leader>bd :bdelete<CR>
 
 " Move the cursor based on physical lines, not the actual lines.
 nnoremap <silent> <expr> j v:count == 0 ? 'gj' : 'j'
@@ -541,19 +533,25 @@ nnoremap <silent> <expr> 0 v:count == 0 ? 'g0' : '0'
 nnoremap <silent> <expr> ^ v:count == 0 ? 'g^' : '^'
 nnoremap <silent> <expr> $ v:count == 0 ? 'g$' : '$'
 
-" make Y consistent with C and D
-nnoremap Y y$
-
 " autoindent format
 nnoremap <silent> <leader>cf :normal! mzgg=G`z<CR>
-"nnoremap <silent> <leader>cf :normal! gg=G<CR>
+
+" Disable highlight
+nnoremap <silent> <leader>h :nohlsearch<CR>
+nnoremap <silent> <Esc><Esc> :nohlsearch<CR>
+
+" Continuous visual shifting (does not exit Visual mode), `gv` means
+" to reselect previous visual area, see https://superuser.com/q/310417/736190
+xnoremap < <gv
+xnoremap > >gv
+
+" make Y consistent with C and D
+nnoremap Y y$
 
 " enable/disable paste mode, allows usign shortcuts like jk
 if exists('&pastetoggle')
   set pastetoggle=<F2>
 endif
-
-""" Diffing
 
 " From `:help :DiffOrig`.
 if exists(':DiffOrig') != 2
@@ -565,8 +563,6 @@ if exists(':DiffOrig') != 2
         \ wincmd p |
         \ diffthis
 endif
-
-""" File navigation
 
 " Netrw opts
 let g:netrw_banner=0
@@ -580,20 +576,16 @@ let g:netrw_winsize = 25
 " Open Netrw window
 nnoremap <silent> <leader>e :Lexplore<CR>
 
-""" Terminal
-
 " Open a terminal window
 if exists(':terminal') == 2
   noremap <silent> <C-/> :terminal<CR>
 endif
 
-" Close the terminal window
+" Close a terminal window
 tnoremap <silent> <C-/> <C-\><C-n>:bdelete!<CR>
 
 " Esc to make the terminal scrollable and I to input mode
 tnoremap <silent> <Esc> <C-\><C-n>
-
-""" Highlights info
 
 " Show highlight group
 map <leader>; :call SynStack()<CR>
@@ -616,35 +608,33 @@ function! SynStack() abort
   echo 'effective: ' . synIDattr(l:id, 'name') . ' -> ' . synIDattr(synIDtrans(l:id), 'name')
 endfunc
 
-" Toggle comments
-
-" Commenting blocks of code.
+" Comments toggle for blocks of code.
 " https: //stackoverflow.com/questions/1676632/whats-a-quick-way-to-comment-uncomment-lines-in-vim
 let s:comment_map = {
-      \ 'ahk': ';',
+      \ 'ahk':          ';',
       \ 'bash_profile': '#',
-      \ 'bashrc': '#',
-      \ 'bat': 'REM',
-      \ 'c': '//',
-      \ 'conf': '#',
-      \ 'cpp': '//',
-      \ 'desktop': '#',
-      \ 'eml': '>',
-      \ 'fstab': '#',
-      \ 'go': '//',
-      \ 'java': '//',
-      \ 'javascript': '//',
-      \ 'lua': '--',
-      \ 'mail': '>',
-      \ 'php': '//',
-      \ 'profile': '#',
-      \ 'python': '#',
-      \ 'ruby': '#',
-      \ 'rust': '//',
-      \ 'scala': '//',
-      \ 'sh': '#',
-      \ 'tex': '%',
-      \ 'vim': '"',
+      \ 'bashrc':       '#',
+      \ 'bat':          'REM',
+      \ 'c':            '//',
+      \ 'conf':         '#',
+      \ 'cpp':          '//',
+      \ 'desktop':      '#',
+      \ 'eml':          '>',
+      \ 'fstab':        '#',
+      \ 'go':           '//',
+      \ 'java':         '//',
+      \ 'javascript':   '//',
+      \ 'lua':          '--',
+      \ 'mail':         '>',
+      \ 'php':          '//',
+      \ 'profile':      '#',
+      \ 'python':       '#',
+      \ 'ruby':         '#',
+      \ 'rust':         '//',
+      \ 'scala':        '//',
+      \ 'sh':           '#',
+      \ 'tex':          '%',
+      \ 'vim':          '"',
       \ }
 
 function! s:CommentLeader() abort
@@ -659,7 +649,6 @@ endfunction
 
 function! ToggleCommentRange(first, last) abort
   let l:leader = s:CommentLeader()
-
   if empty(l:leader)
     echo 'No comment leader found for filetype: ' . &filetype
     return
@@ -670,11 +659,9 @@ function! ToggleCommentRange(first, last) abort
 
   for l:num in range(a:first, a:last)
     let l:line = getline(l:num)
-
     if l:line =~# '^\s*$'
       continue
     endif
-
     if l:line !~# '^\s*' . l:leader_re
       let l:all_commented = 0
       break
@@ -683,11 +670,9 @@ function! ToggleCommentRange(first, last) abort
 
   for l:num in range(a:first, a:last)
     let l:line = getline(l:num)
-
     if l:line =~# '^\s*$'
       continue
     endif
-
     if l:all_commented
       call setline(l:num, substitute(l:line, '^\(\s*\)' . l:leader_re . '\s\?', '\1', ''))
     else
@@ -698,8 +683,6 @@ endfunction
 
 nnoremap <silent> gcc :call ToggleCommentRange(line('.'), line('.'))<CR>
 xnoremap <silent> gc :<C-u>call ToggleCommentRange(line("'<"), line("'>"))<CR>
-" nnoremap gcc :call ToggleComment()<cr>
-" vnoremap gc :call ToggleComment()<cr>
 
 " }}}
 
@@ -824,6 +807,7 @@ if !has('gui_running') && &t_Co < 256
 endif
 
 function! CustomHighlights() abort
+
   " custom highlights
   hi user1               ctermfg=7     ctermbg=0      cterm=NONE
   hi user2               ctermfg=7     ctermbg=8      cterm=NONE
@@ -1040,11 +1024,15 @@ augroup END
 call s:SetupWhitespaceMatches()
 
 " disable syntax on large files
+function! DisableHighlights() abort
+  if getfsize(expand('%:p')) > 500000
+    setlocal syntax=off
+  endif
+endfunction
+
 augroup user_highlight_large_files
   autocmd!
-  autocmd BufReadPost * if getfsize(expand('%:p')) > 500000 |
-        \ setlocal syntax=off |
-        \ endif
+  autocmd BufReadPost * call DisableHighlights()
 augroup END
 
 " }}}
@@ -1059,58 +1047,6 @@ set laststatus=2
 set statusline=
 
 " Statusline functions
-function! StatuslineLoad(mode) abort
-  if a:mode ==# 'active'
-    setlocal statusline=%!StatuslineActive()
-  else
-    setlocal statusline=%!StatuslineInactive()
-  endif
-endfunction
-
-function! StatuslineActive() abort
-  let l:line = ''
-
-  " add buffer num
-  if &buftype ==# 'terminal' ||
-        \ &filetype ==# 'netrw' ||
-        \ &filetype ==# 'help'
-    return '%7* '
-  else
-    let l:line .= '%1* %n '
-  endif
-  " add vim mode & color
-  let l:line .= StatuslineMode()
-  " add git branch
-  let l:branch = StatuslineGit()
-  if !empty(l:branch)
-    let l:line .= '%3* ' . l:branch . ' '
-  endif
-  " add server hostname
-  if exists('$SSH_TTY')
-    let l:line .= '%5* @' . hostname() . ' '
-  endif
-  " add filename
-  let l:line .= '%1* %{StatuslineFile()}'
-  " add file modified/readonly/top-bottom flag
-  let l:line .= ' %m%r%w'
-  " add separation
-  let l:line .= '%1* %='
-  " add paste indicator
-  let l:line .= '%5*  %{&paste ? " [PASTE] " : ""}'
-  " add file encoding + format + filetype
-  let l:line .= '%2*  %{empty(&fileencoding) ? &encoding : &fileencoding}'
-  let l:line .= '%2*  %{&fileformat}'
-  let l:line .= '%3*  %{empty(&filetype) ? "noft" : &filetype}  '
-  " add row:col
-  let l:line .= '%4*  %l:%c  %6*'
-
-  return l:line
-endfunction
-
-function! StatuslineInactive() abort
-  return '%7* '
-endfunction
-
 function! StatuslineMode() abort
   let l:mode=mode(1)
 
@@ -1148,7 +1084,6 @@ function! StatuslineFile() abort
   if empty(expand('%'))
     return '[No file]'
   endif
-
   return fnamemodify(getcwd(), ':~') . '/' . expand('%')
 endfunction
 
@@ -1188,6 +1123,59 @@ function! StatuslineGit() abort
   return empty(l:branch) ? '' : l:branch . '*'
 endfunction
 
+function! StatuslineInactive() abort
+  return '%7* '
+endfunction
+
+function! StatuslineActive() abort
+  let l:line = ''
+
+  " add buffer num
+  if &buftype ==# 'terminal' ||
+        \ &filetype ==# 'netrw' ||
+        \ &filetype ==# 'help'
+    return StatuslineInactive()
+  else
+    let l:line .= '%1* %n '
+  endif
+  " add vim mode & color
+  let l:line .= StatuslineMode()
+  " add git branch
+  let l:branch = StatuslineGit()
+  if !empty(l:branch)
+    let l:line .= '%3* ' . l:branch . ' '
+  endif
+  " add server hostname
+  if exists('$SSH_TTY')
+    let l:line .= '%5* @' . hostname() . ' '
+  endif
+  " add filename
+  let l:line .= '%1* %{StatuslineFile()}'
+  " add file modified/readonly/top-bottom flag
+  let l:line .= ' %m%r%w'
+  " add separation
+  let l:line .= '%1* %='
+  " add paste indicator
+  let l:line .= '%5*  %{&paste ? " [PASTE] " : ""}'
+  " add file encoding + format + filetype
+  let l:line .= '%2*  %{empty(&fileencoding) ? &encoding : &fileencoding}'
+  let l:line .= '%2*  %{&fileformat}'
+  let l:line .= '%3*  %{empty(&filetype) ? "noft" : &filetype}  '
+  " add row:col
+  let l:line .= '%4*  %l:%c  %6*'
+
+  return l:line
+endfunction
+
+" main statusline
+function! StatuslineLoad(mode) abort
+  if a:mode ==# 'active'
+    setlocal statusline=%!StatuslineActive()
+  else
+    setlocal statusline=%!StatuslineInactive()
+  endif
+endfunction
+
 " autocommands to disable statusline for terminal, netwr and help buffers
 augroup user_statusline
   autocmd!
@@ -1202,42 +1190,50 @@ call StatuslineLoad('active')
 " }}}
 
 
-
 " LF INTEGRATION {{{
 
 " a gem found in /usr/share/vim/vimfiles/syntax/lf.vim
 
-if !empty('lf')
+if executable('lf')
 
   function! LF() abort
-    let temp = tempname()
+    let l:temp = tempname()
 
-    exec 'silent !lf -selection-path=' . shellescape(temp)
-    if !filereadable(temp)
-        redraw!
-        return
+    execute 'silent !lf -selection-path=' . shellescape(temp)
+    if v:shell_error
+      redraw!
+      echohl ErrorMsg
+      echomsg 'lf exited with error'
+      echohl None
+      return
     endif
 
-    let names = readfile(temp)
-    if empty(names)
+    if !filereadable(l:temp)
       redraw!
       return
     endif
 
-    exec 'edit ' . fnameescape(names[0])
-    for name in names[1:]
-        exec 'argadd ' . fnameescape(name)
+    let l:names = readfile(l:temp)
+    call delete(l:temp)
+
+    if empty(l:names)
+      redraw!
+      return
+    endif
+
+    execute 'edit ' . fnameescape(l:names[0])
+    for l:name in l:names[1:]
+      execute 'argadd ' . fnameescape(l:name)
     endfor
+
     redraw!
   endfunction
 
-  "command! -bar LF call LF()
+  command! -bar LF call LF()
 
   " Open lf to navigate files
-  " nnoremap <silent> <leader>l :LF<CR>
-  nnoremap <silent> <leader>l :call LF()<CR>
+  nnoremap <silent> <leader>l :LF<CR>
 endif
-
 
 " }}}
 
