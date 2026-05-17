@@ -780,11 +780,10 @@ set lazyredraw
 
 " Cursor modes: Normal - Insert
 if !has('gui_running') && &term =~# '\v(xterm|screen|tmux|rxvt|st|alacritty|foot|kitty|linux|wezterm)'
-  let &t_SI = "\<esc>[6 q"
+  let &t_SI = "\<esc>[4 q"
   let &t_EI = "\<esc>[2 q"
-
   if exists('&t_SR')
-    let &t_SR = "\<esc>[4 q"
+    let &t_SR = "\<esc>[6 q"
   endif
 endif
 
