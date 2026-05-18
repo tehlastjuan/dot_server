@@ -894,13 +894,13 @@ function! CustomHighlights() abort
   hi Statement           ctermfg=5     ctermbg=NONE   cterm=NONE
   hi! link Operator      Identifier
   hi Keyword             ctermfg=5
-  hi Preproc             ctermfg=3     ctermbg=NONE   cterm=NONE
+  hi Preproc             ctermfg=11    ctermbg=NONE   cterm=NONE
   hi Include             ctermfg=5     ctermbg=NONE   cterm=NONE
   hi! link Define        Include
   hi! link Macro         Include
   hi! link PreCondit     Include
   hi Type                ctermfg=11    ctermbg=NONE   cterm=NONE
-  hi Special             ctermfg=14    ctermbg=NONE   cterm=NONE
+  hi Special             ctermfg=9     ctermbg=NONE   cterm=NONE
   hi SpecialChar         ctermfg=6     ctermbg=NONE   cterm=NONE
   hi! link Tag           Special
   hi! link Delimiter     Identifier
