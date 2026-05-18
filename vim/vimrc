@@ -14,28 +14,23 @@ set nocompatible
 
 " Default file encoding
 if has ('multi_byte')
-  "set fenc=utf-8
   set encoding=utf-8
-  "set termencoding=utf-8
   scriptencoding utf-8
   set fileencodings=ucs-bom,utf-8,latin1
 endif
 
 " Default interface language
 if has('multi_lang')
-  "let $LANG='en'
-  "set langmenu=en
   silent! language messages C
 endif
 
-if has('&langmenu')
+if exists('&langmenu')
   set langmenu=none
 endif
 
 " Enable native mouse support
-if has('&mouse')
+if exists('&mouse')
   set mouse=a
-  " set mousemodel=popup
 endif
 
 " SGR mouse support for older Vim/terminal setups.
@@ -107,32 +102,32 @@ if !empty(s:vim_state)
 endif
 
 " Do not save backup files
-set nobackup
-set nowritebackup
-set noswapfile
+"set nobackup
+"set nowritebackup
+"set noswapfile
 
 " Save backup files
-"if isdirectory(s:vim_state)
-"  let s:backup_dir = s:vim_state . '/backup'
-"  let s:swap_dir = s:vim_state . '/swap'
-"
-"  try
-"    call mkdir(s:backup_dir, 'p', 0700)
-"    call mkdir(s:swap_dir, 'p', 0700)
-"  catch
-"  endtry
-"
-"  if isdirectory(s:backup_dir)
-"    set backup
-"    set writebackup
-"    let &backupdir = s:backup_dir . '//'
-"  endif
-"
-"  if isdirectory(s:swap_dir)
-"    set swapfile
-"    let &directory = s:swap_dir . '//'
-"  endif
-"endif
+if isdirectory(s:vim_state)
+  let s:backup_dir = s:vim_state . '/backup'
+  let s:swap_dir = s:vim_state . '/swap'
+
+  try
+    call mkdir(s:backup_dir, 'p', 0700)
+    call mkdir(s:swap_dir, 'p', 0700)
+  catch
+  endtry
+
+  if isdirectory(s:backup_dir)
+    set backup
+    set writebackup
+    let &backupdir = s:backup_dir . '//'
+  endif
+
+  if isdirectory(s:swap_dir)
+    set swapfile
+    let &directory = s:swap_dir . '//'
+  endif
+endif
 
 " Store vim state
 if isdirectory(s:vim_state)
@@ -265,9 +260,8 @@ elseif executable('/bin/sh')
   set shell=/bin/sh
 endif
 
-" dont show epic message for swapfiles
-" Use :recover when we actually need to recover from swapfile
-set shortmess+=A
+" Keep swap warnings visible
+" set shortmess+=A
 
 " Do not add two spaces after a period when joining lines or formatting texts,
 " see https://stackoverflow.com/q/4760428/6064933
@@ -292,7 +286,7 @@ if !exists('g:loaded_matchit')
 endif
 
 " Open help vertically
-command! -nargs=* -complete=help Help vertical belowright help <args>
+command! -bar -nargs=* -complete=help Help vertical belowright help <args>
 
 augroup user_move_help
   autocmd!
@@ -308,6 +302,7 @@ function! StripTrailingWhitespaces() abort
 endfunction
 
 " command! StripTrailingWhitespaces call StripTrailingWhitespaces()
+nnoremap <leader>s :call StripTrailingWhitespaces()<CR>
 
 " }}}
 
@@ -315,10 +310,13 @@ endfunction
 " INDENTATION {{{
 
 " Disable autoindentation
-"set noautoindent
+set noautoindent
 "set smartindent
-set autoindent
+"set autoindent
 set nosmartindent
+
+" Use space characters instead of tabs.
+set noexpandtab
 
 " Set shift width to 2 spaces.
 set shiftwidth=2
@@ -327,10 +325,7 @@ set shiftwidth=2
 set tabstop=2
 
 " Spaces a tab counts while editing
-set softtabstop=-1
-
-" Use space characters instead of tabs.
-set expandtab
+set softtabstop=2
 
 " Inserts blanks according to shiftwidth
 set smarttab
@@ -340,13 +335,13 @@ set smarttab
 set shiftround
 
 " Do not wrap lines. Allow long lines to extend as far as the line goes.
-set nowrap
+"set wrap
 
 " Alt: Wrap lines at convenient points
-"set wrap
-"set textwidth=120 # chars
-"set linebreak
-"set showbreak=~>
+set wrap
+set textwidth=120 # chars
+set linebreak
+set showbreak=~>
 
 " Display tabs and trailing spaces
 if &encoding ==# 'utf-8'
@@ -381,8 +376,6 @@ if exists('##TermOpen')
     " Do not use number and relative number for terminal inside vim
     autocmd TermOpen * setlocal norelativenumber nonumber
     autocmd TermOpen * startinsert
-    " Go to insert mode by default to start typing command
-    "autocmd BufLeave term://* stopinsert
     autocmd BufEnter * if &buftype ==# 'terminal' <bar> startinsert <bar> endif
   augroup END
 endif
@@ -427,8 +420,8 @@ set complete-=u
 
 " Avoid tag completion
 set complete-=t
-set complete-=w
-set complete-=b
+"set complete-=w
+"set complete-=b
 
 " Scan files given by `dictionary` option
 set complete+=k
@@ -492,10 +485,10 @@ let g:mapleader = " "
 let g:maplocalleader = ';'
 
 " Source current file
-nnoremap <silent> <leader>cs :source %<CR>
+nnoremap <silent> <leader>cs :execute 'source' fnameescape(expand('%:p'))<CR>
 
 " Quit
-nnoremap <silent> <leader>qq :quitall<cr>
+nnoremap <silent> <leader>qq :quitall<CR>
 
 " Redraw window
 nnoremap <silent> <leader>r :redraw!<CR>
@@ -578,7 +571,7 @@ nnoremap <silent> <leader>e :Lexplore<CR>
 
 " Open a terminal window
 if exists(':terminal') == 2
-  noremap <silent> <C-/> :terminal<CR>
+  nnoremap <silent> <C-/> :terminal<CR>
 endif
 
 " Close a terminal window
@@ -588,8 +581,6 @@ tnoremap <silent> <C-/> <C-\><C-n>:bdelete!<CR>
 tnoremap <silent> <Esc> <C-\><C-n>
 
 " Show highlight group
-map <leader>; :call SynStack()<CR>
-
 function! SynStack() abort
   if !exists("*synstack")
     echo 'synstack() is not available'
@@ -607,6 +598,8 @@ function! SynStack() abort
   let l:id = synID(line('.'), col('.'), 1)
   echo 'effective: ' . synIDattr(l:id, 'name') . ' -> ' . synIDattr(synIDtrans(l:id), 'name')
 endfunc
+
+nnoremap <leader>; :call SynStack()<CR>
 
 " Comments toggle for blocks of code.
 " https: //stackoverflow.com/questions/1676632/whats-a-quick-way-to-comment-uncomment-lines-in-vim
@@ -762,13 +755,23 @@ set showtabline=0
 set lazyredraw
 
 " Cursor modes: Normal - Insert
-if !has('gui_running') && &term =~# '\v(xterm|screen|tmux|rxvt|st|alacritty|foot|kitty|linux|wezterm)'
-  let &t_SI = "\<esc>[4 q"
-  let &t_EI = "\<esc>[2 q"
-  if exists('&t_SR')
-    let &t_SR = "\<esc>[6 q"
+function! CursorShape() abort
+  if !has('gui_running') && &term =~# '\v(xterm|screen|tmux|rxvt|st|alacritty|foot|kitty|linux|wezterm)'
+    let &t_SI = "\<esc>[6 q"
+    let &t_EI = "\<esc>[2 q"
+
+    if exists('&t_SR')
+      let &t_SR = "\<esc>[6 q"
+    endif
   endif
-endif
+endfunction
+
+call CursorShape()
+
+augroup user_cursor_shape
+  autocmd!
+  autocmd VimEnter * call CursorShape()
+augroup END
 
 " https://stackoverflow.com/questions/6488683/how-to-change-the-cursor-between-normal-and-insert-modes-in-vim
 " reset the cursor on start (for older versions of vim, usually not required)
@@ -847,13 +850,13 @@ function! CustomHighlights() abort
   hi SpellRare           ctermfg=11    ctermbg=NONE   cterm=underline
   hi SpellLocal          ctermfg=13    ctermbg=NONE   cterm=underline
   hi NonText             ctermfg=8
-  hi LineNr              ctermfg=8     ctermbg=NONE   cterm=none
-  hi Visual              ctermfg=NONE  ctermbg=0      cterm=none
-  hi IncSearch           ctermfg=0     ctermbg=13     cterm=none
+  hi LineNr              ctermfg=8     ctermbg=NONE   cterm=NONE
+  hi Visual              ctermfg=NONE  ctermbg=0      cterm=NONE
+  hi IncSearch           ctermfg=0     ctermbg=13     cterm=NONE
   hi Search              ctermfg=0     ctermbg=11
-  hi VertSplit           ctermfg=0     ctermbg=NONE   cterm=none
-  hi TabLine             ctermfg=0     ctermbg=NONE   cterm=none
-  hi TabLineFill         ctermfg=0     ctermbg=NONE   cterm=none
+  hi VertSplit           ctermfg=0     ctermbg=NONE   cterm=NONE
+  hi TabLine             ctermfg=0     ctermbg=NONE   cterm=NONE
+  hi TabLineFill         ctermfg=0     ctermbg=NONE   cterm=NONE
   hi TabLineSel          ctermfg=7     ctermbg=0
   hi Folded              ctermfg=6     ctermbg=0      cterm=bold
   hi Conceal             ctermfg=8     ctermbg=NONE
@@ -866,7 +869,7 @@ function! CustomHighlights() abort
   hi DiffText            ctermfg=0     ctermbg=13     cterm=bold
   hi WildMenu            ctermfg=6     ctermbg=NONE   cterm=bold
   hi EndOfBuffer         ctermfg=0     ctermbg=NONE   cterm=bold
-  hi TrailingWhitespace  ctermfg=8     ctermbg=0
+  hi TrailingWhitespace  ctermfg=6     ctermbg=0
   hi ExtraWhitespace     ctermfg=8     ctermbg=0
   hi Whitespace          ctermfg=0     ctermbg=NONE
   hi SpecialKey          ctermfg=0     ctermbg=NONE
@@ -883,7 +886,7 @@ function! CustomHighlights() abort
 
   " generic syntax
   hi Comment             ctermfg=8     ctermbg=NONE   cterm=NONE
-  hi Constant            ctermfg=14    ctermbg=NONE   cterm=NONE
+  hi Constant            ctermfg=3     ctermbg=NONE   cterm=NONE
   hi String              ctermfg=2     ctermbg=NONE   cterm=NONE
   hi! link Character     String
   hi Number              ctermfg=3     ctermbg=NONE   cterm=NONE
@@ -899,7 +902,7 @@ function! CustomHighlights() abort
   hi! link Define        Include
   hi! link Macro         Include
   hi! link PreCondit     Include
-  hi Type                ctermfg=3     ctermbg=NONE   cterm=NONE
+  hi Type                ctermfg=11    ctermbg=NONE   cterm=NONE
   hi Special             ctermfg=9     ctermbg=NONE   cterm=NONE
   hi SpecialChar         ctermfg=6     ctermbg=NONE   cterm=NONE
   hi! link Tag           Special
@@ -1051,6 +1054,8 @@ function! StatuslineMode() abort
   let l:mode=mode(1)
 
   if l:mode ==# 'n'
+    return '%#NormalMode# NORMAL '
+  elseif l:mode ==# 'no'
     return '%#NormalMode# NORMAL '
   elseif l:mode ==# 'i'
     return '%#InsertMode# INSERT '
