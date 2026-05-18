@@ -345,6 +345,17 @@ cmd prompt-load %{{
 	lf -remote "send $id set promptfmt \"$fmt\""
 }}
 
+cmd user-load %{{
+  if [ -n "$SSH_TTY" ] || [ -e "/.dockerenv" ]; then
+		fmt="\033[33m"
+  elif [ "$(id -u)" -eq 0 ]; then
+    fmt="\033[01;31m"
+  else
+		fmt "\033[38;5;8m"
+  fi
+	lf -remote "send $id set borderfmt \"$fmt\""
+}}
+
 # git branch prompt
 cmd on-cd %{{
 	hash zoxide 2> /dev/null && zoxide add "$PWD"
@@ -355,7 +366,7 @@ cmd on-cd %{{
 #----- command shortcuts
 
 cmd on-select         set user_preview_offset 1
-cmd on-load           prompt-load
+cmd on-load           :prompt-load; user-load
 
 cmd reload-conf       $lf -remote "send $id source ~/.config/lf/lfrc"
 cmd cd-back           $lf -remote "send $id cd \"$OLDPWD\""
