@@ -773,20 +773,12 @@ function! CursorShapeReset() abort
   silent! echon &t_EI
 endfunction
 
+" Reset the cursor on start.
 augroup user_cursor_shape
   autocmd!
   autocmd VimEnter * call CursorShapeReset()
   autocmd VimLeave * silent! echon "\<ESC>[2 q"
 augroup END
-
-" https://stackoverflow.com/questions/6488683/how-to-change-the-cursor-between-normal-and-insert-modes-in-vim
-" reset the cursor on start (for older versions of vim, usually not required)
-" augroup user_cursor_shape
-"   autocmd!
-"   "autocmd VimEnter * silent !echo -ne "\e[2 q"
-"   "autocmd VimLeave * silent !echo -ne "\e[2 q"
-"   autocmd VimLeave * silent! set t_me&
-" augroup END
 
 " }}}
 
@@ -816,7 +808,6 @@ if !has('gui_running') && &t_Co < 256
 endif
 
 function! CustomHighlights() abort
-
   " custom highlights
   hi user1               ctermfg=7     ctermbg=0      cterm=NONE
   hi user2               ctermfg=7     ctermbg=8      cterm=NONE
@@ -950,9 +941,9 @@ function! CustomHighlights() abort
   hi GitCommitUnmergedtype             ctermfg=9
   hi GitCommitUnmergedfile             ctermfg=1
   hi! link GitCommitFile               Directory
-  " hi! link GitCommitUntrackedfile      GitcommitUnmergedFile
-  " hi! link GitCommitDiscardedtype      GitcommitUnmergedType
-  " hi! link GitCommitDiscardedfile      GitcommitUnmergedFile
+  hi! link GitCommitUntrackedfile      GitCommitUnmergedFile
+  hi! link GitCommitDiscardedtype      GitCommitUnmergedType
+  hi! link GitCommitDiscardedfile      GitCommitUnmergedFile
 
   " html
   hi htmltagname                       ctermfg=2
@@ -1049,13 +1040,13 @@ augroup END
 
 " STATUSLINE {{{
 
-" always display statusline
+" Always display the Statusline.
 set laststatus=2
 
-" reset statusline
+" Reset statusline.
 set statusline=
 
-" Statusline functions
+" Statusline functions:
 function! StatuslineMode() abort
   let l:mode=mode(1)
 
@@ -1091,6 +1082,7 @@ function! StatuslineMode() abort
   return '%#StatusLine# ' . l:mode . ' '
 endfunction
 
+" File name or else.
 function! StatuslineFile() abort
   if empty(expand('%'))
     return '[No file]'
@@ -1098,7 +1090,7 @@ function! StatuslineFile() abort
   return fnamemodify(getcwd(), ':~') . '/' . expand('%')
 endfunction
 
-" return git branch
+" Read git branch if any.
 function! GitBranch() abort
   let l:dir = expand('%:p:h')
   if empty(l:dir)
@@ -1125,19 +1117,15 @@ function! GitBranch() abort
   endif
 
   return ''
-  "return system("git rev-parse --abbrev-ref HEAD 2>/dev/null | tr -d '\n'")
 endfunction
 
-" show git branch if any
+" Show git branch if any.
 function! StatuslineGit() abort
   let l:branch = GitBranch()
   return empty(l:branch) ? '' : l:branch . '*'
 endfunction
 
-function! StatuslineInactive() abort
-  return '%7* '
-endfunction
-
+" Build active Statusline
 function! StatuslineActive() abort
   let l:line = ''
 
@@ -1178,7 +1166,11 @@ function! StatuslineActive() abort
   return l:line
 endfunction
 
-" main statusline
+function! StatuslineInactive() abort
+  return '%7* '
+endfunction
+
+" Statusline loader.
 function! StatuslineLoad(mode) abort
   if a:mode ==# 'active'
     setlocal statusline=%!StatuslineActive()
@@ -1187,7 +1179,7 @@ function! StatuslineLoad(mode) abort
   endif
 endfunction
 
-" autocommands to disable statusline for terminal, netwr and help buffers
+" Disable statusline for terminal, netwr and help buffers.
 augroup user_statusline
   autocmd!
   autocmd WinEnter,BufWinEnter * call StatuslineLoad('active')
@@ -1204,7 +1196,6 @@ call StatuslineLoad('active')
 " LF INTEGRATION {{{
 
 " a gem found in /usr/share/vim/vimfiles/syntax/lf.vim
-
 if executable('lf')
 
   function! LF() abort
