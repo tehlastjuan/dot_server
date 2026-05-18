@@ -755,14 +755,23 @@ set showtabline=0
 set lazyredraw
 
 " Cursor modes: Normal - Insert
-if !has('gui_running') && &term =~# '\v(xterm|screen|tmux|rxvt|st|alacritty|foot|kitty|linux|wezterm)'
-  let &t_SI = "\<esc>[6 q"
-  let &t_EI = "\<esc>[2 q"
+function! CursorShape() abort
+  if !has('gui_running') && &term =~# '\v(xterm|screen|tmux|rxvt|st|alacritty|foot|kitty|linux|wezterm)'
+    let &t_SI = "\<esc>[6 q"
+    let &t_EI = "\<esc>[2 q"
 
-  if exists('&t_SR')
-    let &t_SR = "\<esc>[6 q"
+    if exists('&t_SR')
+      let &t_SR = "\<esc>[6 q"
+    endif
   endif
-endif
+endfunction
+
+call CursorShape()
+
+augroup user_cursor_shape
+  autocmd!
+  autocmd VimEnter * call CursorShape()
+augroup END
 
 " https://stackoverflow.com/questions/6488683/how-to-change-the-cursor-between-normal-and-insert-modes-in-vim
 " reset the cursor on start (for older versions of vim, usually not required)
