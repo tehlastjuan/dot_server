@@ -886,7 +886,7 @@ function! CustomHighlights() abort
 
   " generic syntax
   hi Comment             ctermfg=8     ctermbg=NONE   cterm=NONE
-  hi Constant            ctermfg=14    ctermbg=NONE   cterm=NONE
+  hi Constant            ctermfg=3     ctermbg=NONE   cterm=NONE
   hi String              ctermfg=2     ctermbg=NONE   cterm=NONE
   hi! link Character     String
   hi Number              ctermfg=3     ctermbg=NONE   cterm=NONE
@@ -902,7 +902,7 @@ function! CustomHighlights() abort
   hi! link Define        Include
   hi! link Macro         Include
   hi! link PreCondit     Include
-  hi Type                ctermfg=3     ctermbg=NONE   cterm=NONE
+  hi Type                ctermfg=11    ctermbg=NONE   cterm=NONE
   hi Special             ctermfg=9     ctermbg=NONE   cterm=NONE
   hi SpecialChar         ctermfg=6     ctermbg=NONE   cterm=NONE
   hi! link Tag           Special
