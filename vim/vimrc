@@ -335,13 +335,13 @@ set smarttab
 set shiftround
 
 " Do not wrap lines. Allow long lines to extend as far as the line goes.
-set nowrap
+set wrap
 
 " Alt: Wrap lines at convenient points
-"set wrap
-"set textwidth=120 # chars
-"set linebreak
-"set showbreak=~>
+set wrap
+set textwidth=120 # chars
+set linebreak
+set showbreak=~>
 
 " Display tabs and trailing spaces
 if &encoding ==# 'utf-8'
@@ -581,8 +581,6 @@ tnoremap <silent> <C-/> <C-\><C-n>:bdelete!<CR>
 tnoremap <silent> <Esc> <C-\><C-n>
 
 " Show highlight group
-nnoremap <leader>; :call SynStack()<CR>
-
 function! SynStack() abort
   if !exists("*synstack")
     echo 'synstack() is not available'
@@ -600,6 +598,8 @@ function! SynStack() abort
   let l:id = synID(line('.'), col('.'), 1)
   echo 'effective: ' . synIDattr(l:id, 'name') . ' -> ' . synIDattr(synIDtrans(l:id), 'name')
 endfunc
+
+nnoremap <leader>; :call SynStack()<CR>
 
 " Comments toggle for blocks of code.
 " https: //stackoverflow.com/questions/1676632/whats-a-quick-way-to-comment-uncomment-lines-in-vim
@@ -758,6 +758,7 @@ set lazyredraw
 if !has('gui_running') && &term =~# '\v(xterm|screen|tmux|rxvt|st|alacritty|foot|kitty|linux|wezterm)'
   let &t_SI = "\<esc>[6 q"
   let &t_EI = "\<esc>[2 q"
+
   if exists('&t_SR')
     let &t_SR = "\<esc>[6 q"
   endif
@@ -840,13 +841,13 @@ function! CustomHighlights() abort
   hi SpellRare           ctermfg=11    ctermbg=NONE   cterm=underline
   hi SpellLocal          ctermfg=13    ctermbg=NONE   cterm=underline
   hi NonText             ctermfg=8
-  hi LineNr              ctermfg=8     ctermbg=NONE   cterm=none
-  hi Visual              ctermfg=NONE  ctermbg=0      cterm=none
-  hi IncSearch           ctermfg=0     ctermbg=13     cterm=none
+  hi LineNr              ctermfg=8     ctermbg=NONE   cterm=NONE
+  hi Visual              ctermfg=NONE  ctermbg=0      cterm=NONE
+  hi IncSearch           ctermfg=0     ctermbg=13     cterm=NONE
   hi Search              ctermfg=0     ctermbg=11
-  hi VertSplit           ctermfg=0     ctermbg=NONE   cterm=none
-  hi TabLine             ctermfg=0     ctermbg=NONE   cterm=none
-  hi TabLineFill         ctermfg=0     ctermbg=NONE   cterm=none
+  hi VertSplit           ctermfg=0     ctermbg=NONE   cterm=NONE
+  hi TabLine             ctermfg=0     ctermbg=NONE   cterm=NONE
+  hi TabLineFill         ctermfg=0     ctermbg=NONE   cterm=NONE
   hi TabLineSel          ctermfg=7     ctermbg=0
   hi Folded              ctermfg=6     ctermbg=0      cterm=bold
   hi Conceal             ctermfg=8     ctermbg=NONE
@@ -860,9 +861,9 @@ function! CustomHighlights() abort
   hi WildMenu            ctermfg=6     ctermbg=NONE   cterm=bold
   hi EndOfBuffer         ctermfg=0     ctermbg=NONE   cterm=bold
   hi TrailingWhitespace  ctermfg=6     ctermbg=NONE
-  hi ExtraWhitespace     ctermfg=0     ctermbg=NONE
+  hi ExtraWhitespace     ctermfg=8     ctermbg=NONE
   hi Whitespace          ctermfg=0     ctermbg=NONE
-  hi SpecialKey          ctermfg=8     ctermbg=NONE
+  hi SpecialKey          ctermfg=0     ctermbg=NONE
 
   hi! link CursorColumn  CursorLine
   hi! link SignColumn    LineNr
