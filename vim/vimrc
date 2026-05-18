@@ -12,14 +12,14 @@
 " Disable vi compatibility, if for some reason it's on.
 set nocompatible
 
-" Default file encoding
+" Default file encoding.
 if has ('multi_byte')
   set encoding=utf-8
   scriptencoding utf-8
   set fileencodings=ucs-bom,utf-8,latin1
 endif
 
-" Default interface language
+" Default interface language.
 if has('multi_lang')
   silent! language messages C
 endif
@@ -28,7 +28,7 @@ if exists('&langmenu')
   set langmenu=none
 endif
 
-" Enable native mouse support
+" Enable native mouse support.
 if exists('&mouse')
   set mouse=a
 endif
@@ -47,7 +47,7 @@ if exists(':Man') != 2 && !exists('g:loaded_man')
   runtime ftplugin/man.vim
 endif
 
-" Use less for keywordprg
+" Use less for keywordprg.
 if empty($MANPAGER) || $MANPAGER !~# '^less\>'
   let $MANPAGER = 'less -R'
 endif
@@ -67,16 +67,16 @@ augroup END
 " FILES {{{
 
 " Enable type file detection &
-" enable plugins and load indent file for the detected file type
+" load indent file for the detected file type.
 filetype plugin indent on
 
-" Reload files changed outside vim
+" Reload files changed outside vim.
 set autoread
 
-" Automatically :write before running commands
+" Automatically :write before running commands.
 set autowrite
 
-"Return to last edit position when opening files
+"Return to last edit position when opening files.
 function! GoToLastPosition() abort
   if &buftype !=# ''
     return
@@ -91,7 +91,7 @@ augroup user_go_to_last_position
   autocmd BufReadPost * call GoToLastPosition()
 augroup END
 
-" vim state dir
+" Vim state directory.
 let s:vim_state = expand('~/.local/state/vim')
 
 if !empty(s:vim_state)
@@ -101,12 +101,12 @@ if !empty(s:vim_state)
   endtry
 endif
 
-" Do not save backup files
+" OPT: Do not save backup files
 "set nobackup
 "set nowritebackup
 "set noswapfile
 
-" Save backup files
+" Save backup & swap files to state dir.
 if isdirectory(s:vim_state)
   let s:backup_dir = s:vim_state . '/backup'
   let s:swap_dir = s:vim_state . '/swap'
@@ -129,20 +129,16 @@ if isdirectory(s:vim_state)
   endif
 endif
 
-" Store vim state
+" Store vim state.
 if isdirectory(s:vim_state)
-
-  " less clutter at $HOME
   if exists('&viminfo')
     let &viminfo .= ',n' . s:vim_state . '/viminfo'
-
-    " Persist g:UPPERCASE variables, used by some plugins.
     if &viminfo !~# '!'
       set viminfo^=!
     endif
   endif
 
-  "Keep undo history across sessions, by storing in file.
+  " Keep undo history across sessions
   if has('persistent_undo')
     let s:undo_dir = s:vim_state . '/undo'
     try
@@ -156,7 +152,7 @@ if isdirectory(s:vim_state)
     endif
   endif
 
-  " netrw history
+  " Store netrw history.
   let g:netrw_home = s:vim_state
 endif
 
@@ -165,27 +161,25 @@ endif
 
 " EDITOR {{{
 
-" Virtual edit is useful for visual block edit
+" Virtual edit for visual block edit.
 set virtualedit=block
 
-" Allow backspace in insert mode
+" Allow backspace in insert mode.
 set backspace=indent,eol,start
 
 "Time out on key codes but not mappings.
-"Basically this makes terminal Vim work sanely
 set notimeout
 set timeoutlen=800
 set ttimeout
 set ttimeoutlen=100
 
-" Max num of open tabs
+" Max num of open tabs.
 set tabpagemax=50
 
-" Keep tabs in the bg
+" Keep tabs in the bg.
 set hidden
 
-" Saving options in session and view files causes more problems than it
-" solves, so disable it.
+" Disable saving options in session and view files
 if exists('&sessionoptions')
   set sessionoptions-=options
 endif
@@ -209,12 +203,12 @@ set formatoptions+=c
 set formatoptions+=q
 set formatoptions+=j
 
-" Correctly break multi-byte characters such as CJK,
+" Correctly break multi-byte characters such as CJK.
 " see https://stackoverflow.com/q/32669814/6064933
 set formatoptions+=m
 set formatoptions+=M
 
-" Disable auto commenting in a new line
+" Disable auto commenting on a new line.
 augroup user_format_opts
   autocmd!
   autocmd Filetype * setlocal formatoptions-=c
@@ -222,7 +216,7 @@ augroup user_format_opts
         \ formatoptions-=o
 augroup END
 
-" folds
+" Vim folds.
 augroup user_fold_opts
   autocmd!
   autocmd FileType vim setlocal foldmethod=marker
@@ -233,20 +227,20 @@ augroup user_fold_opts
         \ formatoptions-=r
 augroup END
 
-" enable fast tty support
+" Enable fast tty support.
 if exists('&ttyfast')
   set ttyfast
 endif
 
-" For regular expressions backwards comp
+" For regular expressions backwards comp.
 set magic
 
-" Set regular expression engine automatically
+" Set regular expression engine.
 if exists('&regexpengine')
   set regexpengine=0
 endif
 
-" base number when c-A & C-x for adds and subs
+" Base number when c-A & C-x for adds and subs
 set nrformats-=octal
 
 " Do not override restricted/nologin shells.
@@ -260,14 +254,14 @@ elseif executable('/bin/sh')
   set shell=/bin/sh
 endif
 
-" Keep swap warnings visible
+" OPT: Keep swap warnings visible
 " set shortmess+=A
 
 " Do not add two spaces after a period when joining lines or formatting texts,
 " see https://stackoverflow.com/q/4760428/6064933
 set nojoinspaces
 
-" Specify the behavior when switching between buffers
+" Specify the behavior when switching between buffers.
 if exists('&switchbuf')
   set switchbuf=useopen,usetab,newtab
 endif
@@ -285,7 +279,7 @@ if !exists('g:loaded_matchit')
   silent! runtime macros/matchit.vim
 endif
 
-" Open help vertically
+" Open help vertically.
 command! -bar -nargs=* -complete=help Help vertical belowright help <args>
 
 augroup user_move_help
@@ -293,10 +287,10 @@ augroup user_move_help
   autocmd FileType help wincmd L
 augroup END
 
-" Remove trailing white space, see https://vi.stackexchange.com/a/456/15292
+" Remove trailing white space.
+" see https://vi.stackexchange.com/a/456/15292
 function! StripTrailingWhitespaces() abort
   let l:save = winsaveview()
-  "keeppatterns silent! %s/\v\s+$//e
   keeppatterns silent! %s/[ \t]\+$//e
   call winrestview(l:save)
 endfunction
@@ -339,26 +333,25 @@ set wrap
 
 " Alt: Wrap lines at convenient points
 set wrap
-set textwidth=120 " chars
+set textwidth=120
 set linebreak
 set showbreak=~>
 
-" Display tabs and trailing spaces
+" Display tabs and trailing spaces.
 if &encoding ==# 'utf-8'
   set listchars=tab:┆\ ,trail:·,extends:>,precedes:<,nbsp:␣
 else
   set listchars=tab:>\ ,trail:_,extends:>,precedes:<,nbsp:+
 endif
-
-set list " or set invlist
+set list
 
 " }}}
 
 
 " TERMINAL {{{
 
-" Do not use smart case in command line mode,
-" extracted from https://vi.stackexchange.com/q/16509/15292
+" Do not use smart case in command line mode.
+" from: https://vi.stackexchange.com/q/16509/15292
 if exists('##CmdLineEnter')
   augroup user_cmdline_smartcase
     autocmd!
@@ -370,10 +363,10 @@ if exists('##CmdLineEnter')
   augroup END
 endif
 
+" Do not use number and relative number for terminal inside vim
 if exists('##TermOpen')
   augroup term_settings
     autocmd!
-    " Do not use number and relative number for terminal inside vim
     autocmd TermOpen * setlocal norelativenumber nonumber
     autocmd TermOpen * startinsert
     autocmd BufEnter * if &buftype ==# 'terminal' <bar> startinsert <bar> endif
@@ -415,27 +408,27 @@ set history=10000
 " hundreds of files of dubious relevance.
 set complete-=i
 
-" Avoid scanning unloaded buffers
+" Avoid scanning unloaded buffers.
 set complete-=u
 
-" Avoid tag completion
+" Avoid tag completion.
 set complete-=t
 "set complete-=w
 "set complete-=b
 
-" Scan files given by `dictionary` option
+" Scan files given by `dictionary` option.
 set complete+=k
 
-" Enable Spelling Suggestions for Auto-Completion
+" OPT: Enable Spelling Suggestions for Auto-Completion.
 "set complete+=kspell
 
-" Show menu even if there is only one item
+" Show menu even if there is only one item.
 set completeopt+=menu,menuone
 
-" Disable the preview window
+" Disable the preview window.
 set completeopt-=preview
 
-" spell languages
+" Spell language.
 set spelllang=en
 
 " Enable omni complete features
@@ -446,13 +439,13 @@ augroup user_completion
         \ endif
 augroup END
 
-" Enhanced command-line completion mode w\ popup menu
+" Enhanced command-line completion mode w\ popup menu.
 set wildmenu
 
-" List all matches without completing, then each full match >vim
+" List all matches without completing, then each full match >vim.
 set wildmode=list:longest,full
 
-" Popup menu height
+" Popup menu height.
 set pumheight=8
 
 " Search for ./tags upward through ancestor directories.
@@ -460,9 +453,7 @@ if has('path_extra') && (',' . &g:tags . ',') =~# ',\./tags,'
   setglobal tags-=./tags tags-=./tags; tags^=./tags;
 endif
 
-" Minimalist-Tab Complete
-inoremap <expr> <Tab> TabComplete()
-
+" Minimalist-Tab Completion.
 fun! TabComplete() abort
   if pumvisible()
     return "\<C-n>"
@@ -476,47 +467,49 @@ fun! TabComplete() abort
   return "\<Tab>"
 endfun
 
+inoremap <expr> <Tab> TabComplete()
+
 " }}}
 
 
 " MAPPINGS {{{
 
 let g:mapleader = " "
-let g:maplocalleader = ';'
+let g:maplocalleader = ','
 
-" Source current file
+" Source current vimrc file.
 nnoremap <silent> <leader>cs :execute 'source' fnameescape(expand('%:p'))<CR>
 
-" Quit
+" Quit.
 nnoremap <silent> <leader>qq :quitall<CR>
 
-" Redraw window
+" Redraw window.
 nnoremap <silent> <leader>r :redraw!<CR>
 
-" ESC in insert mode
+" ESC in insert mode.
 inoremap <silent> jk <ESC>
 inoremap <silent> kj <ESC>
 
-" Resize windows with arrow keys
-" https://vim.fandom.com/wiki/Fast_window_resizing_with_plus/minus_keys
+" Resize windows with arrow keys.
+" from: https://vim.fandom.com/wiki/Fast_window_resizing_with_plus/minus_keys
 nnoremap <silent> <C-Down>  <C-w>+
 nnoremap <silent> <C-Up>    <C-w>-
 nnoremap <silent> <C-Left>  <C-w><
 nnoremap <silent> <C-Right> <C-w>>
 
-" Move between windows
+" Move between windows.
 nnoremap <silent> <C-j> <C-w>j
 nnoremap <silent> <C-k> <C-w>k
 nnoremap <silent> <C-h> <C-w>h
 nnoremap <silent> <C-l> <C-w>l
 
-" Buffer prev/next
+" Buffer prev/next.
 nnoremap <silent> <leader>j :bprev<CR>
 nnoremap <silent> <leader>k :bnext<CR>
 nnoremap <silent> <C-,> :bprev<CR>
 nnoremap <silent> <C-.> :bnext<CR>
 
-" Close the current buffer
+" Close the current buffer.
 nnoremap <silent> <leader>bd :bdelete<CR>
 
 " Move the cursor based on physical lines, not the actual lines.
@@ -526,22 +519,23 @@ nnoremap <silent> <expr> 0 v:count == 0 ? 'g0' : '0'
 nnoremap <silent> <expr> ^ v:count == 0 ? 'g^' : '^'
 nnoremap <silent> <expr> $ v:count == 0 ? 'g$' : '$'
 
-" autoindent format
+" auto indent format.
 nnoremap <silent> <leader>cf :normal! mzgg=G`z<CR>
 
-" Disable highlight
+" Disable search highlights.
 nnoremap <silent> <leader>h :nohlsearch<CR>
 nnoremap <silent> <Esc><Esc> :nohlsearch<CR>
 
-" Continuous visual shifting (does not exit Visual mode), `gv` means
-" to reselect previous visual area, see https://superuser.com/q/310417/736190
+" Continuous visual shifting (does not exit Visual mode).
+" `gv` means to reselect previous visual area.
+" see: https://superuser.com/q/310417/736190
 xnoremap < <gv
 xnoremap > >gv
 
-" make Y consistent with C and D
+" Make Y consistent with C and D.
 nnoremap Y y$
 
-" enable/disable paste mode, allows usign shortcuts like jk
+" enable/disable paste mode, allows usign shortcuts like jk.
 if exists('&pastetoggle')
   set pastetoggle=<F2>
 endif
@@ -557,7 +551,7 @@ if exists(':DiffOrig') != 2
         \ diffthis
 endif
 
-" Netrw opts
+" Netrw options.
 let g:netrw_banner=0
 let g:netrw_liststyle = 3  " default directory view. Cycle with i
 let g:netrw_browse_split=4
@@ -566,21 +560,22 @@ let g:netrw_sort_sequence = '[\/]$,*'
 let g:netrw_keepdir = 0
 let g:netrw_winsize = 25
 
-" Open Netrw window
+" Open/close Netrw window.
 nnoremap <silent> <leader>e :Lexplore<CR>
 
-" Open a terminal window
+" Open a terminal window.
 if exists(':terminal') == 2
   nnoremap <silent> <C-/> :terminal<CR>
 endif
 
-" Close a terminal window
+" Close a terminal window.
 tnoremap <silent> <C-/> <C-\><C-n>:bdelete!<CR>
 
-" Esc to make the terminal scrollable and I to input mode
+" Esc to make the terminal scrollable,
+" 'i' back to input mode.
 tnoremap <silent> <Esc> <C-\><C-n>
 
-" Show highlight group
+" Show highlight group.
 function! SynStack() abort
   if !exists("*synstack")
     echo 'synstack() is not available'
@@ -601,7 +596,7 @@ endfunc
 
 nnoremap <leader>; :call SynStack()<CR>
 
-" Comments toggle for blocks of code.
+" Comment-toggle for blocks of code.
 " https: //stackoverflow.com/questions/1676632/whats-a-quick-way-to-comment-uncomment-lines-in-vim
 let s:comment_map = {
       \ 'ahk':          ';',
@@ -685,31 +680,31 @@ xnoremap <silent> gc :<C-u>call ToggleCommentRange(line("'<"), line("'>"))<CR>
 " Show partial command you type in the last line of the screen.
 set showcmd
 
-" Hide the mode, we have a statusline
+" Hide the mode, we have a statusline.
 set noshowmode
 
-" Show current line number
+" Show current line number.
 set number
 
-" Show relative line numbers
+" Show relative line numbers.
 set relativenumber
 
-" Show the cursor position all the time
+" Show the cursor position all the time.
 set ruler
 
 " Do not let cursor scroll below or above N number of lines when scrolling.
 set scrolloff=8
 
-" Disable column highlight
+" Disable column highlight.
 set nocursorcolumn
 
-" Highlight current line number
+" Highlight current line number.
 if exists('&cursorlineopt')
   set cursorline
   set cursorlineopt=number
 endif
 
-" Disable bells
+" Disable bells.
 set noerrorbells
 set novisualbell
 
@@ -717,60 +712,71 @@ if exists('&t_vb')
   set t_vb=
 endif
 
-" Disable modelines as a security precaution
+" Disable modelines as a security precaution.
 set modelines=0
 set nomodeline
 
-" Prefer splitting windows to the right
+" Prefer splitting windows to the right.
 set splitright
 set splitbelow
 
-" Do not hide markdown
+" Do not hide markdown.
 set conceallevel=0
 
-" Command line height
+" Command line height.
 set cmdheight=1
 
-" Adds 1 col space left to the numbers
+" Adds 1 col space left to the numbers.
 set foldcolumn=1
 
-" Horizontal scrolling
+" Horizontal scrolling.
 set sidescroll=1
 set sidescrolloff=2
 
 set display=lastline
-set display+=truncate
+"set display+=truncate
 
 " have a fixed column for the diagnostics to appear in
-" this removes the jitter when warnings/errors flow in
+" this removes the jitter when warnings/errors flow in.
 if exists('&signcolumn')
   set signcolumn=yes
 endif
 
-" hide tabline
+" Hide tabline.
 set showtabline=0
 
-" https://github.com/amix/vimrc/blob/master/vimrcs/basic.vim
-" Don't redraw while executing macros (good performance config)
+" Don't redraw while executing macros (good performance config).
+" from: https://github.com/amix/vimrc/blob/master/vimrcs/basic.vim
 set lazyredraw
 
-" Cursor modes: Normal - Insert
+" Cursor modes: Normal - Insert.
 function! CursorShape() abort
-  if !has('gui_running') && &term =~# '\v(xterm|screen|tmux|rxvt|st|alacritty|foot|kitty|linux|wezterm)'
-    let &t_SI = "\<esc>[6 q"
-    let &t_EI = "\<esc>[2 q"
+  if has('gui_running')
+    return
+  endif
 
-    if exists('&t_SR')
-      let &t_SR = "\<esc>[6 q"
-    endif
+  if &term !~# '\v(xterm|screen|tmux|rxvt|st|alacritty|foot|kitty|linux|wezterm)'
+    return
+  endif
+
+  let &t_SI = "\<esc>[6 q"
+  let &t_EI = "\<esc>[2 q"
+
+  if exists('&t_SR')
+    let &t_SR = "\<esc>[4 q"
   endif
 endfunction
 
-call CursorShape()
+function! CursorShapeReset() abort
+  call CursorShape()
+  silent! execute "normal! \<Esc>"
+  silent! echon &t_EI
+endfunction
 
 augroup user_cursor_shape
   autocmd!
-  autocmd VimEnter * call CursorShape()
+  autocmd VimEnter * call CursorShapeReset()
+  autocmd VimLeave * silent! echon "\<ESC>[2 q"
 augroup END
 
 " https://stackoverflow.com/questions/6488683/how-to-change-the-cursor-between-normal-and-insert-modes-in-vim
