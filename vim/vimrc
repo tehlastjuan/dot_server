@@ -339,7 +339,7 @@ set wrap
 
 " Alt: Wrap lines at convenient points
 set wrap
-set textwidth=120 # chars
+set textwidth=120 " chars
 set linebreak
 set showbreak=~>
 
