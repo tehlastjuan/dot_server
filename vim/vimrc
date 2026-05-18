@@ -893,23 +893,23 @@ function! CustomHighlights() abort
   hi Function            ctermfg=4     ctermbg=NONE   cterm=NONE
   hi Statement           ctermfg=5     ctermbg=NONE   cterm=NONE
   hi! link Operator      Identifier
-  hi Keyword             ctermfg=9
-  hi Preproc             ctermfg=9     ctermbg=NONE   cterm=NONE
+  hi Keyword             ctermfg=5
+  hi Preproc             ctermfg=3     ctermbg=NONE   cterm=NONE
   hi Include             ctermfg=5     ctermbg=NONE   cterm=NONE
   hi! link Define        Include
   hi! link Macro         Include
   hi! link PreCondit     Include
   hi Type                ctermfg=11    ctermbg=NONE   cterm=NONE
-  hi Special             ctermfg=9     ctermbg=NONE   cterm=NONE
+  hi Special             ctermfg=14    ctermbg=NONE   cterm=NONE
   hi SpecialChar         ctermfg=6     ctermbg=NONE   cterm=NONE
   hi! link Tag           Special
   hi! link Delimiter     Identifier
-  hi SpecialComment      ctermfg=8     ctermbg=NONE   cterm=italic
+  hi SpecialComment      ctermfg=14    ctermbg=NONE   cterm=italic
   hi Debug               ctermfg=11    ctermbg=NONE   cterm=bold,italic
   hi Underlined          ctermfg=4     ctermbg=NONE   cterm=underline
-  hi Ignore              ctermfg=7     ctermbg=NONE   cterm=NONE
+  hi Ignore              ctermfg=8     ctermbg=NONE   cterm=NONE
   hi! link Error         ErrorMsg
-  hi Todo                ctermfg=6     ctermbg=NONE   cterm=bold,italic
+  hi Todo                ctermfg=5     ctermbg=NONE   cterm=bold,italic
 
   " help
   hi! link HelpExample                 String
