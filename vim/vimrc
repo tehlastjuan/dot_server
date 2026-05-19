@@ -12,14 +12,14 @@
 " Disable vi compatibility, if for some reason it's on.
 set nocompatible
 
-" Default file encoding
+" Default file encoding.
 if has ('multi_byte')
   set encoding=utf-8
   scriptencoding utf-8
   set fileencodings=ucs-bom,utf-8,latin1
 endif
 
-" Default interface language
+" Default interface language.
 if has('multi_lang')
   silent! language messages C
 endif
@@ -28,7 +28,7 @@ if exists('&langmenu')
   set langmenu=none
 endif
 
-" Enable native mouse support
+" Enable native mouse support.
 if exists('&mouse')
   set mouse=a
 endif
@@ -47,7 +47,7 @@ if exists(':Man') != 2 && !exists('g:loaded_man')
   runtime ftplugin/man.vim
 endif
 
-" Use less for keywordprg
+" Use less for keywordprg.
 if empty($MANPAGER) || $MANPAGER !~# '^less\>'
   let $MANPAGER = 'less -R'
 endif
@@ -67,16 +67,16 @@ augroup END
 " FILES {{{
 
 " Enable type file detection &
-" enable plugins and load indent file for the detected file type
+" load indent file for the detected file type.
 filetype plugin indent on
 
-" Reload files changed outside vim
+" Reload files changed outside vim.
 set autoread
 
-" Automatically :write before running commands
+" Automatically :write before running commands.
 set autowrite
 
-"Return to last edit position when opening files
+"Return to last edit position when opening files.
 function! GoToLastPosition() abort
   if &buftype !=# ''
     return
@@ -91,7 +91,7 @@ augroup user_go_to_last_position
   autocmd BufReadPost * call GoToLastPosition()
 augroup END
 
-" vim state dir
+" Vim state directory.
 let s:vim_state = expand('~/.local/state/vim')
 
 if !empty(s:vim_state)
@@ -101,12 +101,12 @@ if !empty(s:vim_state)
   endtry
 endif
 
-" Do not save backup files
+" OPT: Do not save backup files
 "set nobackup
 "set nowritebackup
 "set noswapfile
 
-" Save backup files
+" Save backup & swap files to state dir.
 if isdirectory(s:vim_state)
   let s:backup_dir = s:vim_state . '/backup'
   let s:swap_dir = s:vim_state . '/swap'
@@ -129,20 +129,16 @@ if isdirectory(s:vim_state)
   endif
 endif
 
-" Store vim state
+" Store vim state.
 if isdirectory(s:vim_state)
-
-  " less clutter at $HOME
   if exists('&viminfo')
     let &viminfo .= ',n' . s:vim_state . '/viminfo'
-
-    " Persist g:UPPERCASE variables, used by some plugins.
     if &viminfo !~# '!'
       set viminfo^=!
     endif
   endif
 
-  "Keep undo history across sessions, by storing in file.
+  " Keep undo history across sessions
   if has('persistent_undo')
     let s:undo_dir = s:vim_state . '/undo'
     try
@@ -156,7 +152,7 @@ if isdirectory(s:vim_state)
     endif
   endif
 
-  " netrw history
+  " Store netrw history.
   let g:netrw_home = s:vim_state
 endif
 
@@ -165,27 +161,25 @@ endif
 
 " EDITOR {{{
 
-" Virtual edit is useful for visual block edit
+" Virtual edit for visual block edit.
 set virtualedit=block
 
-" Allow backspace in insert mode
+" Allow backspace in insert mode.
 set backspace=indent,eol,start
 
 "Time out on key codes but not mappings.
-"Basically this makes terminal Vim work sanely
 set notimeout
 set timeoutlen=800
 set ttimeout
 set ttimeoutlen=100
 
-" Max num of open tabs
+" Max num of open tabs.
 set tabpagemax=50
 
-" Keep tabs in the bg
+" Keep tabs in the bg.
 set hidden
 
-" Saving options in session and view files causes more problems than it
-" solves, so disable it.
+" Disable saving options in session and view files
 if exists('&sessionoptions')
   set sessionoptions-=options
 endif
@@ -209,12 +203,12 @@ set formatoptions+=c
 set formatoptions+=q
 set formatoptions+=j
 
-" Correctly break multi-byte characters such as CJK,
+" Correctly break multi-byte characters such as CJK.
 " see https://stackoverflow.com/q/32669814/6064933
 set formatoptions+=m
 set formatoptions+=M
 
-" Disable auto commenting in a new line
+" Disable auto commenting on a new line.
 augroup user_format_opts
   autocmd!
   autocmd Filetype * setlocal formatoptions-=c
@@ -222,7 +216,7 @@ augroup user_format_opts
         \ formatoptions-=o
 augroup END
 
-" folds
+" Vim folds.
 augroup user_fold_opts
   autocmd!
   autocmd FileType vim setlocal foldmethod=marker
@@ -233,20 +227,20 @@ augroup user_fold_opts
         \ formatoptions-=r
 augroup END
 
-" enable fast tty support
+" Enable fast tty support.
 if exists('&ttyfast')
   set ttyfast
 endif
 
-" For regular expressions backwards comp
+" For regular expressions backwards comp.
 set magic
 
-" Set regular expression engine automatically
+" Set regular expression engine.
 if exists('&regexpengine')
   set regexpengine=0
 endif
 
-" base number when c-A & C-x for adds and subs
+" Base number when c-A & C-x for adds and subs
 set nrformats-=octal
 
 " Do not override restricted/nologin shells.
@@ -260,14 +254,14 @@ elseif executable('/bin/sh')
   set shell=/bin/sh
 endif
 
-" Keep swap warnings visible
+" OPT: Keep swap warnings visible
 " set shortmess+=A
 
 " Do not add two spaces after a period when joining lines or formatting texts,
 " see https://stackoverflow.com/q/4760428/6064933
 set nojoinspaces
 
-" Specify the behavior when switching between buffers
+" Specify the behavior when switching between buffers.
 if exists('&switchbuf')
   set switchbuf=useopen,usetab,newtab
 endif
@@ -285,7 +279,7 @@ if !exists('g:loaded_matchit')
   silent! runtime macros/matchit.vim
 endif
 
-" Open help vertically
+" Open help vertically.
 command! -bar -nargs=* -complete=help Help vertical belowright help <args>
 
 augroup user_move_help
@@ -293,10 +287,10 @@ augroup user_move_help
   autocmd FileType help wincmd L
 augroup END
 
-" Remove trailing white space, see https://vi.stackexchange.com/a/456/15292
+" Remove trailing white space.
+" see https://vi.stackexchange.com/a/456/15292
 function! StripTrailingWhitespaces() abort
   let l:save = winsaveview()
-  "keeppatterns silent! %s/\v\s+$//e
   keeppatterns silent! %s/[ \t]\+$//e
   call winrestview(l:save)
 endfunction
@@ -315,7 +309,7 @@ set noautoindent
 "set autoindent
 set nosmartindent
 
-" Use space characters instead of tabs.
+" Use tabs instead of space characters
 set noexpandtab
 
 " Set shift width to 2 spaces.
@@ -335,30 +329,29 @@ set smarttab
 set shiftround
 
 " Do not wrap lines. Allow long lines to extend as far as the line goes.
-"set wrap
+set wrap
 
 " Alt: Wrap lines at convenient points
 set wrap
-set textwidth=120 # chars
+set textwidth=120
 set linebreak
 set showbreak=~>
 
-" Display tabs and trailing spaces
+" Display tabs and trailing spaces.
 if &encoding ==# 'utf-8'
   set listchars=tab:┆\ ,trail:·,extends:>,precedes:<,nbsp:␣
 else
   set listchars=tab:>\ ,trail:_,extends:>,precedes:<,nbsp:+
 endif
-
-set list " or set invlist
+set list
 
 " }}}
 
 
 " TERMINAL {{{
 
-" Do not use smart case in command line mode,
-" extracted from https://vi.stackexchange.com/q/16509/15292
+" Do not use smart case in command line mode.
+" from: https://vi.stackexchange.com/q/16509/15292
 if exists('##CmdLineEnter')
   augroup user_cmdline_smartcase
     autocmd!
@@ -370,10 +363,10 @@ if exists('##CmdLineEnter')
   augroup END
 endif
 
+" Do not use number and relative number for terminal inside vim
 if exists('##TermOpen')
   augroup term_settings
     autocmd!
-    " Do not use number and relative number for terminal inside vim
     autocmd TermOpen * setlocal norelativenumber nonumber
     autocmd TermOpen * startinsert
     autocmd BufEnter * if &buftype ==# 'terminal' <bar> startinsert <bar> endif
@@ -415,27 +408,27 @@ set history=10000
 " hundreds of files of dubious relevance.
 set complete-=i
 
-" Avoid scanning unloaded buffers
+" Avoid scanning unloaded buffers.
 set complete-=u
 
-" Avoid tag completion
+" Avoid tag completion.
 set complete-=t
 "set complete-=w
 "set complete-=b
 
-" Scan files given by `dictionary` option
+" Scan files given by `dictionary` option.
 set complete+=k
 
-" Enable Spelling Suggestions for Auto-Completion
+" OPT: Enable Spelling Suggestions for Auto-Completion.
 "set complete+=kspell
 
-" Show menu even if there is only one item
+" Show menu even if there is only one item.
 set completeopt+=menu,menuone
 
-" Disable the preview window
+" Disable the preview window.
 set completeopt-=preview
 
-" spell languages
+" Spell language.
 set spelllang=en
 
 " Enable omni complete features
@@ -446,13 +439,13 @@ augroup user_completion
         \ endif
 augroup END
 
-" Enhanced command-line completion mode w\ popup menu
+" Enhanced command-line completion mode w\ popup menu.
 set wildmenu
 
-" List all matches without completing, then each full match >vim
+" List all matches without completing, then each full match >vim.
 set wildmode=list:longest,full
 
-" Popup menu height
+" Popup menu height.
 set pumheight=8
 
 " Search for ./tags upward through ancestor directories.
@@ -460,21 +453,21 @@ if has('path_extra') && (',' . &g:tags . ',') =~# ',\./tags,'
   setglobal tags-=./tags tags-=./tags; tags^=./tags;
 endif
 
-" Minimalist-Tab Complete
-inoremap <expr> <Tab> TabComplete()
-
+" Minimalist-Tab Completion.
 fun! TabComplete() abort
   if pumvisible()
     return "\<C-n>"
   endif
 
   let l:col = col('.') - 1
-  if l:col > 0 && getline('.')[l:col - 1] =~ '\K'
-    return "\<C-N>"
+  if l:col > 0 && getline('.')[l:col - 1] =~ '\k'
+    return "\<C-n>"
   endif
 
   return "\<Tab>"
 endfun
+
+inoremap <expr> <Tab> TabComplete()
 
 " }}}
 
@@ -482,41 +475,41 @@ endfun
 " MAPPINGS {{{
 
 let g:mapleader = " "
-let g:maplocalleader = ';'
+let g:maplocalleader = ','
 
-" Source current file
+" Source current vimrc file.
 nnoremap <silent> <leader>cs :execute 'source' fnameescape(expand('%:p'))<CR>
 
-" Quit
+" Quit.
 nnoremap <silent> <leader>qq :quitall<CR>
 
-" Redraw window
+" Redraw window.
 nnoremap <silent> <leader>r :redraw!<CR>
 
-" ESC in insert mode
+" ESC in insert mode.
 inoremap <silent> jk <ESC>
 inoremap <silent> kj <ESC>
 
-" Resize windows with arrow keys
-" https://vim.fandom.com/wiki/Fast_window_resizing_with_plus/minus_keys
+" Resize windows with arrow keys.
+" from: https://vim.fandom.com/wiki/Fast_window_resizing_with_plus/minus_keys
 nnoremap <silent> <C-Down>  <C-w>+
 nnoremap <silent> <C-Up>    <C-w>-
 nnoremap <silent> <C-Left>  <C-w><
 nnoremap <silent> <C-Right> <C-w>>
 
-" Move between windows
+" Move between windows.
 nnoremap <silent> <C-j> <C-w>j
 nnoremap <silent> <C-k> <C-w>k
 nnoremap <silent> <C-h> <C-w>h
 nnoremap <silent> <C-l> <C-w>l
 
-" Buffer prev/next
-nnoremap <silent> <leader>j :bprev<cr>
-nnoremap <silent> <leader>k :bnext<cr>
-nnoremap <silent> <C-,> :bprev<cr>
+" Buffer prev/next.
+nnoremap <silent> <leader>j :bprev<CR>
+nnoremap <silent> <leader>k :bnext<CR>
+nnoremap <silent> <C-,> :bprev<CR>
 nnoremap <silent> <C-.> :bnext<CR>
 
-" Close the current buffer
+" Close the current buffer.
 nnoremap <silent> <leader>bd :bdelete<CR>
 
 " Move the cursor based on physical lines, not the actual lines.
@@ -526,22 +519,23 @@ nnoremap <silent> <expr> 0 v:count == 0 ? 'g0' : '0'
 nnoremap <silent> <expr> ^ v:count == 0 ? 'g^' : '^'
 nnoremap <silent> <expr> $ v:count == 0 ? 'g$' : '$'
 
-" autoindent format
+" auto indent format.
 nnoremap <silent> <leader>cf :normal! mzgg=G`z<CR>
 
-" Disable highlight
+" Disable search highlights.
 nnoremap <silent> <leader>h :nohlsearch<CR>
 nnoremap <silent> <Esc><Esc> :nohlsearch<CR>
 
-" Continuous visual shifting (does not exit Visual mode), `gv` means
-" to reselect previous visual area, see https://superuser.com/q/310417/736190
+" Continuous visual shifting (does not exit Visual mode).
+" `gv` means to reselect previous visual area.
+" see: https://superuser.com/q/310417/736190
 xnoremap < <gv
 xnoremap > >gv
 
-" make Y consistent with C and D
+" Make Y consistent with C and D.
 nnoremap Y y$
 
-" enable/disable paste mode, allows usign shortcuts like jk
+" enable/disable paste mode, allows usign shortcuts like jk.
 if exists('&pastetoggle')
   set pastetoggle=<F2>
 endif
@@ -549,7 +543,7 @@ endif
 " From `:help :DiffOrig`.
 if exists(':DiffOrig') != 2
   command! DiffOrig vertical new |
-        \ set bt=nofile |
+        \ setlocal bt=nofile |
         \ r ++edit # |
         \ 0d_ |
         \ diffthis |
@@ -557,7 +551,7 @@ if exists(':DiffOrig') != 2
         \ diffthis
 endif
 
-" Netrw opts
+" Netrw options.
 let g:netrw_banner=0
 let g:netrw_liststyle = 3  " default directory view. Cycle with i
 let g:netrw_browse_split=4
@@ -566,21 +560,22 @@ let g:netrw_sort_sequence = '[\/]$,*'
 let g:netrw_keepdir = 0
 let g:netrw_winsize = 25
 
-" Open Netrw window
+" Open/close Netrw window.
 nnoremap <silent> <leader>e :Lexplore<CR>
 
-" Open a terminal window
+" Open a terminal window.
 if exists(':terminal') == 2
   nnoremap <silent> <C-/> :terminal<CR>
 endif
 
-" Close a terminal window
+" Close a terminal window.
 tnoremap <silent> <C-/> <C-\><C-n>:bdelete!<CR>
 
-" Esc to make the terminal scrollable and I to input mode
+" Esc to make the terminal scrollable,
+" 'i' back to input mode.
 tnoremap <silent> <Esc> <C-\><C-n>
 
-" Show highlight group
+" Show highlight group.
 function! SynStack() abort
   if !exists("*synstack")
     echo 'synstack() is not available'
@@ -601,7 +596,7 @@ endfunc
 
 nnoremap <leader>; :call SynStack()<CR>
 
-" Comments toggle for blocks of code.
+" Comment-toggle for blocks of code.
 " https: //stackoverflow.com/questions/1676632/whats-a-quick-way-to-comment-uncomment-lines-in-vim
 let s:comment_map = {
       \ 'ahk':          ';',
@@ -685,31 +680,31 @@ xnoremap <silent> gc :<C-u>call ToggleCommentRange(line("'<"), line("'>"))<CR>
 " Show partial command you type in the last line of the screen.
 set showcmd
 
-" Hide the mode, we have a statusline
+" Hide the mode, we have a statusline.
 set noshowmode
 
-" Show current line number
+" Show current line number.
 set number
 
-" Show relative line numbers
+" Show relative line numbers.
 set relativenumber
 
-" Show the cursor position all the time
+" Show the cursor position all the time.
 set ruler
 
 " Do not let cursor scroll below or above N number of lines when scrolling.
 set scrolloff=8
 
-" Disable column highlight
+" Disable column highlight.
 set nocursorcolumn
 
-" Highlight current line number
+" Highlight current line number.
 if exists('&cursorlineopt')
   set cursorline
   set cursorlineopt=number
 endif
 
-" Disable bells
+" Disable bells.
 set noerrorbells
 set novisualbell
 
@@ -717,70 +712,73 @@ if exists('&t_vb')
   set t_vb=
 endif
 
-" Disable modelines as a security precaution
+" Disable modelines as a security precaution.
 set modelines=0
 set nomodeline
 
-" Prefer splitting windows to the right
+" Prefer splitting windows to the right.
 set splitright
 set splitbelow
 
-" Do not hide markdown
+" Do not hide markdown.
 set conceallevel=0
 
-" Command line height
+" Command line height.
 set cmdheight=1
 
-" Adds 1 col space left to the numbers
+" Adds 1 col space left to the numbers.
 set foldcolumn=1
 
-" Horizontal scrolling
+" Horizontal scrolling.
 set sidescroll=1
 set sidescrolloff=2
 
 set display=lastline
-set display+=truncate
+"set display+=truncate
 
 " have a fixed column for the diagnostics to appear in
-" this removes the jitter when warnings/errors flow in
+" this removes the jitter when warnings/errors flow in.
 if exists('&signcolumn')
   set signcolumn=yes
 endif
 
-" hide tabline
+" Hide tabline.
 set showtabline=0
 
-" https://github.com/amix/vimrc/blob/master/vimrcs/basic.vim
-" Don't redraw while executing macros (good performance config)
+" Don't redraw while executing macros (good performance config).
+" from: https://github.com/amix/vimrc/blob/master/vimrcs/basic.vim
 set lazyredraw
 
-" Cursor modes: Normal - Insert
+" Cursor modes: Normal - Insert.
 function! CursorShape() abort
-  if !has('gui_running') && &term =~# '\v(xterm|screen|tmux|rxvt|st|alacritty|foot|kitty|linux|wezterm)'
-    let &t_SI = "\<esc>[6 q"
-    let &t_EI = "\<esc>[2 q"
+  if has('gui_running')
+    return
+  endif
 
-    if exists('&t_SR')
-      let &t_SR = "\<esc>[6 q"
-    endif
+  if &term !~# '\v(xterm|screen|tmux|rxvt|st|alacritty|foot|kitty|linux|wezterm)'
+    return
+  endif
+
+  let &t_SI = "\<esc>[6 q"
+  let &t_EI = "\<esc>[2 q"
+
+  if exists('&t_SR')
+    let &t_SR = "\<esc>[4 q"
   endif
 endfunction
 
-call CursorShape()
+function! CursorShapeReset() abort
+  call CursorShape()
+  silent! execute "normal! \<Esc>"
+  silent! echon &t_EI
+endfunction
 
+" Reset the cursor on start.
 augroup user_cursor_shape
   autocmd!
-  autocmd VimEnter * call CursorShape()
+  autocmd VimEnter * call CursorShapeReset()
+  autocmd VimLeave * silent! echon "\<ESC>[2 q"
 augroup END
-
-" https://stackoverflow.com/questions/6488683/how-to-change-the-cursor-between-normal-and-insert-modes-in-vim
-" reset the cursor on start (for older versions of vim, usually not required)
-" augroup user_cursor_shape
-"   autocmd!
-"   "autocmd VimEnter * silent !echo -ne "\e[2 q"
-"   "autocmd VimLeave * silent !echo -ne "\e[2 q"
-"   autocmd VimLeave * silent! set t_me&
-" augroup END
 
 " }}}
 
@@ -810,192 +808,256 @@ if !has('gui_running') && &t_Co < 256
 endif
 
 function! CustomHighlights() abort
-
   " custom highlights
-  hi user1               ctermfg=7     ctermbg=0      cterm=NONE
-  hi user2               ctermfg=7     ctermbg=8      cterm=NONE
-  hi user3               ctermfg=10    ctermbg=8      cterm=NONE
-  hi user4               ctermfg=0     ctermbg=2      cterm=bold
-  hi user5               ctermfg=3     ctermbg=0      cterm=bold
-  hi! link user6  linenr
-  hi user7               ctermfg=NONE  ctermbg=NONE
+  hi user1                ctermfg=7      ctermbg=0      cterm=NONE
+  hi user2                ctermfg=7      ctermbg=8      cterm=NONE
+  hi user3                ctermfg=10     ctermbg=8      cterm=NONE
+  hi user4                ctermfg=0      ctermbg=2      cterm=bold
+  hi user5                ctermfg=3      ctermbg=0      cterm=bold
+  hi user6                ctermfg=8      ctermbg=NONE   cterm=NONE
+  hi user7                ctermfg=NONE   ctermbg=NONE
 
   " status line
-  hi StatusLine          ctermfg=0     ctermbg=NONE   cterm=bold
-  hi StatusLineNC        ctermfg=NONE  ctermbg=NONE   cterm=italic
-  hi StatusLineTerm      ctermfg=NONE  ctermbg=NONE   cterm=NONE
-  hi StatusLineTermNC    ctermfg=NONE  ctermbg=NONE   cterm=NONE
+  hi StatusLine           ctermfg=0      ctermbg=NONE   cterm=bold
+  hi StatusLineNC         ctermfg=NONE   ctermbg=NONE   cterm=italic
+  hi StatusLineTerm       ctermfg=NONE   ctermbg=NONE   cterm=NONE
+  hi StatusLineTermNC     ctermfg=NONE   ctermbg=NONE   cterm=NONE
 
-  hi NormalMode          ctermfg=0     ctermbg=2      cterm=bold
-  hi InsertMode          ctermfg=0     ctermbg=12     cterm=bold
-  hi ReplaceMode         ctermfg=0     ctermbg=11     cterm=bold
-  hi VisualMode          ctermfg=0     ctermbg=5      cterm=bold
-  hi CommandMode         ctermfg=0     ctermbg=12     cterm=bold
-  hi Warnings            ctermfg=3     ctermbg=0      cterm=bold
+  hi NormalMode           ctermfg=0      ctermbg=2      cterm=bold
+  hi InsertMode           ctermfg=0      ctermbg=12     cterm=bold
+  hi ReplaceMode          ctermfg=0      ctermbg=11     cterm=bold
+  hi VisualMode           ctermfg=0      ctermbg=5      cterm=bold
+  hi CommandMode          ctermfg=0      ctermbg=12     cterm=bold
+  hi Warnings             ctermfg=3      ctermbg=0      cterm=bold
 
-  hi Normal              ctermfg=7     ctermbg=NONE   cterm=NONE
-  hi Cursor              ctermfg=NONE  ctermbg=NONE   cterm=reverse
-  hi CursorIM            ctermfg=NONE  ctermbg=NONE   cterm=reverse
-  hi CursorLine          ctermfg=NONE  ctermbg=NONE   cterm=NONE
-  hi CursorLineNr        ctermfg=6     ctermbg=NONE   cterm=NONE
-  hi CursorLineSign      ctermfg=13    ctermbg=NONE   cterm=NONE
-  hi Matchparen          ctermfg=15    ctermbg=NONE   cterm=underline
-  hi Pmenu               ctermfg=8     ctermbg=NONE
-  hi PmenuThumb          ctermfg=8     ctermbg=NONE
-  hi PmenuSbar           ctermfg=7     ctermbg=NONE
-  hi PmenuSel            ctermfg=4     ctermbg=NONE
-  hi ColorColumn         ctermfg=8     ctermbg=0
-  hi SpellBad            ctermfg=1     ctermbg=NONE   cterm=underline
-  hi SpellCap            ctermfg=10    ctermbg=NONE   cterm=underline
-  hi SpellRare           ctermfg=11    ctermbg=NONE   cterm=underline
-  hi SpellLocal          ctermfg=13    ctermbg=NONE   cterm=underline
-  hi NonText             ctermfg=8
-  hi LineNr              ctermfg=8     ctermbg=NONE   cterm=NONE
-  hi Visual              ctermfg=NONE  ctermbg=0      cterm=NONE
-  hi IncSearch           ctermfg=0     ctermbg=13     cterm=NONE
-  hi Search              ctermfg=0     ctermbg=11
-  hi VertSplit           ctermfg=0     ctermbg=NONE   cterm=NONE
-  hi TabLine             ctermfg=0     ctermbg=NONE   cterm=NONE
-  hi TabLineFill         ctermfg=0     ctermbg=NONE   cterm=NONE
-  hi TabLineSel          ctermfg=7     ctermbg=0
-  hi Folded              ctermfg=6     ctermbg=0      cterm=bold
-  hi Conceal             ctermfg=8     ctermbg=NONE
-  hi Directory           ctermfg=4                    cterm=bold
-  hi Title               ctermfg=3                    cterm=bold
-  hi ErrorMsg            ctermfg=9     ctermbg=NONE
-  hi DiffAdd             ctermfg=0     ctermbg=10     cterm=bold
-  hi DiffChange          ctermfg=0     ctermbg=11     cterm=bold
-  hi DiffDelete          ctermfg=0     ctermbg=9      cterm=bold
-  hi DiffText            ctermfg=0     ctermbg=13     cterm=bold
-  hi WildMenu            ctermfg=6     ctermbg=NONE   cterm=bold
-  hi EndOfBuffer         ctermfg=0     ctermbg=NONE   cterm=bold
-  hi TrailingWhitespace  ctermfg=6     ctermbg=0
-  hi ExtraWhitespace     ctermfg=8     ctermbg=0
-  hi Whitespace          ctermfg=0     ctermbg=NONE
-  hi SpecialKey          ctermfg=0     ctermbg=NONE
+  hi Normal               ctermfg=7      ctermbg=NONE   cterm=NONE
+  hi Cursor               ctermfg=NONE   ctermbg=NONE   cterm=reverse
+  hi CursorIM             ctermfg=NONE   ctermbg=NONE   cterm=reverse
+  hi CursorLine           ctermfg=NONE   ctermbg=NONE   cterm=NONE
+  hi CursorLineNr         ctermfg=6      ctermbg=NONE   cterm=NONE
+  hi CursorLineSign       ctermfg=13     ctermbg=NONE   cterm=NONE
+  hi Matchparen           ctermfg=15     ctermbg=NONE   cterm=underline
+  hi Pmenu                ctermfg=8      ctermbg=NONE
+  hi PmenuThumb           ctermfg=8      ctermbg=NONE
+  hi PmenuSbar            ctermfg=7      ctermbg=NONE
+  hi PmenuSel             ctermfg=4      ctermbg=NONE
+  hi ColorColumn          ctermfg=8      ctermbg=0
+  hi SpellBad             ctermfg=1      ctermbg=NONE   cterm=underline
+  hi SpellCap             ctermfg=10     ctermbg=NONE   cterm=underline
+  hi SpellRare            ctermfg=11     ctermbg=NONE   cterm=underline
+  hi SpellLocal           ctermfg=13     ctermbg=NONE   cterm=underline
+  hi NonText              ctermfg=8
+  hi LineNr               ctermfg=8      ctermbg=NONE   cterm=NONE
+  hi Visual               ctermfg=NONE   ctermbg=0      cterm=NONE
+  hi IncSearch            ctermfg=0      ctermbg=13     cterm=NONE
+  hi Search               ctermfg=0      ctermbg=11
+  hi VertSplit            ctermfg=0      ctermbg=NONE   cterm=NONE
+  hi TabLine              ctermfg=0      ctermbg=NONE   cterm=NONE
+  hi TabLineFill          ctermfg=0      ctermbg=NONE   cterm=NONE
+  hi TabLineSel           ctermfg=7      ctermbg=0
+  hi Folded               ctermfg=6      ctermbg=0      cterm=bold
+  hi Conceal              ctermfg=8      ctermbg=NONE
+  hi Directory            ctermfg=4                     cterm=bold
+  hi Title                ctermfg=3                     cterm=bold
+  hi ErrorMsg             ctermfg=9      ctermbg=NONE
+  hi DiffAdd              ctermfg=0      ctermbg=10     cterm=bold
+  hi DiffChange           ctermfg=0      ctermbg=11     cterm=bold
+  hi DiffDelete           ctermfg=0      ctermbg=9      cterm=bold
+  hi DiffText             ctermfg=0      ctermbg=13     cterm=bold
+  hi WildMenu             ctermfg=6      ctermbg=NONE   cterm=bold
+  hi EndOfBuffer          ctermfg=0      ctermbg=NONE   cterm=bold
+  hi TrailingWhitespace   ctermfg=6      ctermbg=NONE
+  hi ExtraWhitespace      ctermfg=8      ctermbg=NONE
+  hi Whitespace           ctermfg=0      ctermbg=NONE
+  hi SpecialKey           ctermfg=0      ctermbg=NONE
 
-  hi! link CursorColumn  CursorLine
-  hi! link SignColumn    LineNr
-  hi! link FoldColumn    SignColumn
-  hi! link WarningMsg    ErrorMsg
-  hi! link MoreMsg       Title
-  hi! link Question      MoreMsg
-  hi! link ModeMsg       MoreMsg
-  " hi! link tablinefill   vertsplit
-  " hi! link specialkey    nontext
+  hi! link CursorColumn   CursorLine
+  hi! link SignColumn     LineNr
+  hi! link FoldColumn     SignColumn
+  hi! link WarningMsg     ErrorMsg
+  hi! link MoreMsg        Title
+  hi! link Question       MoreMsg
+  hi! link ModeMsg        MoreMsg
+  " hi! link tablinefill    vertsplit
+  " hi! link specialkey     nontext
 
   " generic syntax
-  hi Comment             ctermfg=8     ctermbg=NONE   cterm=NONE
-  hi Constant            ctermfg=3     ctermbg=NONE   cterm=NONE
-  hi String              ctermfg=2     ctermbg=NONE   cterm=NONE
-  hi! link Character     String
-  hi Number              ctermfg=3     ctermbg=NONE   cterm=NONE
-  hi! link Boolean       Number
-  hi! link Float         Number
-  hi Identifier          ctermfg=7     ctermbg=NONE   cterm=NONE
-  hi Function            ctermfg=4     ctermbg=NONE   cterm=NONE
-  hi Statement           ctermfg=5     ctermbg=NONE   cterm=NONE
-  hi! link Operator      Identifier
-  hi Keyword             ctermfg=9
-  hi Preproc             ctermfg=9     ctermbg=NONE   cterm=NONE
-  hi Include             ctermfg=5     ctermbg=NONE   cterm=NONE
-  hi! link Define        Include
-  hi! link Macro         Include
-  hi! link PreCondit     Include
-  hi Type                ctermfg=11    ctermbg=NONE   cterm=NONE
-  hi Special             ctermfg=9     ctermbg=NONE   cterm=NONE
-  hi SpecialChar         ctermfg=6     ctermbg=NONE   cterm=NONE
-  hi! link Tag           Special
-  hi! link Delimiter     Identifier
-  hi SpecialComment      ctermfg=8     ctermbg=NONE   cterm=italic
-  hi Debug               ctermfg=11    ctermbg=NONE   cterm=bold,italic
-  hi Underlined          ctermfg=4     ctermbg=NONE   cterm=underline
-  hi Ignore              ctermfg=7     ctermbg=NONE   cterm=NONE
-  hi! link Error         ErrorMsg
-  hi Todo                ctermfg=6     ctermbg=NONE   cterm=bold,italic
+  hi Comment              ctermfg=8      ctermbg=NONE   cterm=NONE
+  hi Constant             ctermfg=3      ctermbg=NONE   cterm=NONE
+  hi String               ctermfg=2      ctermbg=NONE   cterm=NONE
+  hi! link Character      String
+  hi Number               ctermfg=3      ctermbg=NONE   cterm=NONE
+  hi! link Boolean        Number
+  hi! link Float          Number
+  hi Identifier           ctermfg=7      ctermbg=NONE   cterm=NONE
+  hi Function             ctermfg=4      ctermbg=NONE   cterm=NONE
+  hi Statement            ctermfg=5      ctermbg=NONE   cterm=NONE
+  hi! link Operator       Identifier
+  hi Keyword              ctermfg=5
+  hi Preproc              ctermfg=11     ctermbg=NONE   cterm=NONE
+  hi Include              ctermfg=5      ctermbg=NONE   cterm=NONE
+  hi! link Define         Include
+  hi! link Macro          Include
+  hi! link PreCondit      Include
+  hi Type                 ctermfg=11     ctermbg=NONE   cterm=NONE
+  hi Special              ctermfg=9      ctermbg=NONE   cterm=NONE
+  hi SpecialChar          ctermfg=6      ctermbg=NONE   cterm=NONE
+  hi! link Tag            Special
+  hi! link Delimiter      Identifier
+  hi SpecialComment       ctermfg=14     ctermbg=NONE   cterm=italic
+  hi Debug                ctermfg=11     ctermbg=NONE   cterm=bold,italic
+  hi Underlined           ctermfg=4      ctermbg=NONE   cterm=underline
+  hi Ignore               ctermfg=8      ctermbg=NONE   cterm=NONE
+  hi! link Error          ErrorMsg
+  hi Todo                 ctermfg=5      ctermbg=NONE   cterm=bold,italic
 
   " help
-  hi! link HelpExample                 String
-  hi! link HelpHeadline                Title
-  hi! link HelpSectionDelim            Comment
-  hi! link HelpHypertextEntry          Statement
-  hi! link HelpHypertextJump           Underlined
-  hi! link HelpUrl                     Underlined
+  hi! link HelpExample                   String
+  hi! link HelpHeadline                  Title
+  hi! link HelpSectionDelim              Comment
+  hi! link HelpHypertextEntry            Statement
+  hi! link HelpHypertextJump             Underlined
+  hi! link HelpUrl                       Underlined
 
   " vim
-  hi! link VimSetSep                   Delimiter
-  hi! link VimContinue                 Delimiter
-  hi! link VimHiAttrib                 Constant
+  hi! link VimSetSep                     Delimiter
+  hi! link VimContinue                   Delimiter
+  hi! link VimHiAttrib                   Constant
 
   " netrw
-  hi netrwExe                          ctermfg=9
-  hi netrwClassify                     ctermfg=8  cterm=bold
+  hi netrwExe                            ctermfg=9
+  hi netrwClassify                       ctermfg=8  cterm=bold
 
   " diff
-  hi DiffAdded                         ctermfg=2
-  hi DiffRemoved                       ctermfg=1
-  hi! link DiffFile                    preproc
-  hi! link DiffLine                    title
+  hi DiffAdded                           ctermfg=2
+  hi DiffRemoved                         ctermfg=1
+  hi! link DiffFile                      preproc
+  hi! link DiffLine                      title
 
   " git
-  hi GitCommitBranch                   ctermfg=3
-  hi GitCommitSelectedtype             ctermfg=10
-  hi GitCommitSelectedfile             ctermfg=2
-  hi GitCommitUnmergedtype             ctermfg=9
-  hi GitCommitUnmergedfile             ctermfg=1
-  hi! link GitCommitFile               Directory
-  " hi! link GitCommitUntrackedfile      GitcommitUnmergedFile
-  " hi! link GitCommitDiscardedtype      GitcommitUnmergedType
-  " hi! link GitCommitDiscardedfile      GitcommitUnmergedFile
-
-  " html
-  hi htmltagname                       ctermfg=2
-  hi htmltag                           ctermfg=2
-  hi htmlarg                           ctermfg=10
-  hi htmlh1                            cterm=bold
-  hi htmlbold                          cterm=bold
-  hi htmlitalic                        cterm=underline
-  hi htmlunderline                     cterm=underline
-  hi htmlbolditalic                    cterm=bold,underline
-  hi htmlboldunderline                 cterm=bold,underline
-  hi htmlunderlineitalic               cterm=underline
-  hi htmlboldunderlineitalic           cterm=bold,underline
-  hi! link htmllink                    Underlined
-  hi! link htmlendtag                  htmltag
-
-  " xml
-  hi xmltagname                        ctermfg=4
-  hi xmltag                            ctermfg=12
-  hi! link xmlstring                   xmltagname
-  hi! link xmlattrib                   xmltag
-  hi! link xmlendtag                   xmltag
-  hi! link xmlequal                    xmltag
-
-  " javascript
-  hi! link javascript                  Normal
-  hi! link javascriptbraces            Delimiter
-
-  " php
-  hi phpspecialfunction                ctermfg=5
-  hi phpidentifier                     ctermfg=11
-  hi phpparent                         ctermfg=8
-  hi! link phpvarselector              Phpidentifier
-  hi! link phpheredoc                  String
-  hi! link phpdefine                   Statement
+  hi GitCommitBranch                     ctermfg=3
+  hi GitCommitSelectedtype               ctermfg=10
+  hi GitCommitSelectedfile               ctermfg=2
+  hi GitCommitUnmergedtype               ctermfg=9
+  hi GitCommitUnmergedfile               ctermfg=1
+  hi! link GitCommitFile                 Directory
+  hi! link GitCommitUntrackedfile        GitCommitUnmergedFile
+  hi! link GitCommitDiscardedtype        GitCommitUnmergedType
+  hi! link GitCommitDiscardedfile        GitCommitUnmergedFile
 
   " markdown
-  hi! link markdownheadingrule         Nontext
-  hi! link markdownheadingdelimiter    markdownheadingrule
-  hi! link markdownlinkdelimiter       Delimiter
-  hi! link markdownurldelimiter        Delimiter
-  hi! link markdowncodedelimiter       Nontext
-  hi! link markdownlinktextdelimiter   markdownlinkdelimiter
-  hi! link markdownurl                 markdownlinktext
-  hi! link markdownautomaticlink       markdownlinktext
-  hi! link markdowncodeblock           String
-  hi markdowncode                      cterm=bold
-  hi markdownbold                      cterm=bold
-  hi markdownitalic                    cterm=underline
+  hi! markdownBold                       cterm=bold
+  hi! markdownItalic                     cterm=italic
+  hi! markdownBoldItalic                 cterm=bold,italic
+  hi! markdownStrike                     cterm=strikethrough
+  hi! markdownRule                       ctermfg=9   ctermbg=NONE   cterm=NONE
+  hi! markdownCode                       ctermfg=2   ctermbg=NONE   cterm=NONE
+  hi! link markdownCodeBlock             markdownCode
+  hi! link markdownCodeDelimiter         markdownCode
+
+  hi! markdownDelimiter                  ctermfg=7   ctermbg=NONE   cterm=NONE
+  hi! markdownautomaticlink              ctermfg=7   ctermbg=NONE   cterm=NONE
+
+  hi! markdownurl                        ctermfg=6   ctermbg=NONE   cterm=underline
+  hi! link markdownurldelimiter          markdownurl
+  hi! markdownUrlTitle                   ctermfg=4   ctermbg=NONE   cterm=NONE
+  hi! link markdownUrlTitleDelimiter     markdownUrlTitle
+  hi! link markdownlinkdelimiter         markdownUrlTitle
+  hi! link markdownlinktext              markdownUrlTitle
+  hi! link markdownlinktextdelimiter     markdownUrlTitle
+
+  hi! markdownHeadingRule                ctermfg=8   ctermbg=NONE   cterm=NONE
+  hi! markdownHeadingDelimiter           ctermfg=1   ctermbg=NONE   cterm=bold
+  hi! link markdownListMarker            markdownHeadingDelimiter
+
+  hi! markdownH1                         ctermfg=9   ctermbg=NONE   cterm=bold
+  hi! markdownH2                         ctermfg=5   ctermbg=NONE   cterm=bold
+  hi! markdownH3                         ctermfg=3   ctermbg=NONE   cterm=bold
+  hi! markdownH4                         ctermfg=1   ctermbg=NONE   cterm=bold
+  hi! markdownH5                         ctermfg=5   ctermbg=NONE   cterm=bold
+  hi! markdownH6                         ctermfg=3   ctermbg=NONE   cterm=bold
+  hi! link markdownH1Delimiter           markdownH1
+  hi! link markdownH2Delimiter           markdownH2
+  hi! link markdownH3Delimiter           markdownH3
+  hi! link markdownH4Delimiter           markdownH4
+  hi! link markdownH5Delimiter           markdownH5
+  hi! link markdownH6Delimiter           markdownH6
+
+  hi! link markdownBlockquote            Comment
+  hi! link markdownBoldDelimiter         markdownbold
+  hi! link markdownBoldDelimiter         markdownbold
+  hi! link markdownBoldItalicDelimiter   markdownBoldItalic
+  hi! link markdownError                 Error
+  hi! link markdownEscape                Special
+  hi! link markdownFootnote              Typedef
+  hi! link markdownFootnoteDefinition    Typedef
+  hi! link markdownId                    Type
+  hi! link markdownIdDeclaration         Typedef
+  hi! link markdownIdDelimiter           markdownlinkdelimiter
+  hi! link markdownItalicDelimiter       markdownitalic
+  hi! link markdownLineBreak             cleared
+  hi! link markdownLineStart             cleared
+  hi! link markdownLink                  cleared
+  hi! link markdownOrderedListMarker     markdownListMarker
+  hi! link markdownStrike                htmlStrike
+  hi! link markdownStrikeDelimiter       markdownStrike
+  hi! link markdownValid                 cleared
+  hi! link markdownYamlHead              cleared
+
+  " yaml
+  hi! yamlAlias                          ctermfg=9   ctermbg=NONE   cterm=NONE
+  hi! yamlFlowIndicator                  ctermfg=2   ctermbg=NONE   cterm=NONE
+  hi! yamlKeyValueDelimiter              ctermfg=8   ctermbg=NONE   cterm=NONE
+  hi! yamlMappingKey                     ctermfg=6   ctermbg=NONE   cterm=NONE
+
+  hi! link yamlAnchor                    yamlAlias
+  hi! link yamlDocumentStart             yamlAlias
+  hi! link yamlPlainScalar               yamlFlowIndicator
+  hi! link yamlMappingKeyStart           yamlKeyValueDelimiter
+  hi! link yamlMappingMerge              yamlAlias
+  hi! link yamlFlowMappingKey            yamlMappingKey
+  hi! link yamlFlowMappingKeyStart       yamlMappingKeyStart
+  hi! link yamlFlowMappingMerge          yamlMappingMerge
+  hi! link yamlBlockMappingKey           yamlMappingKey
+  hi! link yamlBlockCollectionItemStart  yamlKeyValueDelimiter
+  hi! link yamlBlockMappingKeyStart      yamlMappingKeyStart
+  hi! link yamlBlockMappingMerge         yamlBlockMappingKey
+  hi! link yamlFlowMappingDelimiter      yamlKeyValueDelimiter
+  hi! link yamlBlockMappingDelimiter     yamlKeyValueDelimiter
+  hi! link yamlConstant                  Constant
+  hi! link yamlDirectiveName             Keyword
+
+  " html
+  hi htmltagname                         ctermfg=2
+  hi htmltag                             ctermfg=2
+  hi htmlarg                             ctermfg=10
+  hi htmlh1                              ctermfg=1  cterm=bold
+  hi htmlbold                            cterm=bold
+  hi htmlitalic                          cterm=underline
+  hi htmlunderline                       cterm=underline
+  hi htmlbolditalic                      cterm=bold,underline
+  hi htmlboldunderline                   cterm=bold,underline
+  hi htmlunderlineitalic                 cterm=underline
+  hi htmlboldunderlineitalic             cterm=bold,underline
+  hi! link htmllink                      Underlined
+  hi! link htmlendtag                    htmltag
+
+  " xml
+  hi xmltag                              ctermfg=5
+  hi! link xmltagname                    xmltag
+  hi! link xmlendtag                     xmltag
+  hi! xmlDocType                         ctermfg=9
+  hi! link xmlDocTypeDecl                xmltag
+  hi! xmlDocTypeKeyword                  ctermfg=11
+  hi! link xmlProcessingDelim            xmltag
+  hi! xmlstring                          ctermfg=2
+  hi! xmlattrib                          ctermfg=6
+  hi! xmlequal                           ctermfg=9
+
+  " javascript
+  hi! link javascript                    Normal
+  hi! link javascriptbraces              Delimiter
+
 endfunction
 
 augroup user_highlights
@@ -1043,13 +1105,13 @@ augroup END
 
 " STATUSLINE {{{
 
-" always display statusline
+" Always display the Statusline.
 set laststatus=2
 
-" reset statusline
+" Reset statusline.
 set statusline=
 
-" Statusline functions
+" Statusline functions:
 function! StatuslineMode() abort
   let l:mode=mode(1)
 
@@ -1082,9 +1144,10 @@ function! StatuslineMode() abort
   elseif l:mode ==# '!'
     return '%#Warnings# SHELL '
   endif
-  return '%#Statusline# ' . l:mode . ' '
+  return '%#StatusLine# ' . l:mode . ' '
 endfunction
 
+" File name or else.
 function! StatuslineFile() abort
   if empty(expand('%'))
     return '[No file]'
@@ -1092,7 +1155,7 @@ function! StatuslineFile() abort
   return fnamemodify(getcwd(), ':~') . '/' . expand('%')
 endfunction
 
-" return git branch
+" Read git branch if any.
 function! GitBranch() abort
   let l:dir = expand('%:p:h')
   if empty(l:dir)
@@ -1104,14 +1167,14 @@ function! GitBranch() abort
     return ''
   endif
 
-  let l:head = fnamemodify(l:git_dir, ':h') . './.git/HEAD'
+  let l:head = fnamemodify(l:git_dir, ':h') . '/.git/HEAD'
   if !filereadable(l:head)
     return ''
   endif
 
   let l:line = get(readfile(l:head, '', 1), 0, '')
   if l:line =~# '^ref: refs/heads/'
-    return substitute(l:line, '^ref: refs/heads', '', '')
+    return substitute(l:line, '^ref: refs/heads/', '', '')
   endif
 
   if !empty(l:line)
@@ -1119,19 +1182,15 @@ function! GitBranch() abort
   endif
 
   return ''
-  "return system("git rev-parse --abbrev-ref HEAD 2>/dev/null | tr -d '\n'")
 endfunction
 
-" show git branch if any
+" Show git branch if any.
 function! StatuslineGit() abort
   let l:branch = GitBranch()
   return empty(l:branch) ? '' : l:branch . '*'
 endfunction
 
-function! StatuslineInactive() abort
-  return '%7* '
-endfunction
-
+" Build active Statusline
 function! StatuslineActive() abort
   let l:line = ''
 
@@ -1172,7 +1231,11 @@ function! StatuslineActive() abort
   return l:line
 endfunction
 
-" main statusline
+function! StatuslineInactive() abort
+  return '%7* '
+endfunction
+
+" Statusline loader.
 function! StatuslineLoad(mode) abort
   if a:mode ==# 'active'
     setlocal statusline=%!StatuslineActive()
@@ -1181,7 +1244,7 @@ function! StatuslineLoad(mode) abort
   endif
 endfunction
 
-" autocommands to disable statusline for terminal, netwr and help buffers
+" Disable statusline for terminal, netwr and help buffers.
 augroup user_statusline
   autocmd!
   autocmd WinEnter,BufWinEnter * call StatuslineLoad('active')
@@ -1198,13 +1261,12 @@ call StatuslineLoad('active')
 " LF INTEGRATION {{{
 
 " a gem found in /usr/share/vim/vimfiles/syntax/lf.vim
-
 if executable('lf')
 
   function! LF() abort
     let l:temp = tempname()
 
-    execute 'silent !lf -selection-path=' . shellescape(temp)
+    execute 'silent !lf -selection-path=' . shellescape(l:temp)
     if v:shell_error
       redraw!
       echohl ErrorMsg
