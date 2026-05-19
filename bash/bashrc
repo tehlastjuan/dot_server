@@ -1,11 +1,13 @@
-#!/usr/bin/env bash
-# shellcheck disable=1091
-
 # If not running interactively, don't do anything
 case $- in
   *i*) ;;
   *) return ;;
 esac
+
+#----- Shell
+
+# default file permissions
+umask 077
 
 # history
 shopt -s cmdhist         # Save multi-line commands in history as single line
@@ -13,25 +15,333 @@ shopt -s histreedit      # Add failed commands to the bash history
 shopt -s histappend      # Append each session's history to $HISTFILE
 shopt -s histverify      # Edit a recalled history line before executing
 
-# prompt
-stty stop undef          # Remove the ^Q mapping
-stty start undef         # Remove the ^S mapping (See all: stty -a)
-shopt -s cdspell         # Auto-corrects cd misspellings
-shopt -s dotglob         # Include dotfiles in pathname expansion
-shopt -s expand_aliases  # Expand aliases
+# mappings
+if [[ -t 0 ]]; then
+  stty stop undef          # Remove the ^Q mapping
+  stty start undef         # Remove the ^S mapping (See all: stty -a)
+fi
+
 shopt -s extglob         # Enable extended pattern-matching features
 
-if [[ $WAYLAND_DISPLAY || $DISPLAY ]]; then
+if [[ -t 1 ]]; then
   shopt -s checkwinsize  # Update LINES and COLUMNS after each command
 fi
 
-# Load env exports
-. "$HOME/.config/bash/exports"
 
-# Load shell settings and utilities
-. "$XDG_CONFIG_HOME/bash/functions"
-. "$XDG_CONFIG_HOME/bash/completion"
-. "$XDG_CONFIG_HOME/bash/theme"
-. "$XDG_CONFIG_HOME/bash/fzfrc"
-. "$XDG_CONFIG_HOME/bash/utils"
-. "$XDG_CONFIG_HOME/bash/alias"
+#----- Environment
+
+export LANG="en_US.UTF-8"
+export LC_CTYPE="en_US.UTF-8"
+unset LC_ALL
+
+export COLORTERM=truecolor
+
+# XDG directories
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_CACHE_HOME="$HOME/.cache"
+export XDG_DATA_HOME="$HOME/.local/share"
+export XDG_STATE_HOME="$HOME/.local/state"
+
+[ -d "$XDG_CONFIG_HOME" ] || mkdir -m 0750 "$XDG_CONFIG_HOME"
+[ -d "$XDG_CACHE_HOME" ]  || mkdir -m 0750 "$XDG_CACHE_HOME"
+[ -d "$HOME/.local" ]     || mkdir -m 0750 "$HOME/.local"
+[ -d "$XDG_DATA_HOME" ]   || mkdir -m 0750 "$XDG_DATA_HOME"
+[ -d "$XDG_STATE_HOME" ]  || mkdir -m 0750 "$XDG_STATE_HOME"
+
+# set $XDG_RUNTIME_DIR
+if ! export -p | grep -q XDG_RUNTIME_DIR=; then
+	XDG_RUNTIME_DIR="/run/user/$(id -u "$USER")"
+	export XDG_RUNTIME_DIR
+fi
+
+# Gnupg stuff
+export GNUPGHOME="$XDG_DATA_HOME/gnupg"
+
+
+#----- PATH binaries and libraries
+
+# from /etc/profile
+append_path()  {
+	case ":$PATH:" in
+	*:"$1":*) ;;
+	*) PATH="${PATH:+$PATH:}$1" ;;
+	esac
+}
+
+# Local binaries path
+append_path "$HOME/.local/bin"
+
+# Local libraries
+LD_LIBRARY_PATH="$HOME/.local/lib:/usr/local/lib:/usr/lib"
+
+
+#----- Terminal utilities
+
+export INPUTRC="$XDG_CONFIG_HOME/bash/inputrc"
+
+# History settings
+export HISTSIZE=5000
+if [[ "$BASH" ]]; then
+	export HISTFILE="$XDG_CACHE_HOME/bash_history"
+	export HISTFILESIZE=20000
+	export HISTCONTROL='ignoredups:erasedups'
+	export HISTTIMEFORMAT="%F %T "
+fi
+
+# Pager and Editor
+if command -v less >/dev/null 2>&1; then
+	PAGER="$(command -v less)"
+	MANPAGER=$PAGER
+	export PAGER
+	export MANPAGER
+fi
+
+if command -v vim >/dev/null 2>&1; then
+	EDITOR="$(command -v vim)"
+	export EDITOR
+	export VISUAL=$EDITOR
+	export SUDO_EDITOR=$EDITOR
+	export SYSTEMD_EDITOR=$EDITOR
+	export SELECTED_EDITOR=$EDITOR
+fi
+
+export LESS='-FRX'
+export LESSQUIET=1
+export LESSCHARSET="UTF-8"
+export LESSHISTFILE="$XDG_CACHE_HOME/less_history"
+
+# Wget stuff
+if [ -f "$XDG_CONFIG_HOME/wget/wgetrc" ]; then
+	export WGETRC="$XDG_CONFIG_HOME/wget/wgetrc"
+fi
+
+
+#----- Utilities
+
+if command -v docker &> /dev/null; then
+  export DOCKER_CONFIG="${XDG_CONFIG_HOME}"/docker
+
+  # check docker installation
+  if [ "$(docker info | grep 'Docker Root Dir' | cut -d ' ' -f 5)" != "/var/lib/docker" ]; then
+    if [ -f "$HOME/.local/docker_bin" ]; then
+      export DOCKER_BIN="$HOME/.local/docker_bin"
+      append_path "$DOCKER_BIN"
+
+      export DOCKER_HOST=unix://${XDG_RUNTIME_DIR}/docker.sock
+      export DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS="-p 0.0.0.0:2376:2376/tcp"
+    fi
+  fi
+fi
+
+# Go config
+if command -v go &> /dev/null; then
+	export GOPATH="$XDG_DATA_HOME/go"
+	append_path "$GOPATH/bin"
+fi
+
+# python
+export PYTHON_COLORS=1
+
+
+# Unload append path function
+unset -f append_path
+
+# Export the final PATH
+export PATH
+
+# Export the final LD_LIBRARY_PATH
+export LD_LIBRARY_PATH
+
+
+#----- Shell functions
+
+# cd to current dir on lf quit
+r() {
+  command -v lf &> /dev/null || {
+    printf 'r: lf binary not found\n'
+    return 1
+  }
+
+	local lf_cd_file dir
+  lf_cd_file="$(mktemp "${TMPDIR:-/tmp}/lfcd.XXXXXX")" || return
+  LF_CD_FILE="$lf_cd_file" command lf "$@"
+
+  if [[ -s $lf_cd_file ]]; then
+    dir="$(realpath -- "$(cat -- "$lf_cd_file")")" || {
+      rm -f -- "$lf_cd_file"
+      return 1
+    }
+
+    if [[ -d $dir && $dir != "$PWD" ]]; then
+      cd -- "$dir" || {
+        rm -f -- "$lf_cd_file"
+        return 1
+      }
+    fi
+  fi
+
+  rm -f -- "$lf_cd_file"
+}
+
+# get file stats
+fst() {
+  [[ $# -eq 1 ]] || {
+    printf 'usage: fst FILE\n' >&2
+    return 2
+  }
+
+  case "${OSTYPE:-}" in
+    linux-gnu*)
+      stat --format '%a' -- "$1"
+      ;;
+    freebsd*|darwin*)
+      stat -f '%Lp' -- "$1"
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+# pretty-print journalctl
+jctl() {
+  local cols width
+  cols="$(tput cols 2>/dev/null || printf '120')"
+
+  if (( cols < 121 )); then width=113
+  else width=$((cols - 4)); fi
+
+  if command -v bat >/dev/null 2>&1; then
+    journalctl --no-pager "$@" |
+			bat --style=plain --language=log --wrap=character --terminal-width="$width"
+  else
+    journalctl "$@"
+  fi
+}
+
+# file checksum
+fsum() {
+  case "${1-}" in
+    -h|--help|'')
+      cat <<'EOF'
+usage: fsum [ARGS]
+args:
+  [FILE]
+    read line 1 in [FILE] with "SHA256SUM  FILENAME"
+  [STRING]
+    read string "SHA256SUM  FILENAME"
+  [SUM] [FILENAME]
+    read \$1 "SHA256SUM", read \$2 "FILENAME"
+EOF
+      return 0
+      ;;
+  esac
+
+  local checksum filename
+  local -i result=1
+
+  if [ -f "${1-}" ] && [ -f "${2-}" ]; then
+    local _filepath_file _filepath_sum
+    _filepath_file=$(realpath "$1")
+    _filepath_sum=$(realpath "$2")
+
+    pushd "$(dirname "$_filepath_file")" &> /dev/null &&
+      checksum=$(sha256sum "${_filepath_file##*/}" &> /dev/null) &&
+      popd &> /dev/null || exit
+
+    if [[ "${3-}" =~ ^[0-9] ]] &&
+      [ "$checksum" = "$(sed "${3}q;d" "$_filepath_sum")" ]; then result=0; fi
+    if grep "$checksum" "$_filepath_sum" &> /dev/null; then result=0; fi
+
+  else
+    case $# in
+      1)
+        checksum=${1%  *}; filename=${1##*  }
+        if [ "$(sha256sum "$filename" 2> /dev/null)" = "${checksum}  ${filename}" ]; then
+          result=0
+        fi
+        ;;
+      *)
+        checksum=$1; filename=$2
+        if [ "$(sha256sum "$filename" 2> /dev/null)" = "$checksum" ]; then
+          result=0
+        fi
+        ;;
+    esac
+  fi
+
+  if [ $result -eq 0 ]; then
+    printf '%s\n' "Checksum OK" && return
+  fi
+  printf '%s\n' "Checksum failed" && false
+}
+
+
+#----- Completion
+
+if [ -f /usr/share/bash-completion/bash_completion ]; then
+  . /usr/share/bash-completion/bash_completion
+elif [ -f /etc/bash_completion ]; then
+  . /etc/bash_completion.d/000_bash_completion_compat.bash
+fi
+
+# docker completion
+if [ -f "$XDG_CONFIG_HOME/bash/completion.d/docker-completion.sh" ]; then
+  . "$XDG_CONFIG_HOME/bash/completion.d/docker-completion.sh"
+fi
+
+
+#----- Colors
+
+# Load directory and file colors for GNU ls
+if [[ ${OSTYPE:-} == linux-gnu* ]] && command -v dircolors >/dev/null 2>&1; then
+  if [ -f "$XDG_CONFIG_HOME/bash/dircolors" ]; then
+    eval "$(dircolors -b "$XDG_CONFIG_HOME/bash/dircolors")"
+  else
+    eval "$(dircolors)"
+  fi
+fi
+
+# debug
+PS4='+ ${BASH_SOURCE##*/}:${LINENO}:${FUNCNAME[0]:-main}: '
+
+PS1='\[\033[01;35m\]\u@\h \[\033[01;32m\]\W \[\033[01;35m\] \$\[\033[00m\] '
+
+
+#----- alias
+
+alias c='clear'
+alias la='ls -hla'
+
+# colors
+alias diff='diff --minimal --color=auto'
+alias grep='grep --color=auto --exclude-dir=.git'
+alias ip='ip -color=auto'
+
+if [[ "$OSTYPE" == "freebsd"* ]]; then
+  alias ls="LC_COLLATE=C ls --color=auto -G"
+fi
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  alias ls="LC_COLLATE=C ls --color=auto --group-directories-first"
+fi
+
+# docker
+if command -v docker 2> /dev/null; then
+  alias dr='docker'
+  alias dk='docker compose'
+
+  alias dpa='docker ps --all'
+  alias dps='docker ps --format="table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{ .Ports }}\\t{{.RunningFor}}\\t{{.Command}}\\t{{ .ID }}" | cut -c-$(tput cols)'
+  alias dls='docker ps -a --format="table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{ .Ports }}\\t{{.RunningFor}}\\t{{.Command}}\\t{{ .ID }}" | cut -c-$(tput cols)'
+
+  alias dim='docker images --format="table {{.Repository}}\\t{{.Tag}}\\t{{.ID}}\\t{{.Size}}\\t{{.CreatedSince}}"'
+  alias dip='docker image prune -f'
+
+  alias dih='docker history --no-trunc --format="{{ .CreatedBy }}"'
+  alias din='docker inspect --format="{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}"'
+
+  alias dvl='docker volume ls -qf dangling=true'
+  alias dvr='docker volume ls -qf dangling=true | xargs docker volume rm'
+
+  alias dtop='docker stats $(docker ps --format="{{.Names}}")'
+fi
+
+# ex: ts=2 sw=2 et filetype=sh
