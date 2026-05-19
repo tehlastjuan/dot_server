@@ -809,190 +809,255 @@ endif
 
 function! CustomHighlights() abort
   " custom highlights
-  hi user1               ctermfg=7     ctermbg=0      cterm=NONE
-  hi user2               ctermfg=7     ctermbg=8      cterm=NONE
-  hi user3               ctermfg=10    ctermbg=8      cterm=NONE
-  hi user4               ctermfg=0     ctermbg=2      cterm=bold
-  hi user5               ctermfg=3     ctermbg=0      cterm=bold
-  hi! link user6  linenr
-  hi user7               ctermfg=NONE  ctermbg=NONE
+  hi user1                ctermfg=7      ctermbg=0      cterm=NONE
+  hi user2                ctermfg=7      ctermbg=8      cterm=NONE
+  hi user3                ctermfg=10     ctermbg=8      cterm=NONE
+  hi user4                ctermfg=0      ctermbg=2      cterm=bold
+  hi user5                ctermfg=3      ctermbg=0      cterm=bold
+  hi user6                ctermfg=8      ctermbg=NONE   cterm=NONE
+  hi user7                ctermfg=NONE   ctermbg=NONE
 
   " status line
-  hi StatusLine          ctermfg=0     ctermbg=NONE   cterm=bold
-  hi StatusLineNC        ctermfg=NONE  ctermbg=NONE   cterm=italic
-  hi StatusLineTerm      ctermfg=NONE  ctermbg=NONE   cterm=NONE
-  hi StatusLineTermNC    ctermfg=NONE  ctermbg=NONE   cterm=NONE
+  hi StatusLine           ctermfg=0      ctermbg=NONE   cterm=bold
+  hi StatusLineNC         ctermfg=NONE   ctermbg=NONE   cterm=italic
+  hi StatusLineTerm       ctermfg=NONE   ctermbg=NONE   cterm=NONE
+  hi StatusLineTermNC     ctermfg=NONE   ctermbg=NONE   cterm=NONE
 
-  hi NormalMode          ctermfg=0     ctermbg=2      cterm=bold
-  hi InsertMode          ctermfg=0     ctermbg=12     cterm=bold
-  hi ReplaceMode         ctermfg=0     ctermbg=11     cterm=bold
-  hi VisualMode          ctermfg=0     ctermbg=5      cterm=bold
-  hi CommandMode         ctermfg=0     ctermbg=12     cterm=bold
-  hi Warnings            ctermfg=3     ctermbg=0      cterm=bold
+  hi NormalMode           ctermfg=0      ctermbg=2      cterm=bold
+  hi InsertMode           ctermfg=0      ctermbg=12     cterm=bold
+  hi ReplaceMode          ctermfg=0      ctermbg=11     cterm=bold
+  hi VisualMode           ctermfg=0      ctermbg=5      cterm=bold
+  hi CommandMode          ctermfg=0      ctermbg=12     cterm=bold
+  hi Warnings             ctermfg=3      ctermbg=0      cterm=bold
 
-  hi Normal              ctermfg=7     ctermbg=NONE   cterm=NONE
-  hi Cursor              ctermfg=NONE  ctermbg=NONE   cterm=reverse
-  hi CursorIM            ctermfg=NONE  ctermbg=NONE   cterm=reverse
-  hi CursorLine          ctermfg=NONE  ctermbg=NONE   cterm=NONE
-  hi CursorLineNr        ctermfg=6     ctermbg=NONE   cterm=NONE
-  hi CursorLineSign      ctermfg=13    ctermbg=NONE   cterm=NONE
-  hi Matchparen          ctermfg=15    ctermbg=NONE   cterm=underline
-  hi Pmenu               ctermfg=8     ctermbg=NONE
-  hi PmenuThumb          ctermfg=8     ctermbg=NONE
-  hi PmenuSbar           ctermfg=7     ctermbg=NONE
-  hi PmenuSel            ctermfg=4     ctermbg=NONE
-  hi ColorColumn         ctermfg=8     ctermbg=0
-  hi SpellBad            ctermfg=1     ctermbg=NONE   cterm=underline
-  hi SpellCap            ctermfg=10    ctermbg=NONE   cterm=underline
-  hi SpellRare           ctermfg=11    ctermbg=NONE   cterm=underline
-  hi SpellLocal          ctermfg=13    ctermbg=NONE   cterm=underline
-  hi NonText             ctermfg=8
-  hi LineNr              ctermfg=8     ctermbg=NONE   cterm=NONE
-  hi Visual              ctermfg=NONE  ctermbg=0      cterm=NONE
-  hi IncSearch           ctermfg=0     ctermbg=13     cterm=NONE
-  hi Search              ctermfg=0     ctermbg=11
-  hi VertSplit           ctermfg=0     ctermbg=NONE   cterm=NONE
-  hi TabLine             ctermfg=0     ctermbg=NONE   cterm=NONE
-  hi TabLineFill         ctermfg=0     ctermbg=NONE   cterm=NONE
-  hi TabLineSel          ctermfg=7     ctermbg=0
-  hi Folded              ctermfg=6     ctermbg=0      cterm=bold
-  hi Conceal             ctermfg=8     ctermbg=NONE
-  hi Directory           ctermfg=4                    cterm=bold
-  hi Title               ctermfg=3                    cterm=bold
-  hi ErrorMsg            ctermfg=9     ctermbg=NONE
-  hi DiffAdd             ctermfg=0     ctermbg=10     cterm=bold
-  hi DiffChange          ctermfg=0     ctermbg=11     cterm=bold
-  hi DiffDelete          ctermfg=0     ctermbg=9      cterm=bold
-  hi DiffText            ctermfg=0     ctermbg=13     cterm=bold
-  hi WildMenu            ctermfg=6     ctermbg=NONE   cterm=bold
-  hi EndOfBuffer         ctermfg=0     ctermbg=NONE   cterm=bold
-  hi TrailingWhitespace  ctermfg=6     ctermbg=NONE
-  hi ExtraWhitespace     ctermfg=8     ctermbg=NONE
-  hi Whitespace          ctermfg=0     ctermbg=NONE
-  hi SpecialKey          ctermfg=0     ctermbg=NONE
+  hi Normal               ctermfg=7      ctermbg=NONE   cterm=NONE
+  hi Cursor               ctermfg=NONE   ctermbg=NONE   cterm=reverse
+  hi CursorIM             ctermfg=NONE   ctermbg=NONE   cterm=reverse
+  hi CursorLine           ctermfg=NONE   ctermbg=NONE   cterm=NONE
+  hi CursorLineNr         ctermfg=6      ctermbg=NONE   cterm=NONE
+  hi CursorLineSign       ctermfg=13     ctermbg=NONE   cterm=NONE
+  hi Matchparen           ctermfg=15     ctermbg=NONE   cterm=underline
+  hi Pmenu                ctermfg=8      ctermbg=NONE
+  hi PmenuThumb           ctermfg=8      ctermbg=NONE
+  hi PmenuSbar            ctermfg=7      ctermbg=NONE
+  hi PmenuSel             ctermfg=4      ctermbg=NONE
+  hi ColorColumn          ctermfg=8      ctermbg=0
+  hi SpellBad             ctermfg=1      ctermbg=NONE   cterm=underline
+  hi SpellCap             ctermfg=10     ctermbg=NONE   cterm=underline
+  hi SpellRare            ctermfg=11     ctermbg=NONE   cterm=underline
+  hi SpellLocal           ctermfg=13     ctermbg=NONE   cterm=underline
+  hi NonText              ctermfg=8
+  hi LineNr               ctermfg=8      ctermbg=NONE   cterm=NONE
+  hi Visual               ctermfg=NONE   ctermbg=0      cterm=NONE
+  hi IncSearch            ctermfg=0      ctermbg=13     cterm=NONE
+  hi Search               ctermfg=0      ctermbg=11
+  hi VertSplit            ctermfg=0      ctermbg=NONE   cterm=NONE
+  hi TabLine              ctermfg=0      ctermbg=NONE   cterm=NONE
+  hi TabLineFill          ctermfg=0      ctermbg=NONE   cterm=NONE
+  hi TabLineSel           ctermfg=7      ctermbg=0
+  hi Folded               ctermfg=6      ctermbg=0      cterm=bold
+  hi Conceal              ctermfg=8      ctermbg=NONE
+  hi Directory            ctermfg=4                     cterm=bold
+  hi Title                ctermfg=3                     cterm=bold
+  hi ErrorMsg             ctermfg=9      ctermbg=NONE
+  hi DiffAdd              ctermfg=0      ctermbg=10     cterm=bold
+  hi DiffChange           ctermfg=0      ctermbg=11     cterm=bold
+  hi DiffDelete           ctermfg=0      ctermbg=9      cterm=bold
+  hi DiffText             ctermfg=0      ctermbg=13     cterm=bold
+  hi WildMenu             ctermfg=6      ctermbg=NONE   cterm=bold
+  hi EndOfBuffer          ctermfg=0      ctermbg=NONE   cterm=bold
+  hi TrailingWhitespace   ctermfg=6      ctermbg=NONE
+  hi ExtraWhitespace      ctermfg=8      ctermbg=NONE
+  hi Whitespace           ctermfg=0      ctermbg=NONE
+  hi SpecialKey           ctermfg=0      ctermbg=NONE
 
-  hi! link CursorColumn  CursorLine
-  hi! link SignColumn    LineNr
-  hi! link FoldColumn    SignColumn
-  hi! link WarningMsg    ErrorMsg
-  hi! link MoreMsg       Title
-  hi! link Question      MoreMsg
-  hi! link ModeMsg       MoreMsg
-  " hi! link tablinefill   vertsplit
-  " hi! link specialkey    nontext
+  hi! link CursorColumn   CursorLine
+  hi! link SignColumn     LineNr
+  hi! link FoldColumn     SignColumn
+  hi! link WarningMsg     ErrorMsg
+  hi! link MoreMsg        Title
+  hi! link Question       MoreMsg
+  hi! link ModeMsg        MoreMsg
+  " hi! link tablinefill    vertsplit
+  " hi! link specialkey     nontext
 
   " generic syntax
-  hi Comment             ctermfg=8     ctermbg=NONE   cterm=NONE
-  hi Constant            ctermfg=3     ctermbg=NONE   cterm=NONE
-  hi String              ctermfg=2     ctermbg=NONE   cterm=NONE
-  hi! link Character     String
-  hi Number              ctermfg=3     ctermbg=NONE   cterm=NONE
-  hi! link Boolean       Number
-  hi! link Float         Number
-  hi Identifier          ctermfg=7     ctermbg=NONE   cterm=NONE
-  hi Function            ctermfg=4     ctermbg=NONE   cterm=NONE
-  hi Statement           ctermfg=5     ctermbg=NONE   cterm=NONE
-  hi! link Operator      Identifier
-  hi Keyword             ctermfg=5
-  hi Preproc             ctermfg=11    ctermbg=NONE   cterm=NONE
-  hi Include             ctermfg=5     ctermbg=NONE   cterm=NONE
-  hi! link Define        Include
-  hi! link Macro         Include
-  hi! link PreCondit     Include
-  hi Type                ctermfg=11    ctermbg=NONE   cterm=NONE
-  hi Special             ctermfg=9     ctermbg=NONE   cterm=NONE
-  hi SpecialChar         ctermfg=6     ctermbg=NONE   cterm=NONE
-  hi! link Tag           Special
-  hi! link Delimiter     Identifier
-  hi SpecialComment      ctermfg=14    ctermbg=NONE   cterm=italic
-  hi Debug               ctermfg=11    ctermbg=NONE   cterm=bold,italic
-  hi Underlined          ctermfg=4     ctermbg=NONE   cterm=underline
-  hi Ignore              ctermfg=8     ctermbg=NONE   cterm=NONE
-  hi! link Error         ErrorMsg
-  hi Todo                ctermfg=5     ctermbg=NONE   cterm=bold,italic
+  hi Comment              ctermfg=8      ctermbg=NONE   cterm=NONE
+  hi Constant             ctermfg=3      ctermbg=NONE   cterm=NONE
+  hi String               ctermfg=2      ctermbg=NONE   cterm=NONE
+  hi! link Character      String
+  hi Number               ctermfg=3      ctermbg=NONE   cterm=NONE
+  hi! link Boolean        Number
+  hi! link Float          Number
+  hi Identifier           ctermfg=7      ctermbg=NONE   cterm=NONE
+  hi Function             ctermfg=4      ctermbg=NONE   cterm=NONE
+  hi Statement            ctermfg=5      ctermbg=NONE   cterm=NONE
+  hi! link Operator       Identifier
+  hi Keyword              ctermfg=5
+  hi Preproc              ctermfg=11     ctermbg=NONE   cterm=NONE
+  hi Include              ctermfg=5      ctermbg=NONE   cterm=NONE
+  hi! link Define         Include
+  hi! link Macro          Include
+  hi! link PreCondit      Include
+  hi Type                 ctermfg=11     ctermbg=NONE   cterm=NONE
+  hi Special              ctermfg=9      ctermbg=NONE   cterm=NONE
+  hi SpecialChar          ctermfg=6      ctermbg=NONE   cterm=NONE
+  hi! link Tag            Special
+  hi! link Delimiter      Identifier
+  hi SpecialComment       ctermfg=14     ctermbg=NONE   cterm=italic
+  hi Debug                ctermfg=11     ctermbg=NONE   cterm=bold,italic
+  hi Underlined           ctermfg=4      ctermbg=NONE   cterm=underline
+  hi Ignore               ctermfg=8      ctermbg=NONE   cterm=NONE
+  hi! link Error          ErrorMsg
+  hi Todo                 ctermfg=5      ctermbg=NONE   cterm=bold,italic
 
   " help
-  hi! link HelpExample                 String
-  hi! link HelpHeadline                Title
-  hi! link HelpSectionDelim            Comment
-  hi! link HelpHypertextEntry          Statement
-  hi! link HelpHypertextJump           Underlined
-  hi! link HelpUrl                     Underlined
+  hi! link HelpExample                   String
+  hi! link HelpHeadline                  Title
+  hi! link HelpSectionDelim              Comment
+  hi! link HelpHypertextEntry            Statement
+  hi! link HelpHypertextJump             Underlined
+  hi! link HelpUrl                       Underlined
 
   " vim
-  hi! link VimSetSep                   Delimiter
-  hi! link VimContinue                 Delimiter
-  hi! link VimHiAttrib                 Constant
+  hi! link VimSetSep                     Delimiter
+  hi! link VimContinue                   Delimiter
+  hi! link VimHiAttrib                   Constant
 
   " netrw
-  hi netrwExe                          ctermfg=9
-  hi netrwClassify                     ctermfg=8  cterm=bold
+  hi netrwExe                            ctermfg=9
+  hi netrwClassify                       ctermfg=8  cterm=bold
 
   " diff
-  hi DiffAdded                         ctermfg=2
-  hi DiffRemoved                       ctermfg=1
-  hi! link DiffFile                    preproc
-  hi! link DiffLine                    title
+  hi DiffAdded                           ctermfg=2
+  hi DiffRemoved                         ctermfg=1
+  hi! link DiffFile                      preproc
+  hi! link DiffLine                      title
 
   " git
-  hi GitCommitBranch                   ctermfg=3
-  hi GitCommitSelectedtype             ctermfg=10
-  hi GitCommitSelectedfile             ctermfg=2
-  hi GitCommitUnmergedtype             ctermfg=9
-  hi GitCommitUnmergedfile             ctermfg=1
-  hi! link GitCommitFile               Directory
-  hi! link GitCommitUntrackedfile      GitCommitUnmergedFile
-  hi! link GitCommitDiscardedtype      GitCommitUnmergedType
-  hi! link GitCommitDiscardedfile      GitCommitUnmergedFile
-
-  " html
-  hi htmltagname                       ctermfg=2
-  hi htmltag                           ctermfg=2
-  hi htmlarg                           ctermfg=10
-  hi htmlh1                            cterm=bold
-  hi htmlbold                          cterm=bold
-  hi htmlitalic                        cterm=underline
-  hi htmlunderline                     cterm=underline
-  hi htmlbolditalic                    cterm=bold,underline
-  hi htmlboldunderline                 cterm=bold,underline
-  hi htmlunderlineitalic               cterm=underline
-  hi htmlboldunderlineitalic           cterm=bold,underline
-  hi! link htmllink                    Underlined
-  hi! link htmlendtag                  htmltag
-
-  " xml
-  hi xmltagname                        ctermfg=4
-  hi xmltag                            ctermfg=12
-  hi! link xmlstring                   xmltagname
-  hi! link xmlattrib                   xmltag
-  hi! link xmlendtag                   xmltag
-  hi! link xmlequal                    xmltag
-
-  " javascript
-  hi! link javascript                  Normal
-  hi! link javascriptbraces            Delimiter
-
-  " php
-  hi phpspecialfunction                ctermfg=5
-  hi phpidentifier                     ctermfg=11
-  hi phpparent                         ctermfg=8
-  hi! link phpvarselector              Phpidentifier
-  hi! link phpheredoc                  String
-  hi! link phpdefine                   Statement
+  hi GitCommitBranch                     ctermfg=3
+  hi GitCommitSelectedtype               ctermfg=10
+  hi GitCommitSelectedfile               ctermfg=2
+  hi GitCommitUnmergedtype               ctermfg=9
+  hi GitCommitUnmergedfile               ctermfg=1
+  hi! link GitCommitFile                 Directory
+  hi! link GitCommitUntrackedfile        GitCommitUnmergedFile
+  hi! link GitCommitDiscardedtype        GitCommitUnmergedType
+  hi! link GitCommitDiscardedfile        GitCommitUnmergedFile
 
   " markdown
-  hi! link markdownheadingrule         Nontext
-  hi! link markdownheadingdelimiter    markdownheadingrule
-  hi! link markdownlinkdelimiter       Delimiter
-  hi! link markdownurldelimiter        Delimiter
-  hi! link markdowncodedelimiter       Nontext
-  hi! link markdownlinktextdelimiter   markdownlinkdelimiter
-  hi! link markdownurl                 markdownlinktext
-  hi! link markdownautomaticlink       markdownlinktext
-  hi! link markdowncodeblock           String
-  hi markdowncode                      cterm=bold
-  hi markdownbold                      cterm=bold
-  hi markdownitalic                    cterm=underline
+  hi! markdownBold                       cterm=bold
+  hi! markdownItalic                     cterm=italic
+  hi! markdownBoldItalic                 cterm=bold,italic
+  hi! markdownStrike                     cterm=strikethrough
+  hi! markdownRule                       ctermfg=9   ctermbg=NONE   cterm=NONE
+  hi! markdownCode                       ctermfg=2   ctermbg=NONE   cterm=NONE
+  hi! link markdownCodeBlock             markdownCode
+  hi! link markdownCodeDelimiter         markdownCode
+
+  hi! markdownDelimiter                  ctermfg=7   ctermbg=NONE   cterm=NONE
+  hi! markdownautomaticlink              ctermfg=7   ctermbg=NONE   cterm=NONE
+
+  hi! markdownurl                        ctermfg=6   ctermbg=NONE   cterm=underline
+  hi! link markdownurldelimiter          markdownurl
+  hi! markdownUrlTitle                   ctermfg=4   ctermbg=NONE   cterm=NONE
+  hi! link markdownUrlTitleDelimiter     markdownUrlTitle
+  hi! link markdownlinkdelimiter         markdownUrlTitle
+  hi! link markdownlinktext              markdownUrlTitle
+  hi! link markdownlinktextdelimiter     markdownUrlTitle
+
+  hi! markdownHeadingRule                ctermfg=8   ctermbg=NONE   cterm=NONE
+  hi! markdownHeadingDelimiter           ctermfg=1   ctermbg=NONE   cterm=bold
+  hi! link markdownListMarker            markdownHeadingDelimiter
+
+  hi! markdownH1                         ctermfg=9   ctermbg=NONE   cterm=bold
+  hi! markdownH2                         ctermfg=5   ctermbg=NONE   cterm=bold
+  hi! markdownH3                         ctermfg=3   ctermbg=NONE   cterm=bold
+  hi! markdownH4                         ctermfg=1   ctermbg=NONE   cterm=bold
+  hi! markdownH5                         ctermfg=5   ctermbg=NONE   cterm=bold
+  hi! markdownH6                         ctermfg=3   ctermbg=NONE   cterm=bold
+  hi! link markdownH1Delimiter           markdownH1
+  hi! link markdownH2Delimiter           markdownH2
+  hi! link markdownH3Delimiter           markdownH3
+  hi! link markdownH4Delimiter           markdownH4
+  hi! link markdownH5Delimiter           markdownH5
+  hi! link markdownH6Delimiter           markdownH6
+
+  hi! link markdownBlockquote            Comment
+  hi! link markdownBoldDelimiter         markdownbold
+  hi! link markdownBoldDelimiter         markdownbold
+  hi! link markdownBoldItalicDelimiter   markdownBoldItalic
+  hi! link markdownError                 Error
+  hi! link markdownEscape                Special
+  hi! link markdownFootnote              Typedef
+  hi! link markdownFootnoteDefinition    Typedef
+  hi! link markdownId                    Type
+  hi! link markdownIdDeclaration         Typedef
+  hi! link markdownIdDelimiter           markdownlinkdelimiter
+  hi! link markdownItalicDelimiter       markdownitalic
+  hi! link markdownLineBreak             cleared
+  hi! link markdownLineStart             cleared
+  hi! link markdownLink                  cleared
+  hi! link markdownOrderedListMarker     markdownListMarker
+  hi! link markdownStrike                htmlStrike
+  hi! link markdownStrikeDelimiter       markdownStrike
+  hi! link markdownValid                 cleared
+  hi! link markdownYamlHead              cleared
+
+  " yaml
+  hi! yamlAlias                          ctermfg=9   ctermbg=NONE   cterm=NONE
+  hi! yamlFlowIndicator                  ctermfg=2   ctermbg=NONE   cterm=NONE
+  hi! yamlKeyValueDelimiter              ctermfg=8   ctermbg=NONE   cterm=NONE
+  hi! yamlMappingKey                     ctermfg=6   ctermbg=NONE   cterm=NONE
+
+  hi! link yamlAnchor                    yamlAlias
+  hi! link yamlDocumentStart             yamlAlias
+  hi! link yamlPlainScalar               yamlFlowIndicator
+  hi! link yamlMappingKeyStart           yamlKeyValueDelimiter
+  hi! link yamlMappingMerge              yamlAlias
+  hi! link yamlFlowMappingKey            yamlMappingKey
+  hi! link yamlFlowMappingKeyStart       yamlMappingKeyStart
+  hi! link yamlFlowMappingMerge          yamlMappingMerge
+  hi! link yamlBlockMappingKey           yamlMappingKey
+  hi! link yamlBlockCollectionItemStart  yamlKeyValueDelimiter
+  hi! link yamlBlockMappingKeyStart      yamlMappingKeyStart
+  hi! link yamlBlockMappingMerge         yamlBlockMappingKey
+  hi! link yamlFlowMappingDelimiter      yamlKeyValueDelimiter
+  hi! link yamlBlockMappingDelimiter     yamlKeyValueDelimiter
+  hi! link yamlConstant                  Constant
+  hi! link yamlDirectiveName             Keyword
+
+  " html
+  hi htmltagname                         ctermfg=2
+  hi htmltag                             ctermfg=2
+  hi htmlarg                             ctermfg=10
+  hi htmlh1                              ctermfg=1  cterm=bold
+  hi htmlbold                            cterm=bold
+  hi htmlitalic                          cterm=underline
+  hi htmlunderline                       cterm=underline
+  hi htmlbolditalic                      cterm=bold,underline
+  hi htmlboldunderline                   cterm=bold,underline
+  hi htmlunderlineitalic                 cterm=underline
+  hi htmlboldunderlineitalic             cterm=bold,underline
+  hi! link htmllink                      Underlined
+  hi! link htmlendtag                    htmltag
+
+  " xml
+  hi xmltag                              ctermfg=5
+  hi! link xmltagname                    xmltag
+  hi! link xmlendtag                     xmltag
+  hi! xmlDocType                         ctermfg=9
+  hi! link xmlDocTypeDecl                xmltag
+  hi! xmlDocTypeKeyword                  ctermfg=11
+  hi! link xmlProcessingDelim            xmltag
+  hi! xmlstring                          ctermfg=2
+  hi! xmlattrib                          ctermfg=6
+  hi! xmlequal                           ctermfg=9
+
+  " javascript
+  hi! link javascript                    Normal
+  hi! link javascriptbraces              Delimiter
+
 endfunction
 
 augroup user_highlights
