@@ -867,8 +867,8 @@ function! CustomHighlights() abort
   hi WildMenu             ctermfg=6      ctermbg=NONE   cterm=bold
   hi EndOfBuffer          ctermfg=0      ctermbg=NONE   cterm=bold
   hi TrailingWhitespace   ctermfg=6      ctermbg=NONE
-  hi ExtraWhitespace      ctermfg=8      ctermbg=NONE
-  hi Whitespace           ctermfg=0      ctermbg=NONE
+  hi ExtraWhitespace      ctermfg=0      ctermbg=NONE
+  hi Whitespace           ctermfg=6      ctermbg=NONE
   hi SpecialKey           ctermfg=0      ctermbg=NONE
 
   hi! link CursorColumn   CursorLine
