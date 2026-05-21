@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 WL_INTERFACE="wlan0"
-ET_INTERFACE="etho0"
+ET_INTERFACE="eth0"
 
 ipv4_forwarding() {
   [ $# -eq 0 ] && return 1

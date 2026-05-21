@@ -1,3 +1,4 @@
-#!/usr/bin/env bash
 
 [ -f "$HOME/.bashrc" ] && source "$HOME/.bashrc"
+
+# ex: ts=2 sw=2 et filetype=sh

@@ -2,11 +2,7 @@
 
 set -euo pipefail
 
-BIN_DIR="$HOME/.config/bin"
-
-BSD_DIR="$BIN_DIR/freeBSD"
-LINUX_ARM_DIR="$BIN_DIR/linux_arm64"
-LINUX_AMD_DIR="$BIN_DIR/linux_amd64"
+BIN_DIR="$HOME/.local/bin"
 
 REPOS=(
   "sharkdp/bat"
@@ -18,15 +14,10 @@ REPOS=(
 _download_utils() {
   if ! hash curl 2> /dev/null; then echo "curl is not installed" return 1; fi
 
-  local linux_tmp
-  local linux_url
-  local bsd_tmp
-  local bsd_url
-  local lx_filename
-  local bsd_filename
-  local url
-  local _arch
-  local arch
+  local linux_url bsd_url url
+  local linux_tmp bsd_tmp
+  local lx_filename bsd_filename
+  local _arch arch
 
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     if hash lscpu 2> /dev/null; then
@@ -41,7 +32,7 @@ _download_utils() {
       *) arch="amd64" ;;
     esac
 
-    echo "Fetching linux binaries for $arch architecture..."
+    echo "Fetching linux binaries for ${arch} architecture..."
     linux_tmp="/tmp/tmp.linux$(date +%m%d%H%M%S)"
     [[ ! -d $linux_tmp ]] && mkdir -p "$linux_tmp/bin"
   fi
@@ -52,7 +43,7 @@ _download_utils() {
 
     echo "Fetching freeBSD binaries ..."
     bsd_tmp="/tmp/tmp.bsd$(date +%m%d%H%M%S)"
-    [[ ! -d $bsd_tmp ]] && mkdir -p "$bsd_tmp/bin"
+    [[ ! -d $bsd_tmp ]] && mkdir -p "${bsd_tmp}/bin"
   fi
 
   for repo in "${REPOS[@]}"; do
@@ -67,9 +58,9 @@ _download_utils() {
         lx_filename="${linux_url##*/}"
         echo "$linux_url"
         printf "Downloading %s... " "$lx_filename"
-        if [[ ! -e "$linux_tmp/$lx_filename" ]]; then curl -s -L "$linux_url" -o "$linux_tmp/$lx_filename"; fi
-        tar xf "$linux_tmp/$lx_filename" --directory "$linux_tmp/bin"
-        echo "Done."
+        if [[ ! -e "${linux_tmp}/${lx_filename}" ]]; then curl -s -L "$linux_url" -o "${linux_tmp}/${lx_filename}"; fi
+        tar xf "${linux_tmp}/${lx_filename}" --directory "${linux_tmp}/bin"
+        prinf '%s\n' "Done."
       fi
     fi
 
@@ -79,51 +70,30 @@ _download_utils() {
         bsd_url="$(echo "$url" | grep -o 'https://[^"]*' | grep "freebsd.*${arch}.tar.gz")"
         bsd_filename="${bsd_url##*/}"
         printf "Downloading %s... " "$bsd_filename"
-        if [[ ! -e "$bsd_tmp/$bsd_filename" ]]; then curl -s -L "$bsd_url" -o "$bsd_tmp/$bsd_filename"; fi
-        tar xf "$bsd_tmp/$bsd_filename" --directory "$bsd_tmp/bin"
-        echo "Done."
+        if [[ ! -e "${bsd_tmp}/${bsd_filename}" ]]; then curl -s -L "$bsd_url" -o "${bsd_tmp}/${bsd_filename}"; fi
+        tar xf "${bsd_tmp}/${bsd_filename}" --directory "${bsd_tmp}/bin"
+        prinf '%s\n' "Done."
       fi
     fi
   done
 
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    if [[ $arch == amd64 ]]; then
-      if [[ "$(find "$linux_tmp" -type f -executable | wc -l)" -eq "${#REPOS[@]}" ]]; then
-        mkdir -p "${LINUX_AMD_DIR}_tmp"
-        find "$linux_tmp" -type f -executable -exec cp {} "${LINUX_AMD_DIR}_tmp" \;
-        [[ -e "$LINUX_AMD_DIR" ]] && rm -r "$LINUX_AMD_DIR"
-        mv "${LINUX_AMD_DIR}_tmp" "$LINUX_AMD_DIR"
-        echo "Binary files located in $LINUX_AMD_DIR"
-        touch "${LINUX_AMD_DIR}/.gitkeep"
-      fi
-    elif [[ $arch == arm64 ]]; then
-      if [[ "$(find "$linux_tmp" -type f -executable | wc -l)" -eq "${#REPOS[@]}" ]]; then
-        mkdir -p "${LINUX_ARM_DIR}_tmp"
-        find "$linux_tmp" -type f -executable -exec cp {} "${LINUX_ARM_DIR}_tmp" \;
-        [[ -e "$LINUX_ARM_DIR" ]] && rm -r "$LINUX_ARM_DIR"
-        mv "${LINUX_ARM_DIR}_tmp" "$LINUX_ARM_DIR"
-        echo "Binary files located in $LINUX_ARM_DIR"
-        touch "${LINUX_ARM_DIR}/.gitkeep"
+    if [[ "$(find "$linux_tmp" -type f -executable | wc -l)" -eq "${#REPOS[@]}" ]]; then
+      if (find "$linux_tmp" -type f -executable -exec cp {} "${BIN_DIR}" \;); then
+        printf '%s\n' "Binary files located in ${BIN_DIR}"
       fi
     fi
-
     [[ -d "$linux_tmp" ]] && rm -r "$linux_tmp"
   fi
 
   if [[ "$OSTYPE" == "freebsd"* ]]; then
     if [[ "$(find "$bsd_tmp" -type f -executable | wc -l)" -eq 2 ]]; then
-      mkdir -p "${BSD_DIR}_tmp"
-      find "$bsd_tmp" -type f -executable -exec cp {} "${BSD_DIR}_tmp" \;
-      [[ -e "$BSD_DIR" ]] && rm -r "$BSD_DIR"
-      mv "${BSD_DIR}_tmp" "$BSD_DIR"
-      echo "Binary files located in $BSD_DIR"
-      touch "${BSD_DIR}/.gitkkeep"
+      if (find "$bsd_tmp" -type f -executable -exec cp {} "${BIN_DIR}" \;); then
+        printf '%s\n' "Binary files located in ${BIN_DIR}"
+      fi
     fi
-
     [[ -d "$bsd_tmp" ]] && rm -r "$bsd_tmp"
   fi
 }
 
-if [[ "${#BASH_SOURCE[@]}" -eq 1 ]]; then
-  _download_utils
-fi
+_download_utils

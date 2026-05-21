@@ -39,323 +39,69 @@ set preview
 
 #----- commands
 
-# edit-with-sudo
-cmd edit-with-sudo ${{
-  set -- $(cat ~/.local/share/lf/files)
-  mode="$1"
-  shift
-  sudo -e "$fx"
-  rm ~/.local/share/lf/files
-  lf -remote "send clear"
-}}
-
 # Pager command
 cmd pager ${{
-  declare -i lines; lines=$(tput lines)
-  if [ -f "$f" ]; then
-		f_lines="$(wc -l "$f" | cut -d ' ' -f 1)"
-		[[ "0$f_lines" -lt "0$lines" ]] && exit 0
-		if [[ "$f" == *.md ]]; then
-			if hash glow 2> /dev/null; then
-				bash -c "glow -p $f"
-			else
-				bash -c "less -iWQMRX~ --no-vbell $f"
-			fi
+  lines="$(tput lines @/dev/null || printf 40)"
+  if [ -f $f ]; then
+		f_lines="$(wc -l < "$f" 2> /dev/null || printf 0)"
+		[[ $f_lines -lt $lines ]] && exit 0
+
+		if command -v bat >/dev/null 2>&1; then
+			bat -- "$f" \
+			--color=always \
+			--theme=TwoDark \
+			--style=changes,numbers \
+			--tabs=2 \
+			--wrap=never \
+			--paging=always
 		else
-			if hash bat 2> /dev/null; then
-				bash -c "bat $f \
-				--color=always \
-				--theme=TwoDark \
-				--style=changes,numbers \
-				--tabs=2 \
-				--wrap=never \
-				--paging=always"
-			else
-				bash -c "less -iWQMRX~ --no-vbell $f"
-			fi
+			less -iWQMRX~ --no-vbell "$f"
 		fi
-	elif [ -d "$f" ]; then
-		f_lines="$(tree "$f" | wc -l | cut -d ' ' -f 1)"
-		[[ "0$f_lines" -lt "0$lines" ]] && exit 0
-			if hash tree 2>/dev/null; then
-				bash -c "tree -l -dF --noreport -C $f | bat \
-					--color=always \
-					--theme=TwoDark \
-					--style=plain \
-					--tabs=2 \
-					--wrap=never \
-					--paging=always"
-			else
-				bash -c "ls -la $f | less -iWQMRX~ --no-vbell"
-			fi
+	elif [[ -d "$f" ]]; then
+		ls -la -- "$f" | less -iWQMRX~ --no-vbell
 	else exit 1
 	fi
 }}
 
 # Replace open command with robust selection of openers
 cmd open ${{
-	case $(file --dereference --mime-type $f -b) in
-		application/json) $EDITOR "$fx" ;;
-		text/*)           $EDITOR "$fx" ;;
-		*)                return 1 ;;
+	case $(file --dereference --mime-type --brief -- "$f") in
+		application/json|text/*)
+			"${EDITOR:-vim}" -- "$f"
+			;;
+		*) exit 1 ;;
 	esac
-}}
-
-# Copy the file names (including extension) of the selections separated by \n
-cmd copy-filename ${{
-	names="$(echo $fx | tr ' ' '\n' | xargs -I{} basename {})"
-	echo $names | tr ' ' '\n' | pbcopy
-}}
-
-# Copy the absolute paths of selections separated by \n
-cmd copy-absolute-path ${{
-	echo $fx | tr ' ' '\n' | pbcopy
-}}
-
-# y (select for copy) and P to paste symlink
-cmd create-symlink %{{
-	set -- $(cat ~/.local/share/lf/files)
-	mode="$1"
-	shift
-	if [ "$#" -lt 1 ]; then
-		lf -remote "send $id echoerr no files to link"
-		exit
-	fi
-	ln -sr -t . -- "$@"
-}}
-
-# mkdir and move files
-cmd new-folder-with-selection ${{
-  set -f
-  echo "Directory name: "
-  read newd
-  mkdir -- "$newd"
-  mv -- $fx "$newd"
-}}
-
-# compress current file or selected files with zip
-cmd zip ${{
-  [[ "$(file "${fx##*/}" | cut -d ':' -f 2 | cut -d ' ' -f 2)" == "Zip" ]] && exit 1
-	if [ -d "${fx}" ]; then
-		zipname="${fx##*/}"
-    (pushd "$(dirname "${fx}")" &> /dev/null &&
-			zip -qpr "${zipname}.zip" "$zipname" &&
-			popd &> /dev/null)
-	elif [ -f "${fx}" ]; then
-		zipname="${fx##*/}"
-		zip -qpr "${zipname%.*}.zip" "$zipname"
-	fi
-}}
-
-# extract compressed files
-cmd extract ${{
-	set -f
-	out_dir="$*"
-
-	if [ -n "$out_dir" ]; then
-		mkdir -p "$out_dir"
-		cd "$out_dir" || {
-			lf -remote "send $id echoerr unable to create dir"
-			exit 1
-		}
-	fi
-
-	[ -w . ] || {
-		lf -remote "send $id echoerr unable to extract to \
-			\'${out_dir:-.}\'. No write permissions"
-		exit 1
-	}
-
-	case "$f" in
-    *.tar)
-			tar -xf "$f"
-    ;;
-    *.tar.bz|*.tbz|*.tar.bz2|*.tbz2)
-			tar -xjf "$f"
-    ;;
-    *.tar.gz|*.tgz)
-			tar -xzf "$f"
-    ;;
-    *.tar.xz|*.txz)
-			tar -xJf "$f"
-    ;;
-    *.tar.[zZ]|*.t[zZ])
-			tar -xZf "$f"
-    ;;
-    *.tar.lz|*.tlz|*.tar.lzma|*.tlzma|*.tar.lzo|*.tzo|*.tar.zst|*.tzst)
-			tar -xaf "$f"
-    ;;
-    *.7z)
-			7za x -- "$f"
-    ;;
-    *.a|*.ar)
-			ar x -- "$f"
-    ;;
-    *.ace)
-			unace e -- "$f"
-    ;;
-    *.alz)
-			unalz -- "$f"
-    ;;
-    *.arc|*.ark|*.ARC|*.ARK)
-			nomarch -- "$f"
-    ;;
-    *.arj|*.ARJ)
-			arj e -r -- "$f"
-		;;
-    *.bz|*.bz2)
-			bunzip2 -k -- "$f"
-		;;
-    *.cab|*.CAB|*.exe|*.EXE)
-			cabextract "$f"
-    ;;
-    *.cpio)
-			cpio -id -F "$f"
-		;;
-    *.deb)
-			dpkg -x -- "$f" .
-		;;
-    *.gz)
-			gunzip -k "$f"
-    ;;
-    *.lha|*.lzh)
-			lha x "$f"
-    ;;
-    *.lrz|*.lrzip|*.rz)
-			lrunzip -- "$f"
-    ;;
-    *.lz)
-			lzip -d -k -- "$f"
-		;;
-    *.lz4)
-			unlz4 -- "$f"
-    ;;
-    *.lzma)
-			xz -d -k "$f"
-    ;;
-    *.lzo)
-			lzop -x "$f"
-    ;;
-    *.rar)
-			unrar x -- "$f"
-    ;;
-    *.src.rpm|*.rpm|*.spm)
-			rpm2cpio "$f" | cpio -dium
-		;;
-    *.xz)
-			unxz -k -- "$f"
-    ;;
-    *.[zZ])
-			uncompress -- "$f"
-		;;
-    *.zip|*.osz)
-			unzip -- "$f"
-    ;;
-    *.zst)
-			unzstd -- "$f"
-    ;;
-    *.AppImage)
-			./"$f" --appimage-extract
-		;;
-    *)
-			lf -remote "send $id echoerr ${f##*/} unknown archive format"
-			exit 0
-		;;
-	esac
-
-	if [ -n "$out_dir" ]; then
-		lf -remote "send $id select '$out_dir'"
-	fi
-
-	lf -remote "send $id reload"
-	lf -remote "send $id echomsg ${f##*/} extracted."
-}}
-
-# cd directories w\ zoxide
-cmd z %{{
-	result="$(zoxide query --exclude "$PWD" "$@" | sed 's/\\/\\\\/g;s/"/\\"/g')"
-	lf -remote "send $id cd \"$result\""
-}}
-
-# cd directories interactively w\ zoxide
-cmd zi ${{
-	result="$(zoxide query -i | sed 's/\\/\\\\/g;s/"/\\"/g')"
-	lf -remote "send $id cd \"$result\""
-}}
-
-# search in files w/ fzf
-cmd fzf-search ${{
-  if hash bat 2> /dev/null; then
-		preview="bat --color=always --theme=TwoDark --number --tabs=2 --wrap=auto {1} --highlight-line {2}"
-	else
-		preview="cat {1}"
-	fi
-	if hash rg 2> /dev/null; then
-		cmd="rg --vimgrep --follow --hidden --no-ignore-vcs --smart-case --glob !**/.git/* -- {q}"
-	else
-		cmd="grep --dereference-recursive --binary-files=without-match --line-number --with-filename --exclude !**/.git/* --exclude !**/.cache/* -- {q} ."
-	fi
-
-	fzf --header="Search in files" --delimiter=: \
-	    --disabled \
-			--preview-window 'right,+{2}+3/3' \
-  		--bind="start:reload([ -n {q} ] && $cmd || true)" \
-			--bind="change:reload([ -n {q} ] && $cmd || true)" \
-			--bind='enter:become(lf -remote "send $id select \"$(printf "%s" {1} | sed '\''s/\\/\\\\/g;s/"/\\"/g'\'')\"")' \
-			--preview="~/.config/lf/clean; $preview"
 }}
 
 # helper to cd to curr dir on quit
 cmd quit-and-cd &{{
-	pwd > $LF_CD_FILE
+	printf '%s\n' "$PWD" > $LF_CD_FILE
 	lf -remote "send $id quit"
 }}
 
 # `set preview true` is a hack used to reload the preview
 cmd scroll-preview &{{
-	declare -i offset=$((lf_user_preview_offset + $1))
-	declare -i f_lines="$(wc -l "$f" | cut -d ' ' -f 1)"
-	declare -i max_offset=$(( f_lines - lf_height + 6 ))
+	[[ -f $f ]] || exit 0
 
-	[ $offset -lt 1 ] && offset=1
-	[ $offset -ge $max_offset ] && offset=$(( max_offset - 1 ))
+	declare -i offset
+	declare -i f_lines
+	declare -i max_offset
+
+	offset=$((lf_user_preview_offset + $1))
+	f_lines="$(wc -l < "$f" 2> /dev/null || printf 0)"
+	max_offset=$(( f_lines - lf_height + 6 ))
+
+	(( offset < 1 )) && offset=1
+	(( offset >= max_offset )) && offset=$(( max_offset - 1 ))
+	(( offset < 1 )) && offset=1
+
 	lf -remote "send $id :set user_preview_offset $offset; set preview true"
-}}
-
-
-#----- prompt
-
-cmd prompt-load %{{
-	if git rev-parse --is-inside-work-tree &>/dev/null; then
-		branch="$(git symbolic-ref HEAD)"
-		git="\033[36;1m${branch##*/} \033[0m"
-	else git=""; fi
-
-  if [[ $PWD == "$HOME" ]]; then work_dir="~"
-	else work_dir="${PWD##${HOME}/}"; fi
-
-  domain_name=
-	if [ -f "/etc/resolv.conf" ]; then
-		domain_name=".$(cat /etc/resolv.conf | grep 'search' | grep -v '^#' | cut -d ' ' -f 2)"
-	elif [ -f "/etc/hosts" ]; then
-		domain_name=".$(cat /etc/hosts | grep "$HOSTNAME" | cut -f 2)"
-	fi
-		
-  fmt=" ${git}\033[32;1m%d%S\033[30;1m%u@%h${domain_name}\033[0m "
-	lf -remote "send $id set promptfmt \"$fmt\""
-}}
-
-# git branch prompt
-cmd on-cd %{{
-	hash zoxide 2> /dev/null && zoxide add "$PWD"
-	lf -remote "send $id prompt-load"
 }}
 
 
 #----- command shortcuts
 
 cmd on-select         set user_preview_offset 1
-cmd on-load           prompt-load
 
 cmd reload-conf       $lf -remote "send $id source ~/.config/lf/lfrc"
 cmd cd-back           $lf -remote "send $id cd \"$OLDPWD\""
@@ -368,10 +114,6 @@ cmd sort-by-extension :set sortby ext; set info size:time
 cmd sort-by-natural   :set sortby natural; set info size:time;
 cmd sort-by-size      :set sortby size; set info size:time;
 cmd sort-by-time      :set sortby time; set info size:time;
-
-cmd fuzzy-find        $lf -remote "send $id select $(fzf)"
-cmd zoxide-query      push :z<space>
-cmd zoxide-interact   :zi
 
 
 #----- key mappings
@@ -437,29 +179,14 @@ map R reload-conf
 
 map dd cut
 map dD delete
-
-map yt yewtube
 map yy copy
-map yY copy-absolute-path
-map <c-y> copy-filename
-
 map pp paste
-map pP create-symlink
-map pn new-folder-with-selection
 
 map e open
-map E $$EDITOR $f
-map S edit-with-sudo
+map E $$EDITOR -- "$f"
 
 map i pager
 map I rename
-
-map o &mimeopen $f
-map O push :openwith<space>
-
-map ff filter
-map fF fuzzy-find
-map <c-f> fzf-search
 
 # show documentation
 map g? $lf -doc | less
@@ -473,15 +200,6 @@ map sn sort-by-natural
 map ss sort-by-size
 map st sort-by-time
 map sx sort-reverse
-
-# zip utils
-map xf zip-files
-map xx extract
-
-# fuzzy-jump-to-dir
-map zb cd-back
-map zi zoxide-interact
-map zz zoxide-query
 
 # general navigation
 map <backspace> updir

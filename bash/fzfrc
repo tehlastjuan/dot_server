@@ -1,8 +1,7 @@
-#!/usr/bin/env bash
 # shellcheck disable=1091
 
 # Amazing Fuzzy finder
-if hash fzf 2> /dev/null; then
+if command -v fzf &> /dev/null; then
   fzf_keymaps=(
     ctrl-d:half-page-down
     ctrl-u:half-page-up
@@ -73,3 +72,5 @@ if hash fzf 2> /dev/null; then
   unset fzf_keymaps keymaps width opener
   eval "$(fzf --bash)"
 fi
+
+# ex: ts=2 sw=2 et filetype=sh
