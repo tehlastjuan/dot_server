@@ -60,7 +60,7 @@ _download_utils() {
         printf "Downloading %s... " "$lx_filename"
         if [[ ! -e "${linux_tmp}/${lx_filename}" ]]; then curl -s -L "$linux_url" -o "${linux_tmp}/${lx_filename}"; fi
         tar xf "${linux_tmp}/${lx_filename}" --directory "${linux_tmp}/bin"
-        prinf '%s\n' "Done."
+        printf '%s\n' "Done."
       fi
     fi
 
