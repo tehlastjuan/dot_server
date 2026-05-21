@@ -13,6 +13,7 @@ REPOS=(
 
 _download_utils() {
   if ! hash curl 2> /dev/null; then echo "curl is not installed" return 1; fi
+  [ ! -d "$BIN_DIR" ] && mkdir -p "$BIN_DIR"
 
   local linux_url bsd_url url
   local linux_tmp bsd_tmp
