@@ -313,7 +313,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 fi
 
 # docker
-if command -v docker 2> /dev/null; then
+if command -v docker &> /dev/null; then
   alias dr='docker'
   alias dk='docker compose'
 
