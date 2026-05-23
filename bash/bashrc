@@ -118,24 +118,18 @@ fi
 
 #----- Utilities
 
-if command -v docker &> /dev/null; then
-  export DOCKER_CONFIG="${XDG_CONFIG_HOME}"/docker
+export DOCKER_CONFIG="${XDG_CONFIG_HOME}"/docker
+export DOCKER_HOST=unix://${XDG_RUNTIME_DIR}/docker.sock
+# export DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS="-p 0.0.0.0:2376:2376/tcp"
 
-  # check docker installation
-  if [ "$(docker info | grep 'Docker Root Dir' | cut -d ' ' -f 5)" != "/var/lib/docker" ]; then
-    if [ -f "$HOME/.local/docker_bin" ]; then
-      export DOCKER_BIN="$HOME/.local/docker_bin"
-      append_path "$DOCKER_BIN"
-
-      export DOCKER_HOST=unix://${XDG_RUNTIME_DIR}/docker.sock
-      export DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS="-p 0.0.0.0:2376:2376/tcp"
-    fi
-  fi
+export DOCKER_BIN="$HOME/.local/docker_bin"
+if [ -d "$HOME/.local/docker_bin" ]; then
+  append_path "$DOCKER_BIN"
 fi
 
 # Go config
+export GOPATH="$XDG_DATA_HOME/go"
 if command -v go &> /dev/null; then
-	export GOPATH="$XDG_DATA_HOME/go"
 	append_path "$GOPATH/bin"
 fi
 
@@ -165,13 +159,11 @@ r() {
 	local lf_cd_file dir
   lf_cd_file="$(mktemp "${TMPDIR:-/tmp}/lfcd.XXXXXX")" || return
   LF_CD_FILE="$lf_cd_file" command lf "$@"
-
   if [[ -s $lf_cd_file ]]; then
     dir="$(realpath -- "$(cat -- "$lf_cd_file")")" || {
       rm -f -- "$lf_cd_file"
       return 1
     }
-
     if [[ -d $dir && $dir != "$PWD" ]]; then
       cd -- "$dir" || {
         rm -f -- "$lf_cd_file"
@@ -179,7 +171,6 @@ r() {
       }
     fi
   fi
-
   rm -f -- "$lf_cd_file"
 }
 
@@ -189,7 +180,6 @@ fst() {
     printf 'usage: fst FILE\n' >&2
     return 2
   }
-
   case "${OSTYPE:-}" in
     linux-gnu*)
       stat --format '%a' -- "$1"
@@ -205,10 +195,8 @@ fst() {
 jctl() {
   local cols width
   cols="$(tput cols 2>/dev/null || printf '120')"
-
   if (( cols < 121 )); then width=113
   else width=$((cols - 4)); fi
-
   if command -v bat >/dev/null 2>&1; then
     journalctl --no-pager "$@" |
 			bat --style=plain --language=log --wrap=character --terminal-width="$width"
@@ -235,6 +223,7 @@ EOF
       ;;
   esac
 
+  [ $# -eq 0 ] && return 1
   local checksum filename
   local -i result=1
 
@@ -303,7 +292,7 @@ fi
 # debug
 PS4='+ ${BASH_SOURCE##*/}:${LINENO}:${FUNCNAME[0]:-main}: '
 
-PS1='\[\033[01;35m\]\u@\h \[\033[01;32m\]\W \[\033[01;35m\] \$\[\033[00m\] '
+PS1='\[\033[01;35m\]\u@\h \[\033[01;32m\]\W\[\033[01;35m\] \$\[\033[00m\] '
 
 
 #----- alias
