@@ -129,7 +129,7 @@ fi
 
 # Go config
 export GOPATH="$XDG_DATA_HOME/go"
-if command -v go &> /dev/null; then
+if [ -d "$XDG_DATA_HOME/go/bin" ]; then
 	append_path "$GOPATH/bin"
 fi
 
