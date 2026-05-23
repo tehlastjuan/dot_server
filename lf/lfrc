@@ -172,6 +172,7 @@ map <enter> open
 map <esc> clear-all
 map q quit-and-cd
 map . set hidden!
+map , toggle-preview
 
 # reload: current directory, lfrc
 map r reload
@@ -181,6 +182,7 @@ map dd cut
 map dD delete
 map yy copy
 map pp paste
+map ff filter
 
 map e open
 map E $$EDITOR -- "$f"
