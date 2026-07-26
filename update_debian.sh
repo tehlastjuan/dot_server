@@ -238,6 +238,7 @@ function _install_systemd_unit() {
     _prt_error "Unable to reload systemd daemons."; return 1
   fi
 
+  sleep 2
   if ! systemctl is-enabled --quiet "${1-}"; then
     _prt_init_msg "Enabling '${1-}' systemd unit... "
     systemctl enable --now "${1-}"
@@ -245,6 +246,7 @@ function _install_systemd_unit() {
     _prt_init_msg "Restarting '${1-}' systemd unit... "
     systemctl restart "${1-}"
   fi
+  sleep 2
   _prt_cleared_msg
   systemctl status "${1-}" --no-pager
 }
@@ -264,22 +266,29 @@ function _check_debian_version() {
 function _configure_debian_sources() {
   _prt_init_msg "Configuring Debian package sources... "
 
-  local _deb_sources="/etc/apt/sources.list.d/debian.sources"
   local _deb_sources_list="/etc/apt/sources.list"
+  local _deb_sources="/etc/apt/sources.list.d/debian.sources"
   local _deb_example_sources="/usr/share/doc/apt/examples/debian.sources"
 
   # from: https://wiki.debian.org/SourcesList
   if [ ! -f "$_deb_sources" ]; then
-    if [ -f "$_deb_example_sources" ]; then
-      _install_file "$_deb_example_sources" "$_deb_sources"
+
+    local _arch
+    if command -v lscpu &> /dev/null; then
+      _arch="$(lscpu | grep 'Architecture' | awk '{print $2}')"
     else
-      cat << EOF > "$_deb_sources"
+      _arch=$(cat /sys/devices/system/cpu/modalias |
+        grep -Eo 'type:[a-zA-Z0-9]+' | cut -d ':' -f 2)
+    fi
+
+    case "$_arch" in
+      "aarch64")
+        _arch="arm64"
+        cat << EOF > "$_deb_sources"
 Types: deb deb-src
-URIs: https://deb.debian.org/debian
-Suites: trixie trixie-updates
-## If you want access to contrib and non-free components,
-## add " contrib non-free" after "non-free-firmware":
-Components: main non-free-firmware
+URIs: https://security.debian.org/debian
+Suites: trixie-backports
+Components: main
 Enabled: yes
 Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
 
@@ -290,11 +299,41 @@ Components: main non-free-firmware
 Enabled: yes
 Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
 EOF
-    fi
-    if [ -f "$_deb_sources_list" ]; then
-      sed -i -e 's/^\(deb.*\)/# \1/' /etc/apt/sources.list
-    fi
+        ;;
+      "x86")
+        _arch="amd64"
+        cat << EOF > "$_deb_sources"
+Types: deb deb-src
+URIs: https://deb.debian.org/debian
+Suites: trixie trixie-updates
+## If you want access to contrib and non-free components,
+## add " contrib non-free" after "non-free-firmware":
+Components: main non-free-firmware contrib non-free
+Enabled: yes
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb deb-src
+URIs: https://security.debian.org/debian-security
+Suites: trixie-security
+Components: main non-free-firmware
+Enabled: yes
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+EOF
+        ;;
+      *) return 1 ;;
+    esac
+
+  elif [ -f "$_deb_example_sources" ] &&
+      ! cmp -s "$_deb_example_sources" "$_deb_sources"; then
+      _install_file "$_deb_example_sources" "$_deb_sources"
+  else
+      :
   fi
+
+  if [ -f "$_deb_sources_list" ]; then
+    sed -i -e 's/^\(deb.*\)/# \1/' /etc/apt/sources.list
+  fi
+
   _prt_cleared_msg
 }
 
@@ -356,7 +395,6 @@ function _update_locale() {
     sudo sed -E -i '/en_US.UTF-8 UTF-8/s/^# //g' "$_locales_gen" &&
       DEBIAN_FRONTEND=noninteractive \
       dpkg-reconfigure --frontend=noninteractive locales
-
     _prt_cleared_msg
   else
     _prt_cleared_msg "Locale already set to en_US.UTF-8."
@@ -456,9 +494,7 @@ EOT
     _prt_status_msg "CHANGED "
     cat "$_tmp_resolved_conf" >> "$_ori_header_resolved_conf"
     _install_file "$_ori_header_resolved_conf" "$_resolved_conf"
-    systemctl daemon-reload
-    systemctl restart systemd-resolved.service
-    sleep 2
+    _install_systemd_unit systemd-resolved.service
   fi
 
   rm -f "$_tmp_resolved_conf"
@@ -535,7 +571,6 @@ EOT
     cat "$_tmp_timesyncd_conf" >> "$_ori_header_timesyncd_conf"
     _install_file "$_ori_header_timesyncd_conf" "$_timesyncd_conf"
     _install_systemd_unit systemd-timesyncd.service
-    sleep 2
   fi
 
   rm -f "$_tmp_timesyncd_conf"
@@ -562,21 +597,26 @@ function _setup_unattended_upgrades() {
     _install_single_pkg unattended-upgrades
   fi
 
-  local _uup_conf="/etc/apt/apt.conf.d/50unattended-upgrades"
-  local _uup_conf_local="/etc/apt/apt.conf.d/52unattended-upgrades-local"
+  printf "unattended-upgrades unattended-upgrades/enable_auto_updates boolean true" |
+    debconf-set-selections
+  if DEBIAN_FRONTEND=noninteractive \
+    dpkg-reconfigure -f noninteractive unattended-upgrades; then
 
-  if [ ! -f "$_uup_conf_local" ]; then
-    _install_file "$_uup_conf" "$_uup_conf_local"
-    if _confirm "Edit '${_uup_conf_local}' file?"; then
-      $EDITOR "$_uup_conf_local"
+    local _uup_conf="/etc/apt/apt.conf.d/50unattended-upgrades"
+    local _uup_conf_local="/etc/apt/apt.conf.d/52unattended-upgrades-local"
+
+    if [ ! -f "$_uup_conf_local" ]; then
+      _install_file "$_uup_conf" "$_uup_conf_local"
+      if _confirm "Edit '${_uup_conf_local}' file?"; then
+        $EDITOR "$_uup_conf_local"
+      fi
     fi
-  fi
 
-  local _daily_timer_override="/etc/systemd/system/apt-daily.timer.d/override.conf"
-  local _tmp_daily_timer_override
-  _tmp_daily_timer_override=$(mktemp /tmp/override.conf_XXXXXX)
-  trap 'rm -f "$_tmp_daily_timer_override"' EXIT
-  cat << EOT > "$_tmp_daily_timer_override"
+    local _daily_timer_override="/etc/systemd/system/apt-daily.timer.d/override.conf"
+    local _tmp_daily_timer_override
+    _tmp_daily_timer_override=$(mktemp /tmp/override.conf_XXXXXX)
+    trap 'rm -f "$_tmp_daily_timer_override"' EXIT
+    cat << EOT > "$_tmp_daily_timer_override"
 [Timer]
 OnCalendar=
 OnCalendar=00:00
@@ -584,11 +624,11 @@ RandomizedDelaySec=5h
 Persistent=true
 EOT
 
-  local _upgrade_timer_override="/etc/systemd/system/apt-daily-upgrade.timer.d/override.conf"
-  local _tmp_upgrade_timer_override
-  _tmp_upgrade_timer_override=$(mktemp /tmp/override.conf_XXXXXX)
-  trap 'rm -f "$_tmp_upgrade_timer_override"' EXIT
-  cat << EOT > "$_tmp_upgrade_timer_override"
+    local _upgrade_timer_override="/etc/systemd/system/apt-daily-upgrade.timer.d/override.conf"
+    local _tmp_upgrade_timer_override
+    _tmp_upgrade_timer_override=$(mktemp /tmp/override.conf_XXXXXX)
+    trap 'rm -f "$_tmp_upgrade_timer_override"' EXIT
+    cat << EOT > "$_tmp_upgrade_timer_override"
 [Timer]
 OnCalendar=
 OnCalendar=05:00
@@ -596,29 +636,27 @@ RandomizedDelaySec=30m
 Persistent=true
 EOT
 
-  if [ ! -f "$_daily_timer_override" ] || { [ -f "$_daily_timer_override" ] &&
-      ! cmp -s "$_tmp_daily_timer_override" "$_daily_timer_override"; }; then
-    _prt_status_msg "CHANGED "
-    install -m 0755 "$_tmp_daily_timer_override" "$_daily_timer_override"
+    if [ ! -f "$_daily_timer_override" ] || { [ -f "$_daily_timer_override" ] &&
+        ! cmp -s "$_tmp_daily_timer_override" "$_daily_timer_override"; }; then
+      _prt_status_msg "CHANGED "
+      install -m 0755 "$_tmp_daily_timer_override" "$_daily_timer_override"
+    fi
+
+    if [ ! -f "$_upgrade_timer_override" ] || { [ -f "$_upgrade_timer_override" ] &&
+        ! cmp -s "$_tmp_upgrade_timer_override" "$_upgrade_timer_override"; }; then
+      _prt_status_msg "CHANGED "
+      install -m 0755 "$_tmp_daily_timer_override" "$_upgrade_timer_override"
+    fi
+
+    rm -f "$_tmp_daily_timer_override"
+    rm -f "$_tmp_upgrade_timer_override"
+    systemctl daemon-reload
+    sleep 2
+
+    _prt_cleared_msg
+  else
+    _prt_warning_nl "Files created but couldn't set up unattended upgrades."
   fi
-
-  if [ ! -f "$_upgrade_timer_override" ] || { [ -f "$_upgrade_timer_override" ] &&
-      ! cmp -s "$_tmp_upgrade_timer_override" "$_upgrade_timer_override"; }; then
-    _prt_status_msg "CHANGED "
-    install -m 0755 "$_tmp_daily_timer_override" "$_upgrade_timer_override"
-  fi
-
-  rm -f "$_tmp_daily_timer_override"
-  rm -f "$_tmp_upgrade_timer_override"
-  systemctl daemon-reload
-  sleep 2
-
-  printf "unattended-upgrades unattended-upgrades/enable_auto_updates boolean true" |
-    debconf-set-selections
-  if DEBIAN_FRONTEND=noninteractive \
-    dpkg-reconfigure -f noninteractive unattended-upgrades; then _prt_cleared_msg
-  else _prt_warning_nl "Files created but couldn't set up unattended upgrades."; fi
-
   return 0
 }
 
@@ -735,7 +773,6 @@ EOT
     _install_file "$_tmp_ssh_config" "$_ssh_config"
     sshd -t
     _install_systemd_unit sshd.service
-    sleep 5
   fi
 
   rm -f "$_tmp_ssh_config"
@@ -824,7 +861,6 @@ EOT
     _prt_status_msg "CHANGED "
     _install_file "$_tmp_nftables_config_file" "$_nftables_config_file"
     _install_systemd_unit nftables
-    sleep 2
   fi
 
   rm -f "$_tmp_nftables_config_file"
@@ -883,7 +919,6 @@ EOF
     _prt_status_msg "CHANGED "
     _install_file "$_tmp_jail_local_config" "$_jail_local_config"
     _install_systemd_unit fail2ban
-    sleep 2
   fi
 
   rm -f "$_tmp_jail_local_config"
