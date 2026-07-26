@@ -21,7 +21,7 @@ declare GRE=$'\e[0;32m'
 declare YEL=$'\e[0;33m'
 declare BLU=$'\e[0;34m'
 #declare PUR=$'\e[0;35m'
-declare CYA=$'\e[0;36m'
+#declare CYA=$'\e[0;36m'
 declare BLD=$'\e[1m'
 declare NOC=$'\e[0m'
 
@@ -49,8 +49,8 @@ function _prt_cleared_msg() {
 }
 
 function _prt_status_msg() {
-  local msg="${CYA}${1:-"This is a message."}${NOC}"
-  printf '%s' "$msg"
+  local msg="${RED}${1:-"This is a message."}${NOC}"
+  printf '%s\n' "$msg"
 }
 
 function _prt_info_msg() {
@@ -486,9 +486,9 @@ function _setup_systemd_timesync() {
 
   if [ -f "$_timesyncd_conf" ]; then
     cat "$_timesyncd_conf" |
-      sed -r '1,/[Time]/d;/^$/d' > "$_ori_header_timesyncd_conf"
+      sed -r '1,/\[Time\]/d;/^$/d' > "$_ori_header_timesyncd_conf"
     cat "$_timesyncd_conf" |
-      sed -r '/[Time]/d;/^$/d' > "$_ori_timesyncd_conf"
+      sed '/\[Time\]/,$!d' > "$_ori_timesyncd_conf"
   else
     cat << EOT > "$_ori_header_timesyncd_conf"
 #  This file is part of systemd.
@@ -509,11 +509,11 @@ function _setup_systemd_timesync() {
 #
 # See timesyncd.conf(5) for details.
 
+[Time]
 EOT
   fi
 
   cat << EOT > "$_tmp_timesyncd_conf"
-[Time]
 NTP=10.0.1.1
 FallbackNTP=0.debian.pool.ntp.org
 FallbackNTP=1.debian.pool.ntp.org
@@ -528,7 +528,7 @@ FallbackNTP=3.debian.pool.ntp.org
 EOT
 
   if [ ! -f "$_timesyncd_conf" ] || ([ -f "$_timesyncd_conf" ] &&
-    ! cmp -s "$_tmp_timesyncd_conf" "$_ori_timesyncd_conf") then
+    ! cmp -s "$_tmp_timesyncd_conf" "$_ori_timesyncd_conf" ) then
 
     _prt_status_msg "CHANGED "
     cat "$_tmp_timesyncd_conf" >> "$_ori_header_timesyncd_conf"
