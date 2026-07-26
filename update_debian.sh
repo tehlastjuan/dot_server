@@ -1081,8 +1081,8 @@ function _run() {
 
   local _msg
   _check_debian_version
-  _prt_info_nl_msg_nl "Debian '${VERSION_CODENAME-}' update script"
-  _prt_msg ""
+  _prt_info_nl_msg_nl "----- Debian '${VERSION_CODENAME-}' update script"
+  printf '\n'
 
   _msg="Run the complete installation sequentially?"
   if _confirm "$_msg"; then
