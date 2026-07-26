@@ -22,7 +22,7 @@ declare YEL=$'\e[0;33m'
 declare BLU=$'\e[0;34m'
 #declare PUR=$'\e[0;35m'
 #declare CYA=$'\e[0;36m'
-declare BLD=$'\e[1m'
+#declare BLD=$'\e[1m'
 declare NOC=$'\e[0m'
 
 function _prt_msg() {
@@ -85,7 +85,7 @@ function _prt_error() {
 
 function _confirm() {
   local _response
-  local _prompt="${BLD}${1-}${NOC} ${YEL}[y/n]:${NOC} "
+  local _prompt="${1-} ${YEL}[y/n]:${NOC} "
   while true; do
     printf "%s" "$_prompt"
     read -r _response
@@ -366,7 +366,7 @@ function _update_locale() {
 #----- systemd-resolved conf
 
 function _setup_systemd_resolved() {
-  _prt_init_msg "Configuring systemd-resolved..."
+  _prt_init_msg "Configuring systemd-resolved... "
   if ! _check_installed_pkg systemd-resolved; then
     _install_single_pkg systemd-resolved
   fi
@@ -468,7 +468,7 @@ EOT
 }
 
 function _setup_systemd_timesync() {
-  _prt_init_msg "Configuring systemd-timesyncd..."
+  _prt_init_msg "Configuring systemd-timesyncd... "
   if ! _check_installed_pkg systemd-timesyncd; then
     _install_single_pkg systemd-timesyncd
   fi
@@ -557,7 +557,7 @@ function _update_timezone() {
 #----- unattended upgrades conf
 
 function _setup_unattended_upgrades() {
-  _prt_init_msg "Configuring unattended upgrades..."
+  _prt_init_msg "Configuring unattended upgrades... "
   if ! _check_installed_pkg unattended-upgrades; then
     _install_single_pkg unattended-upgrades
   fi
@@ -825,7 +825,7 @@ EOT
 #----- fail2ban conf
 
 function _setup_fail2ban() {
-  _prt_init_msg "Configuring Fail2Ban..."
+  _prt_init_msg "Configuring Fail2Ban... "
   if ! _check_installed_pkg nftables; then
     _setup_nftables
   fi
@@ -977,7 +977,7 @@ EOT
 #----- docker engine conf
 
 function _setup_docker_engine() {
-  _prt_init_msg "Setting up docker engine..."
+  _prt_init_msg "Setting up docker engine... "
   if systemctl is-active --quiet docker; then
     _prt_cleared_msg "Docker already installed and running."
 
@@ -1079,7 +1079,7 @@ function _run() {
 
   local _msg
   _check_debian_version
-  _prt_info_msg_nl "Debian '${VERSION_CODENAME-}' update script"
+  _prt_info_nl_msg_nl "Debian '${VERSION_CODENAME-}' update script"
 
   _msg="Run the complete installation sequentially?"
   if _confirm "$_msg"; then
