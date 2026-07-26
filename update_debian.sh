@@ -635,7 +635,7 @@ function _setup_ssh_config() {
 
   # user-defined ssh port
   while [ $SSH_PORT -eq 22 ]; do
-    printf "\nEnter custom SSH port (1024-65535): "
+    printf "\nEnter custom SSH port (1024-65535 or empty for default :22): "
     read -r SSH_PORT
     case "${SSH_PORT-}" in
       "") SSH_PORT=22 ;&
@@ -682,6 +682,7 @@ function _setup_ssh_config() {
   trap 'rm -f "$_tmp_issue"' EXIT
 
   cat << EOT > "$_tmp_issue"
+
  * All attempts are logged and reviewed
 EOT
 
@@ -781,8 +782,14 @@ function _setup_nftables() {
 
 flush ruleset
 
+table ip filter {
+  chain INPUT {
+    type filter hook input priority 0; policy accept;
+  }
+}
+
 table inet filter {
-  chain input {
+  chain INPUT {
     type filter hook input priority 0; policy drop;
 
     # allow already established connections
@@ -801,11 +808,11 @@ table inet filter {
     # tcp dport 443 accept
   }
 
-  chain forward {
+  chain FORWARD {
     type filter hook forward priority 0; policy drop;
   }
 
-  chain output {
+  chain OUTPUT {
     type filter hook output priority 0; policy accept;
   }
 }
@@ -885,9 +892,6 @@ EOF
 
 #----- kernel flags conf
 
-
-# Recommended kernel security settings:
-# https://www.kernel.org/doc/Documentation/sysctl/
 function _setup_kernel_hardening() {
   _prt_init_msg "Installing kernel hardening... "
 
@@ -896,6 +900,8 @@ function _setup_kernel_hardening() {
   _tmp_kernel_config=$(mktemp /tmp/99-kernel-hardening.conf_XXXXXX)
   trap '$(rm -f "${_tmp_kernel_config-}")' EXIT
 
+  # Recommended kernel security settings:
+  # https://www.kernel.org/doc/Documentation/sysctl/
   cat << EOT > "$_tmp_kernel_config"
 #----- ipv4 networking
 
@@ -1069,7 +1075,7 @@ function _run_cleanup() {
   systemctl daemon-reload ||
     _prt_error "Reload of systemd daemons failed."
 
-  _prt_cleared_msg "Final system update and cleanup complete."
+  _prt_info_msg_nl "----- Final system update and cleanup complete."
 }
 
 function _run() {
