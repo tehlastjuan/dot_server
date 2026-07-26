@@ -12,7 +12,7 @@ declare ENV_TZ="Europe/Stockholm"
 
 declare -i CLEANUP_FLAG=1
 declare -i SSH_PORT=22
-declare -a SSH_USERS=( "$SUDO_USER" )
+declare -a SSH_USERS=()
 
 #----- print utils
 
@@ -120,12 +120,12 @@ function _install_file() {
       local _src_file=${1-}
       local _dst_file=${2-}
       [ -f "${_src_file-}" ] || [ -z "${_dst_file-}" ] || return 1
-      install -m 0600 "$_src_file" "$_dst_file"
+      install -m 0644 "$_src_file" "$_dst_file"
       ;;
     1)
       local _dst_file=${1-}
       [ -f "${_dst_file-}" ] || return 1
-      install -m 0600 "$_dst_file"
+      install -m 0644 "$_dst_file"
       ;;
     *) return 1 ;;
   esac
@@ -451,8 +451,8 @@ MulticastDNS=yes
 
 EOT
 
-  if [ ! -f "$_resolved_conf" ] || { [ -f "$_resolved_conf" ] &&
-    ! cmp -s "$_tmp_resolved_conf" "$_ori_resolved_conf"; }; then
+  if [ ! -f "$_resolved_conf" ] || {
+    [ -f "$_resolved_conf" ] && ! cmp -s "$_tmp_resolved_conf" "$_ori_resolved_conf"; }; then
     _prt_status_msg "CHANGED "
     cat "$_tmp_resolved_conf" >> "$_ori_header_resolved_conf"
     _install_file "$_ori_header_resolved_conf" "$_resolved_conf"
@@ -460,6 +460,7 @@ EOT
     systemctl restart systemd-resolved.service
     sleep 2
   fi
+
   rm -f "$_tmp_resolved_conf"
   rm -f "$_ori_resolved_conf"
   rm -f "$_ori_header_resolved_conf"
@@ -474,18 +475,18 @@ function _setup_systemd_timesync() {
 
   local _timesyncd_conf="/etc/systemd/timesyncd.conf"
   local _tmp_timesyncd_conf _ori_timesyncd_conf _ori_header_timesyncd_conf
+
   _tmp_timesyncd_conf=$(mktemp /tmp/timesyncd.conf_XXXXXX)
   _ori_timesyncd_conf=$(mktemp /tmp/ori_timesyncd.conf_XXXXXX)
   _ori_header_timesyncd_conf=$(mktemp /tmp/ori_header_timesyncd.conf_XXXXXX)
 
-  trap 'rm -f "$_tmp_timesyncd_conf"' EXIT
-  trap 'rm -f "$_ori_timesyncd_conf"' EXIT
-  trap 'rm -f "$_ori_header_timesyncd_conf"' EXIT
+  trap '$(rm -f "${_tmp_timesyncd_conf-}")' EXIT
+  trap '$(rm -f "${_ori_timesyncd_conf-}")' EXIT
+  trap '$(rm -f "${_ori_header_timesyncd_conf-}")' EXIT
 
   if [ -f "$_timesyncd_conf" ]; then
     cat "$_timesyncd_conf" |
       sed -r '1,/[Time]/d;/^$/d' > "$_ori_header_timesyncd_conf"
-
     cat "$_timesyncd_conf" |
       sed -r '/[Time]/d;/^$/d' > "$_ori_timesyncd_conf"
   else
@@ -526,8 +527,8 @@ FallbackNTP=3.debian.pool.ntp.org
 #SaveIntervalSec=60
 EOT
 
-  if [ ! -f "$_timesyncd_conf" ] || { [ -f "$_timesyncd_conf" ] &&
-    ! cmp -s "$_tmp_timesyncd_conf" "$_ori_timesyncd_conf"; }; then
+  if [ ! -f "$_timesyncd_conf" ] || ([ -f "$_timesyncd_conf" ] &&
+    ! cmp -s "$_tmp_timesyncd_conf" "$_ori_timesyncd_conf") then
 
     _prt_status_msg "CHANGED "
     cat "$_tmp_timesyncd_conf" >> "$_ori_header_timesyncd_conf"
