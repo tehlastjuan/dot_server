@@ -280,7 +280,6 @@ function _configure_debian_sources() {
       _arch=$(cat /sys/devices/system/cpu/modalias |
         grep -Eo 'type:[a-zA-Z0-9]+' | cut -d ':' -f 2)
     fi
-
     case "$_arch" in
       "aarch64")
         _arch="arm64"
@@ -308,7 +307,7 @@ URIs: https://deb.debian.org/debian
 Suites: trixie trixie-updates
 ## If you want access to contrib and non-free components,
 ## add " contrib non-free" after "non-free-firmware":
-Components: main non-free-firmware contrib non-free
+Components: main non-free-firmware
 Enabled: yes
 Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
 
@@ -415,9 +414,9 @@ function _setup_systemd_resolved() {
   _ori_resolved_conf=$(mktemp /tmp/ori_resolved.conf_XXXXXX)
   _ori_header_resolved_conf=$(mktemp /tmp/ori_header_resolved.conf_XXXXXX)
 
-  trap 'rm -f "$_tmp_resolved_conf"' EXIT
-  trap 'rm -f "$_ori_resolved_conf"' EXIT
-  trap 'rm -f "$_ori_header_resolved_conf"' EXIT
+  trap '$(rm -f "$_tmp_resolved_conf")' EXIT
+  trap '$(rm -f "$_ori_resolved_conf")' EXIT
+  trap '$(rm -f "$_ori_header_resolved_conf")' EXIT
 
   if [ -f "$_resolved_conf" ]; then
     cat "$_resolved_conf" |
@@ -599,24 +598,28 @@ function _setup_unattended_upgrades() {
 
   printf "unattended-upgrades unattended-upgrades/enable_auto_updates boolean true" |
     debconf-set-selections
-  if DEBIAN_FRONTEND=noninteractive \
-    dpkg-reconfigure -f noninteractive unattended-upgrades; then
+  if ! (DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -f noninteractive unattended-upgrades); then
+    _prt_error "Failed installing unattended upgrades."
+  fi
 
-    local _uup_conf="/etc/apt/apt.conf.d/50unattended-upgrades"
-    local _uup_conf_local="/etc/apt/apt.conf.d/52unattended-upgrades-local"
+  local _uup_conf="/etc/apt/apt.conf.d/50unattended-upgrades"
+  local _uup_conf_local="/etc/apt/apt.conf.d/52unattended-upgrades-local"
 
-    if [ ! -f "$_uup_conf_local" ]; then
-      _install_file "$_uup_conf" "$_uup_conf_local"
-      if _confirm "Edit '${_uup_conf_local}' file?"; then
-        $EDITOR "$_uup_conf_local"
-      fi
+  if [ ! -f "$_uup_conf_local" ]; then
+    _install_file "$_uup_conf" "$_uup_conf_local"
+    if _confirm "Edit '${_uup_conf_local}' file?"; then
+      $EDITOR "$_uup_conf_local"
     fi
+  fi
 
-    local _daily_timer_override="/etc/systemd/system/apt-daily.timer.d/override.conf"
-    local _tmp_daily_timer_override
-    _tmp_daily_timer_override=$(mktemp /tmp/override.conf_XXXXXX)
-    trap 'rm -f "$_tmp_daily_timer_override"' EXIT
-    cat << EOT > "$_tmp_daily_timer_override"
+  local _daily_timer_override="/etc/systemd/system/apt-daily.timer.d/override.conf"
+  [ -d "${_daily_timer_override%%/*}" ] ||
+    _install_directory "${_daily_timer_override%%/*}"
+
+  local _tmp_daily_timer_override
+  _tmp_daily_timer_override=$(mktemp /tmp/override.conf_XXXXXX)
+  trap '$(rm -f "$_tmp_daily_timer_override")' EXIT
+  cat << EOT > "$_tmp_daily_timer_override"
 [Timer]
 OnCalendar=
 OnCalendar=00:00
@@ -624,11 +627,14 @@ RandomizedDelaySec=5h
 Persistent=true
 EOT
 
-    local _upgrade_timer_override="/etc/systemd/system/apt-daily-upgrade.timer.d/override.conf"
-    local _tmp_upgrade_timer_override
-    _tmp_upgrade_timer_override=$(mktemp /tmp/override.conf_XXXXXX)
-    trap 'rm -f "$_tmp_upgrade_timer_override"' EXIT
-    cat << EOT > "$_tmp_upgrade_timer_override"
+  local _upgrade_timer_override="/etc/systemd/system/apt-daily-upgrade.timer.d/override.conf"
+  [ -d "${_upgrade_timer_override%%/*}" ] ||
+    _install_directory "${_upgrade_timer_override%%/*}"
+
+  local _tmp_upgrade_timer_override
+  _tmp_upgrade_timer_override=$(mktemp /tmp/override.conf_XXXXXX)
+  trap '$(rm -f "$_tmp_upgrade_timer_override")' EXIT
+  cat << EOT > "$_tmp_upgrade_timer_override"
 [Timer]
 OnCalendar=
 OnCalendar=05:00
@@ -636,27 +642,22 @@ RandomizedDelaySec=30m
 Persistent=true
 EOT
 
-    if [ ! -f "$_daily_timer_override" ] || { [ -f "$_daily_timer_override" ] &&
-        ! cmp -s "$_tmp_daily_timer_override" "$_daily_timer_override"; }; then
-      _prt_status_msg "CHANGED "
-      install -m 0755 "$_tmp_daily_timer_override" "$_daily_timer_override"
-    fi
-
-    if [ ! -f "$_upgrade_timer_override" ] || { [ -f "$_upgrade_timer_override" ] &&
-        ! cmp -s "$_tmp_upgrade_timer_override" "$_upgrade_timer_override"; }; then
-      _prt_status_msg "CHANGED "
-      install -m 0755 "$_tmp_daily_timer_override" "$_upgrade_timer_override"
-    fi
-
-    rm -f "$_tmp_daily_timer_override"
-    rm -f "$_tmp_upgrade_timer_override"
-    systemctl daemon-reload
-    sleep 2
-
-    _prt_cleared_msg
-  else
-    _prt_warning_nl "Files created but couldn't set up unattended upgrades."
+  if [ ! -f "$_daily_timer_override" ] || { [ -f "$_daily_timer_override" ] &&
+      ! cmp -s "$_tmp_daily_timer_override" "$_daily_timer_override"; }; then
+    _prt_status_msg "CHANGED "
+    _install_file "$_tmp_daily_timer_override" "$_daily_timer_override"
   fi
+
+  if [ ! -f "$_upgrade_timer_override" ] || { [ -f "$_upgrade_timer_override" ] &&
+      ! cmp -s "$_tmp_upgrade_timer_override" "$_upgrade_timer_override"; }; then
+    _prt_status_msg "CHANGED "
+    _install_file "$_tmp_daily_timer_override" "$_upgrade_timer_override"
+  fi
+
+  rm -f "$_tmp_daily_timer_override"
+  rm -f "$_tmp_upgrade_timer_override"
+  _install_systemd_unit unattended-upgrades.service
+  _prt_cleared_msg
   return 0
 }
 
@@ -713,11 +714,10 @@ function _setup_ssh_config() {
 
   # issue
   _prt_info_msg_nl "Updating '/etc/issue.net'"
-
   local _issue="/etc/issue.net"
   local _tmp_issue
   _tmp_issue=$(mktemp /tmp/issue_XXXXXX)
-  trap 'rm -f "$_tmp_issue"' EXIT
+  trap '$(rm -f "$_tmp_issue")' EXIT
 
   cat << EOT > "$_tmp_issue"
 
@@ -736,7 +736,7 @@ EOT
   local _ssh_config="${_sshd_config_dir}/99-hardening.conf"
   local _tmp_ssh_config
   _tmp_ssh_config=$(mktemp /tmp/ssh_hardening_XXXXXX)
-  trap 'rm -f "$_tmp_ssh_config"' EXIT
+  trap '$(rm -f "$_tmp_ssh_config")' EXIT
 
   cat << EOT > "$_tmp_ssh_config"
 Port $SSH_PORT
@@ -811,7 +811,7 @@ function _setup_nftables() {
   local _nftables_config_file="/etc/nftables.conf"
   local _tmp_nftables_config_file
   _tmp_nftables_config_file=$(mktemp /tmp/nftables.conf_XXXXXX)
-  trap 'rm -f "$_tmp_nftables_config_file"' EXIT
+  trap '$(rm -f "$_tmp_nftables_config_file")' EXIT
 
   _fetch_ssh_port
   cat << EOT > "$_tmp_nftables_config_file"
@@ -878,7 +878,7 @@ function _setup_fail2ban() {
   local _jail_local_config="/etc/fail2ban/jail.local"
   local _tmp_jail_local_config
   _tmp_jail_local_config=$(mktemp /tmp/jail.local_XXXXXX)
-  trap 'rm -f "$_tmp_jail_local_config"' EXIT
+  trap '$(rm -f "$_tmp_jail_local_config")' EXIT
 
   cat << EOF > "$_tmp_jail_local_config"
 [DEFAULT]
@@ -1076,7 +1076,7 @@ EOT
 
   _install_docker_pkg
   _tmp_docker_daemon_conf=$(mktemp /tmp/docker_config_XXXXXX)
-  trap 'rm -f "$_tmp_docker_daemon_conf"' EXIT
+  trap '$(rm -f "$_tmp_docker_daemon_conf")' EXIT
   cat << EOT > "$_tmp_docker_daemon_conf"
 {
   "log-driver": "json-file",
