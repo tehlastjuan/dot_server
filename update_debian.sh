@@ -383,9 +383,9 @@ function _setup_systemd_resolved() {
 
   if [ -f "$_resolved_conf" ]; then
     cat "$_resolved_conf" |
-      sed -r '1,/[Resolve]/d;/^$/d' > "$_ori_header_resolved_conf"
+      sed '/\[Resolve\]/,$d' > "$_ori_header_resolved_conf"
     cat "$_resolved_conf" |
-      sed -r '/[Resolve]/d;/^$/d' > "$_ori_resolved_conf"
+      sed '/\[Resolve\]/,$!d' > "$_ori_resolved_conf"
   else
     cat << EOT > "$_ori_header_resolved_conf"
 #  This file is part of systemd.
@@ -476,7 +476,7 @@ function _setup_systemd_timesync() {
   local _timesyncd_conf="/etc/systemd/timesyncd.conf"
   local _tmp_timesyncd_conf _ori_timesyncd_conf _ori_header_timesyncd_conf
 
-  _tmp_timesyncd_conf=$(mktemp /tmp/timesyncd.conf_XXXXXX)
+  _tmp_timesyncd_conf=$(mktemp /tmp/tmp_timesyncd.conf_XXXXXX)
   _ori_timesyncd_conf=$(mktemp /tmp/ori_timesyncd.conf_XXXXXX)
   _ori_header_timesyncd_conf=$(mktemp /tmp/ori_header_timesyncd.conf_XXXXXX)
 
@@ -486,7 +486,7 @@ function _setup_systemd_timesync() {
 
   if [ -f "$_timesyncd_conf" ]; then
     cat "$_timesyncd_conf" |
-      sed -r '1,/\[Time\]/d;/^$/d' > "$_ori_header_timesyncd_conf"
+      sed '/\[Time\]/,$d' > "$_ori_header_timesyncd_conf"
     cat "$_timesyncd_conf" |
       sed '/\[Time\]/,$!d' > "$_ori_timesyncd_conf"
   else
@@ -509,11 +509,12 @@ function _setup_systemd_timesync() {
 #
 # See timesyncd.conf(5) for details.
 
-[Time]
 EOT
   fi
 
   cat << EOT > "$_tmp_timesyncd_conf"
+[Time]
+
 NTP=10.0.1.1
 FallbackNTP=0.debian.pool.ntp.org
 FallbackNTP=1.debian.pool.ntp.org
