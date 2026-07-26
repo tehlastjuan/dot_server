@@ -101,7 +101,7 @@ if !empty(s:vim_state)
   endtry
 endif
 
-" OPT: Do not save backup files
+" OPT: Do not save backup files.
 "set nobackup
 "set nowritebackup
 "set noswapfile
@@ -138,7 +138,7 @@ if isdirectory(s:vim_state)
     endif
   endif
 
-  " Keep undo history across sessions
+  " Keep undo history across sessions.
   if has('persistent_undo')
     let s:undo_dir = s:vim_state . '/undo'
     try
@@ -179,7 +179,7 @@ set tabpagemax=50
 " Keep tabs in the bg.
 set hidden
 
-" Disable saving options in session and view files
+" Disable saving options in session and view files.
 if exists('&sessionoptions')
   set sessionoptions-=options
 endif
@@ -240,7 +240,7 @@ if exists('&regexpengine')
   set regexpengine=0
 endif
 
-" Base number when c-A & C-x for adds and subs
+" Base number when c-A & C-x for adds and subs.
 set nrformats-=octal
 
 " Do not override restricted/nologin shells.
@@ -254,10 +254,10 @@ elseif executable('/bin/sh')
   set shell=/bin/sh
 endif
 
-" OPT: Keep swap warnings visible
+" OPT: Keep swap warnings visible.
 " set shortmess+=A
 
-" Do not add two spaces after a period when joining lines or formatting texts,
+" Do not add two spaces after a period when joining lines or formatting texts.
 " see https://stackoverflow.com/q/4760428/6064933
 set nojoinspaces
 
@@ -295,7 +295,6 @@ function! StripTrailingWhitespaces() abort
   call winrestview(l:save)
 endfunction
 
-" command! StripTrailingWhitespaces call StripTrailingWhitespaces()
 nnoremap <leader>s :call StripTrailingWhitespaces()<CR>
 
 " }}}
@@ -304,10 +303,10 @@ nnoremap <leader>s :call StripTrailingWhitespaces()<CR>
 " INDENTATION {{{
 
 " Disable autoindentation
-set noautoindent
-"set smartindent
-"set autoindent
-set nosmartindent
+"set noautoindent
+"set nosmartindent
+set autoindent
+set smartindent
 
 " Use tabs instead of space characters
 set noexpandtab
@@ -322,14 +321,14 @@ set tabstop=2
 set softtabstop=2
 
 " Inserts blanks according to shiftwidth
-set smarttab
+" set smarttab
 
-" Align indent to next multiple value of shiftwidth. For its meaning,
+" Align indent to next multiple value of shiftwidth.
 " see http://vim.1045645.n5.nabble.com/shiftround-option-td5712100.html
 set shiftround
 
 " Do not wrap lines. Allow long lines to extend as far as the line goes.
-set wrap
+" set nowrap
 
 " Alt: Wrap lines at convenient points
 set wrap
@@ -494,8 +493,8 @@ inoremap <silent> kj <ESC>
 " from: https://vim.fandom.com/wiki/Fast_window_resizing_with_plus/minus_keys
 nnoremap <silent> <C-Down>  <C-w>+
 nnoremap <silent> <C-Up>    <C-w>-
-nnoremap <silent> <C-Left>  <C-w><
-nnoremap <silent> <C-Right> <C-w>>
+nnoremap <silent> <C-Right> <C-w><
+nnoremap <silent> <C-Left>  <C-w>>
 
 " Move between windows.
 nnoremap <silent> <C-j> <C-w>j
@@ -552,9 +551,9 @@ if exists(':DiffOrig') != 2
 endif
 
 " Netrw options.
-let g:netrw_banner=0
+let g:netrw_banner = 0
 let g:netrw_liststyle = 3  " default directory view. Cycle with i
-let g:netrw_browse_split=4
+let g:netrw_browse_split = 4
 let g:netrw_altv = 1
 let g:netrw_sort_sequence = '[\/]$,*'
 let g:netrw_keepdir = 0
@@ -562,6 +561,10 @@ let g:netrw_winsize = 25
 
 " Open/close Netrw window.
 nnoremap <silent> <leader>e :Lexplore<CR>
+
+" Override default netrw's netrw_refresh <C-l>
+" see: https://stackoverflow.com/questions/33351179/how-to-rewrite-existing-vim-key-bindings
+nnoremap <unique> <C-~> <Plug>NetrwRefresh
 
 " Open a terminal window.
 if exists(':terminal') == 2
@@ -1249,7 +1252,9 @@ augroup user_statusline
   autocmd!
   autocmd WinEnter,BufWinEnter * call StatuslineLoad('active')
   autocmd WinLeave,BufWinLeave * call StatuslineLoad('inactive')
-  autocmd ModeChanged * redrawstatus
+  if has ('ModeChanged')
+    autocmd ModeChanged * redrawstatus
+  endif
   autocmd FileType netrw setlocal nolist
 augroup END
 

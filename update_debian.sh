@@ -1,57 +1,279 @@
 #!/usr/bin/env bash
 
-set -euo pipefail  # Exit on error, undefined vars, pipe failures
+# Exit on error, undefined vars, pipe failures
+set -euo pipefail
+
+#----- user env
+
+declare ENV_LOCALE="en_US.UTF-8"
+declare ENV_TZ="Europe/Stockholm"
+
+#----- work env
 
 declare -i CLEANUP_FLAG=1
 declare -i SSH_PORT=22
+declare -a SSH_USERS=( "$SUDO_USER" )
 
-_prt_init_msg() {
+#----- print utils
+
+declare RED=$'\e[0;31m'
+declare GRE=$'\e[0;32m'
+declare YEL=$'\e[0;33m'
+declare BLU=$'\e[0;34m'
+#declare PUR=$'\e[0;35m'
+declare CYA=$'\e[0;36m'
+declare BLD=$'\e[1m'
+declare NOC=$'\e[0m'
+
+function _prt_msg() {
+  local msg="${1:-"This is a message."}"
+  printf '%s\n' "$msg"
+}
+
+function _prt_init_msg() {
   CLEANUP_FLAG=1
-  local msg="${1:-"This is a message."}"
-  echo "$msg"
+  local msg="${BLU}${1:-"This is a message."}${NOC}"
+  printf '%s' "$msg"
 }
 
-_prt_cleared_msg() {
+function _prt_init_msg_nl() {
+  CLEANUP_FLAG=1
+  local msg="${BLU}${1:-"This is a message."}${NOC}"
+  printf '%s\n' "$msg"
+}
+
+function _prt_cleared_msg() {
   CLEANUP_FLAG=0
-  local msg="${1:-"This is a message."}"
-  echo "$msg"
+  local msg="${GRE}${1:-"Completed."}${NOC}"
+  printf '%s\n' "$msg"
 }
 
-_prt_error() {
-  local msg="${1:-"Unknown error."}"
-  echo "$msg" && exit 1
+function _prt_status_msg() {
+  local msg="${CYA}${1:-"This is a message."}${NOC}"
+  printf '%s' "$msg"
 }
 
-_confirm() {
-  local prompt="$1 [y/n]: "
-  local response
+function _prt_info_msg() {
+  local msg="${BLU}${1:-"This is a message."}${NOC}"
+  printf '%s' "$msg"
+}
 
+function _prt_info_msg_nl() {
+  local msg="${BLU}${1:-"This is a message."}${NOC}"
+  printf '%s\n' "$msg"
+}
+
+function _prt_info_nl_msg_nl() {
+  local msg="${BLU}${1:-"This is a message."}${NOC}"
+  printf '\n%s\n' "$msg"
+}
+
+function _prt_warning() {
+  local msg="${YEL}${1:-"Unknown warning."}${NOC}"
+  printf '%s' "$msg"
+}
+
+function _prt_warning_nl() {
+  local msg="${YEL}${1:-"Unknown warning."}${NOC}"
+  printf '%s\n' "$msg"
+}
+
+function _prt_error() {
+  local msg="${RED}${1:-"Unknown error."}${NOC}"
+  printf '%s\n' "$msg" && exit 1
+}
+
+function _confirm() {
+  local _response
+  local _prompt="${BLD}${1-}${NOC} ${YEL}[y/n]:${NOC} "
   while true; do
-    printf "%s" "$prompt"
-    read -r response
-    response=${response,,}
-
-    case $response in
-      y | yes) return 0 ;;
-      n | no) return 1 ;;
-      *) ;;
+    printf "%s" "$_prompt"
+    read -r _response
+    case ${_response,,} in
+      y|"yes") return 0 ;;
+      n|"no")  return 1 ;;
+      *) : ;;
     esac
   done
 }
 
-_fetch_ssh_port() {
-  SSH_PORT=$(( $(lsof -nP -iTCP -sTCP:LISTEN | grep -m 1 sshd | cut -d ':' -f 2 | cut -d ' ' -f 1) ))
+#----- ssh utils
+
+function _fetch_ssh_port() {
+  SSH_PORT=$(( $(lsof -nP -iTCP -sTCP:LISTEN |
+    grep -m 1 sshd | cut -d ':' -f 2 | cut -d ' ' -f 1) ))
 }
 
-_validate_ssh_port() {
-  [[ "$1" =~ ^[0-9]+$ && "$1" -ge 1024 && "$1" -le 65535 ]]
+function _validate_ssh_port() {
+  [[ "${1-}" =~ ^[0-9]+$ && "${1-}" -ge 1024 && "${1-}" -le 65535 ]]
 }
 
-_update_system() {
-  _prt_init_msg "Updating system packages..."
-  if [ ! -f "/etc/apt/sources.list.d/debian.sources" ]; then
-    sed -i -e 's/^\(deb.*\)/# \1/' /etc/apt/sources.list
-    tee /etc/apt/sources.list.d/debian.sources > /dev/null << EOF
+function _validate_ssh_allow_users() {
+  [[ "${1-}" =~ ^[a-zA-Z0-9_\ ]+$ ]]
+}
+
+function _install_file() {
+  # set root read/write only permision
+  local _src_file _dst_file
+  case $# in
+    2)
+      local _src_file=${1-}
+      local _dst_file=${2-}
+      [ -f "${_src_file-}" ] || [ -z "${_dst_file-}" ] || return 1
+      install -m 0600 "$_src_file" "$_dst_file"
+      ;;
+    1)
+      local _dst_file=${1-}
+      [ -f "${_dst_file-}" ] || return 1
+      install -m 0600 "$_dst_file"
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+function _install_directory() {
+  # set root read/write only permision
+  local _src_dir _dst_dir
+  case $# in
+    2)
+      local _src_dir=${1-}
+      local _dst_dir=${2-}
+      [ -d "${_src_dir-}" ] || [ -z "${_dst_dir-}" ] || return 1
+      install -d -m 0755 "$_src_dir" "$_dst_dir"
+      ;;
+    1)
+      local _dst_dir=${1-}
+      [ -d "${_dst_dir-}" ] || return 1
+      install -d -m 0755 "$_dst_dir"
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+declare -a CORE_PKG=(
+  ca-certificates
+  curl
+  wget
+  gnupg
+  lsb-release
+  sudo
+  git
+  vim
+  jq
+  lsof
+  zip
+  unzip
+  ssh
+  openssh-client
+  openssh-server
+  xdg-user-dirs
+  btop
+  tree
+)
+
+declare -a UTILS_PKG=(
+  apt-listchanges
+  coreutils
+  xz-utils
+  file
+  gawk
+  perl
+  netcat-traditional
+  nethogs
+  nmap
+  ncdu
+  rsync
+  logrotate
+  rsyslog
+  skopeo
+  sqlite3
+)
+
+declare -a DOCKER_PKG_REMOVE=(
+  docker
+  docker-engine
+  docker.io
+  docker-ce
+  docker-ce-cli
+  containerd
+  containerd.io
+  docker-buildx-plugin
+  docker-compose-plugin
+  docker-compose
+  docker-doc
+  podman-docker
+  runc
+)
+
+declare -a DOCKER_PKG=(
+  docker-ce
+  docker-ce-cli
+  containerd.io
+  docker-buildx-plugin
+  docker-compose-plugin
+)
+
+#----- install utils
+
+function _check_installed_pkg() {
+  dpkg-query --show --showformat='${Status}\n' "${1-}" &> /dev/null
+  return $?
+}
+
+function _install_single_pkg() {
+  [ $# -eq 0 ] || [ -z "${1-}" ] &&
+    { _prt_error "No package defined."; return 1; }
+
+  _prt_init_msg "Installing '${1}' package... "
+  ! _check_installed_pkg "${1}" ||
+    { _prt_cleared_msg "'${1}' already installed."; return 0; }
+
+  apt install -y -qq --no-install-recommends "$1" ||
+    _prt_error "Failed to install '${1}' package."
+  _prt_cleared_msg
+}
+
+function _install_systemd_unit() {
+  if ! systemctl daemon-reload; then
+    _prt_error "Unable to reload systemd daemons."; return 1
+  fi
+
+  if ! systemctl is-enabled --quiet "${1-}"; then
+    _prt_init_msg "Enabling '${1-}' systemd unit... "
+    systemctl enable --now "${1-}"
+  else
+    _prt_init_msg "Restarting '${1-}' systemd unit... "
+    systemctl restart "${1-}"
+  fi
+  _prt_cleared_msg
+  systemctl status "${1-}" --no-pager
+}
+
+#----- 
+
+function _check_debian_version() {
+  . /etc/os-release
+  if [ "${ID:-}" != "debian" ]; then
+    _prt_error "Not Debian."
+  fi
+  if [ "${VERSION_CODENAME:-}" != "trixie" ]; then
+    _prt_error "Not Debian trixie."
+  fi
+}
+
+function _configure_debian_sources() {
+  _prt_init_msg "Configuring Debian package sources... "
+
+  local _deb_sources="/etc/apt/sources.list.d/debian.sources"
+  local _deb_sources_list="/etc/apt/sources.list"
+  local _deb_example_sources="/usr/share/doc/apt/examples/debian.sources"
+
+  # from: https://wiki.debian.org/SourcesList
+  if [ ! -f "$_deb_sources" ]; then
+    if [ -f "$_deb_example_sources" ]; then
+      _install_file "$_deb_example_sources" "$_deb_sources"
+    else
+      cat << EOF > "$_deb_sources"
 Types: deb deb-src
 URIs: https://deb.debian.org/debian
 Suites: trixie trixie-updates
@@ -68,644 +290,844 @@ Components: main non-free-firmware
 Enabled: yes
 Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
 EOF
-  fi
-  if ! apt-get update && apt-get upgrade -y -qq --no-install-recommends; then
-    _prt_error "Failed to update system packages."
-  fi
-}
-
-CORE_PKG=(
-  ca-certificates
-  coreutils
-  sudo
-  curl
-  wget
-  rsync
-  vim
-  jq
-  tree
-  perl
-  gawk
-  file
-  zip
-  unzip
-  make
-  gcc
-  ssh
-  git
-  xz-utils
-  openssh-client
-  openssh-server
-  xdg-user-dirs
-  cron
-  chrony
-  htop
-  iotop
-  skopeo
-  lsof
-)
-
-# CORE_PKGS=(
-#   ufw
-#   unattended-upgrades
-#   chrony
-#   rsync
-#   wget
-# 
-#   vim
-#   htop
-#   iotop
-#   nethogs
-#   netcat-traditional
-#   ncdu
-# 
-#   tree
-#   rsyslog
-#   cron
-#   jq
-#   gawk
-#   coreutils
-#   perl
-#   skopeo
-#   git
-# 
-#   apt-listchanges
-#   ca-certificates
-#   gnupg
-#   logrotate
-#   make
-# 
-#   ssh
-#   openssh-client
-#   openssh-server
-# )
-
-_install_core_pkg() {
-  _prt_init_msg "Installing core packages..."
-  if ! apt-get install -y -qq --no-install-recommends "${CORE_PKG[@]}"; then
-    _prt_error "Failed to install one or more packages."
-  else
-    _prt_cleared_msg "Installing core packages completed."
-  fi
-}
-
-_update_timezone() {
-  _prt_init_msg "Updating to local timezone..."
-  local msg
-  if [[ "$(timedatectl | grep -o "Europe/Stockholm")" == *Europe/Stockholm* ]]; then
-    msg="Local timezone already updated."
-  else
-    if [ "$LANG" == "C" ]; then
-      dpkg-reconfigure tzdata
-    else
-      sed -i -e 's/Europe/Stockholm/' /etc/timezone &&
-        DEBIAN_FRONTEND=noninteractive dpkg-reconfigure --frontend=noninteractive tzdata
     fi
-    msg="Updating timezone completed."
+    if [ -f "$_deb_sources_list" ]; then
+      sed -i -e 's/^\(deb.*\)/# \1/' /etc/apt/sources.list
+    fi
   fi
-  _prt_cleared_msg "$msg"
+  _prt_cleared_msg
 }
 
-_update_locale() {
-  _prt_init_msg "Updating locales..."
-
-  local msg
-  if ! apt-get install -y -qq --no-install-recommends locales; then
-    _prt_error "Failed to install locales package."
-  fi
-
-  local _nolang=0
-  if ! printenv | grep -q "LANG="; then _nolang=1; fi
-
-  if [ "$_nolang" -eq 1 ] || [[ "$LANG" != "en_US.UTF-8" ]]; then
-    sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen &&
-      DEBIAN_FRONTEND=noninteractive dpkg-reconfigure --frontend=noninteractive locales &&
-      update-locale LANG=en_US.UTF-8
-    msg="Updating locales completed."
-
-  elif [ "$LANG" == "en_US.UTF-8" ]; then
-    msg="Locale already set to en_US.UTF-8."
-  fi
-  _prt_cleared_msg "$msg"
+function _update_system() {
+  _prt_init_msg_nl "Updating system packages... "
+  apt update || _prt_error "Failed to update system packages."
+  apt upgrade -y -qq --no-install-recommends ||
+    _prt_error "Failed to update system packages."
+  _prt_cleared_msg
 }
 
-HARDENING_PKG=(
-  ufw
-  fail2ban
-  unattended-upgrades
-  nethogs
-  netcat-traditional
-  ncdu
-)
+function _clean_system {
+  _prt_init_msg_nl "Cleaning system packages... "
+  apt autoclean -y -qq ||
+    _prt_error "'apt autoclean -y -qq' command failed."
+  apt autoremove -y -qq --purge ||
+    _prt_error "'apt autoremove -y -qq --purge' command failed."
+  apt distclean -y -qq ||
+    _prt_error "'apt distclean -y -qq' command failed."
+  _prt_cleared_msg
+}
 
-_install_hardening_pkg() {
-  _prt_init_msg "Installing hardening packages..."
-  if ! apt-get install -y -qq --no-install-recommends "${HARDENING_PKG[@]}"; then
-    _prt_error "Failed to install one or more essential packages."
+function _install_core_pkg() {
+  _prt_init_msg_nl "Installing core packages... "
+  apt install -y -qq --no-install-recommends "${CORE_PKG[@]}" ||
+    _prt_error "Failed to install one or more packages."
+  _prt_cleared_msg
+}
+
+function _install_utils_pkg() {
+  _prt_init_msg_nl "Installing utility packages... "
+  apt install -y -qq --no-install-recommends "${UTILS_PKG[@]}" ||
+    _prt_error "Failed to install one or more packages."
+  _prt_cleared_msg
+}
+
+function _install_docker_pkg() {
+  _prt_init_msg_nl "Installing docker packages... "
+  apt-get install -y -qq --no-install-recommends "${DOCKER_PKG[@]}" ||
+    _prt_error "Failed to install one or more packages."
+  _prt_cleared_msg
+}
+
+#----- locale
+
+function _update_locale() {
+  _prt_init_msg_nl "Updating locale... "
+  if ! _check_installed_pkg locales; then
+    _install_single_pkg locales
+  fi
+
+  local _locales_gen="/etc/locale.gen"
+  local _locale="en_US.UTF-8"
+
+  if [[ "${LANG:-}" != "$ENV_LOCALE" ]]; then
+    if [ ! -f "$_locales_gen" ]; then
+      _prt_error "file '${_locales_gen}' not found."
+    fi
+    sudo sed -E -i '/en_US.UTF-8 UTF-8/s/^# //g' "$_locales_gen" &&
+      DEBIAN_FRONTEND=noninteractive \
+      dpkg-reconfigure --frontend=noninteractive locales
+
+    _prt_cleared_msg
   else
-    _prt_cleared_msg "Installing hardening packages completed."
+    _prt_cleared_msg "Locale already set to en_US.UTF-8."
   fi
 }
 
-_setup_ssh_hardening() {
-  _prt_init_msg "Hardening SSH configuration..."
+#----- systemd-resolved conf
 
-  if ! dpkg -l openssh-server | grep -q ^ii; then
-    local _ufw_warning_msg="openssh-server package is not installed. Install it?"
-    if _confirm "$_ufw_warning_msg"; then
-      if ! apt-get install -y -qq --no-install-recommends openssh-server; then
-        _prt_error "Failed to install the openssh-server package."
-      fi
-    else return 0; fi
+function _setup_systemd_resolved() {
+  _prt_init_msg "Configuring systemd-resolved..."
+  if ! _check_installed_pkg systemd-resolved; then
+    _install_single_pkg systemd-resolved
   fi
 
+  local _resolved_conf="/etc/systemd/resolved.conf"
+  local _tmp_resolved_conf _ori_resolved_conf _ori_header_resolved_conf
+  _tmp_resolved_conf=$(mktemp /tmp/resolved.conf_XXXXXX)
+  _ori_resolved_conf=$(mktemp /tmp/ori_resolved.conf_XXXXXX)
+  _ori_header_resolved_conf=$(mktemp /tmp/ori_header_resolved.conf_XXXXXX)
+
+  trap 'rm -f "$_tmp_resolved_conf"' EXIT
+  trap 'rm -f "$_ori_resolved_conf"' EXIT
+  trap 'rm -f "$_ori_header_resolved_conf"' EXIT
+
+  if [ -f "$_resolved_conf" ]; then
+    cat "$_resolved_conf" |
+      sed -r '1,/[Resolve]/d;/^$/d' > "$_ori_header_resolved_conf"
+    cat "$_resolved_conf" |
+      sed -r '/[Resolve]/d;/^$/d' > "$_ori_resolved_conf"
+  else
+    cat << EOT > "$_ori_header_resolved_conf"
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it under the
+#  terms of the GNU Lesser General Public License as published by the Free
+#  Software Foundation; either version 2.1 of the License, or (at your option)
+#  any later version.
+#
+# Entries in this file show the compile time defaults. Local configuration
+# should be created by either modifying this file (or a copy of it placed in
+# /etc/ if the original file is shipped in /usr/), or by creating "drop-ins" in
+# the /etc/systemd/resolved.conf.d/ directory. The latter is generally
+# recommended. Defaults can be restored by simply deleting the main
+# configuration file and all drop-ins located in /etc/.
+#
+# Use 'systemd-analyze cat-config systemd/resolved.conf' to display the full config.
+#
+# See resolved.conf(5) for details.
+
+EOT
+  fi
+
+  cat << EOT > "$_tmp_resolved_conf"
+[Resolve]
+
+#Domains=~.
+DNSSEC=no
+DNSOverTLS=no
+#DNSSEC=allow-downgrade
+#DNSOverTLS=opportunistic
+#DNSCacheSize=4096
+#DNSStubListener=yes
+#DNSStubListenerExtra=
+
+# Cloudflare
+FallbackDNS=1.1.1.1#cloudflare-dns.com
+FallbackDNS=2606:4700:4700::1111#cloudflare-dns.com
+FallbackDNS=1.0.0.1#cloudflare-dns.com
+FallbackDNS=2606:4700:4700::1001#cloudflare-dns.com
+
+# Quad9
+FallbackDNS=9.9.9.9#dns.quad9.net
+FallbackDNS=2620:fe::fe#dns.quad9.net
+FallbackDNS=149.112.112.112#dns.quad9.net
+FallbackDNS=2620:fe::9#dns.quad9.net
+
+LLMNR=no
+#LLMNRCacheSize=4096
+
+MulticastDNS=yes
+#MulticastDNSCacheSize=4096
+
+#Cache=yes
+#CacheFromLocalhost=no
+
+#ReadEtcHosts=yes
+#ReadStaticRecords=yes
+
+#RefuseRecordTypes=
+#ResolveUnicastSingleLabel=no
+#StaleRetentionSec=0
+
+EOT
+
+  if [ ! -f "$_resolved_conf" ] || { [ -f "$_resolved_conf" ] &&
+    ! cmp -s "$_tmp_resolved_conf" "$_ori_resolved_conf"; }; then
+    _prt_status_msg "CHANGED "
+    cat "$_tmp_resolved_conf" >> "$_ori_header_resolved_conf"
+    _install_file "$_ori_header_resolved_conf" "$_resolved_conf"
+    systemctl daemon-reload
+    systemctl restart systemd-resolved.service
+    sleep 2
+  fi
+  rm -f "$_tmp_resolved_conf"
+  rm -f "$_ori_resolved_conf"
+  rm -f "$_ori_header_resolved_conf"
+  _prt_cleared_msg
+}
+
+function _setup_systemd_timesync() {
+  _prt_init_msg "Configuring systemd-timesyncd..."
+  if ! _check_installed_pkg systemd-timesyncd; then
+    _install_single_pkg systemd-timesyncd
+  fi
+
+  local _timesyncd_conf="/etc/systemd/timesyncd.conf"
+  local _tmp_timesyncd_conf _ori_timesyncd_conf _ori_header_timesyncd_conf
+  _tmp_timesyncd_conf=$(mktemp /tmp/timesyncd.conf_XXXXXX)
+  _ori_timesyncd_conf=$(mktemp /tmp/ori_timesyncd.conf_XXXXXX)
+  _ori_header_timesyncd_conf=$(mktemp /tmp/ori_header_timesyncd.conf_XXXXXX)
+
+  trap 'rm -f "$_tmp_timesyncd_conf"' EXIT
+  trap 'rm -f "$_ori_timesyncd_conf"' EXIT
+  trap 'rm -f "$_ori_header_timesyncd_conf"' EXIT
+
+  if [ -f "$_timesyncd_conf" ]; then
+    cat "$_timesyncd_conf" |
+      sed -r '1,/[Time]/d;/^$/d' > "$_ori_header_timesyncd_conf"
+
+    cat "$_timesyncd_conf" |
+      sed -r '/[Time]/d;/^$/d' > "$_ori_timesyncd_conf"
+  else
+    cat << EOT > "$_ori_header_timesyncd_conf"
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it under the
+#  terms of the GNU Lesser General Public License as published by the Free
+#  Software Foundation; either version 2.1 of the License, or (at your option)
+#  any later version.
+#
+# Entries in this file show the compile time defaults. Local configuration
+# should be created by either modifying this file (or a copy of it placed in
+# /etc/ if the original file is shipped in /usr/), or by creating "drop-ins" in
+# the /etc/systemd/timesyncd.conf.d/ directory. The latter is generally
+# recommended. Defaults can be restored by simply deleting the main
+# configuration file and all drop-ins located in /etc/.
+#
+# Use 'systemd-analyze cat-config systemd/timesyncd.conf' to display the full config.
+#
+# See timesyncd.conf(5) for details.
+
+EOT
+  fi
+
+  cat << EOT > "$_tmp_timesyncd_conf"
+[Time]
+NTP=10.0.1.1
+FallbackNTP=0.debian.pool.ntp.org
+FallbackNTP=1.debian.pool.ntp.org
+FallbackNTP=2.debian.pool.ntp.org
+FallbackNTP=3.debian.pool.ntp.org
+
+#RootDistanceMaxSec=5
+#PollIntervalMinSec=32
+#PollIntervalMaxSec=2048
+#ConnectionRetrySec=30
+#SaveIntervalSec=60
+EOT
+
+  if [ ! -f "$_timesyncd_conf" ] || { [ -f "$_timesyncd_conf" ] &&
+    ! cmp -s "$_tmp_timesyncd_conf" "$_ori_timesyncd_conf"; }; then
+
+    _prt_status_msg "CHANGED "
+    cat "$_tmp_timesyncd_conf" >> "$_ori_header_timesyncd_conf"
+    _install_file "$_ori_header_timesyncd_conf" "$_timesyncd_conf"
+    _install_systemd_unit systemd-timesyncd.service
+    sleep 2
+  fi
+
+  rm -f "$_tmp_timesyncd_conf"
+  rm -f "$_ori_timesyncd_conf"
+  rm -f "$_ori_header_timesyncd_conf"
+  _prt_cleared_msg
+}
+
+function _update_timezone() {
+  _prt_init_msg "Updating to local timezone... "
+  if [[ "$(timedatectl | grep -qo "${ENV_TZ}")" == *${ENV_TZ}* ]]; then
+    _prt_cleared_msg "Local timezone already updated."
+  else
+    timedatectl set-timezone "${ENV_TZ}"
+    _prt_cleared_msg
+  fi
+}
+
+#----- unattended upgrades conf
+
+function _setup_unattended_upgrades() {
+  _prt_init_msg "Configuring unattended upgrades..."
+  if ! _check_installed_pkg unattended-upgrades; then
+    _install_single_pkg unattended-upgrades
+  fi
+
+  local _uup_conf="/etc/apt/apt.conf.d/50unattended-upgrades"
+  local _uup_conf_local="/etc/apt/apt.conf.d/52unattended-upgrades-local"
+
+  if [ ! -f "$_uup_conf_local" ]; then
+    _install_file "$_uup_conf" "$_uup_conf_local"
+    if confirm "Edit '${_uup_conf_local}' file?"; then
+      $EDITOR "$_uup_conf_local"
+    fi
+  fi
+
+  local _daily_timer_override="/etc/systemd/system/apt-daily.timer.d/override.conf"
+  local _tmp_daily_timer_override
+  _tmp_daily_timer_override=$(mktemp /tmp/override.conf_XXXXXX)
+  trap 'rm -f "$_tmp_daily_timer_override"' EXIT
+  cat << EOT > "$_tmp_daily_timer_override"
+[Timer]
+OnCalendar=
+OnCalendar=00:00
+RandomizedDelaySec=5h
+Persistent=true
+EOT
+
+  local _upgrade_timer_override="/etc/systemd/system/apt-daily-upgrade.timer.d/override.conf"
+  local _tmp_upgrade_timer_override
+  _tmp_upgrade_timer_override=$(mktemp /tmp/override.conf_XXXXXX)
+  trap 'rm -f "$_tmp_upgrade_timer_override"' EXIT
+  cat << EOT > "$_tmp_upgrade_timer_override"
+[Timer]
+OnCalendar=
+OnCalendar=05:00
+RandomizedDelaySec=30m
+Persistent=true
+EOT
+
+  if [ ! -f "$_daily_timer_override" ] || { [ -f "$_daily_timer_override" ] &&
+      ! cmp -s "$_tmp_daily_timer_override" "$_daily_timer_override"; }; then
+    _prt_status_msg "CHANGED "
+    install -m 0755 "$_tmp_daily_timer_override" "$_daily_timer_override"
+  fi
+
+  if [ ! -f "$_upgrade_timer_override" ] || { [ -f "$_upgrade_timer_override" ] &&
+      ! cmp -s "$_tmp_upgrade_timer_override" "$_upgrade_timer_override"; }; then
+    _prt_status_msg "CHANGED "
+    install -m 0755 "$_tmp_daily_timer_override" "$_upgrade_timer_override"
+  fi
+
+  rm -f "$_tmp_daily_timer_override"
+  rm -f "$_tmp_upgrade_timer_override"
+  systemctl daemon-reload
+  sleep 2
+
+  printf "unattended-upgrades unattended-upgrades/enable_auto_updates boolean true" |
+    debconf-set-selections
+  if DEBIAN_FRONTEND=noninteractive \
+    dpkg-reconfigure -f noninteractive unattended-upgrades; then _prt_cleared_msg
+  else _prt_warning_nl "Files created but couldn't set up unattended upgrades."; fi
+
+  return 0
+}
+
+#----- sshd config
+
+function _setup_ssh_config() {
+  _prt_init_msg "Configuring SSH server... "
+  if ! _check_installed_pkg openssh-server; then
+    _install_single_pkg openssh-server
+  fi
+
+  local _sshd_config_dir="/etc/ssh/sshd_config.d"
+  _install_directory "$_sshd_config_dir"
+
+  # user-defined ssh port
   while [ $SSH_PORT -eq 22 ]; do
     printf "Enter custom SSH port (1024-65535): "
     read -r SSH_PORT
-    SSH_PORT=${SSH_PORT:-22}
-
-    if _validate_ssh_port "$SSH_PORT"; then break
-    else echo "Invalid port number."; fi
+    case "${SSH_PORT-}" in
+      "") SSH_PORT=22 ;&
+      22)
+        if _confirm "Use default port '${SSH_PORT}' for ssh?"; then
+          break
+        fi
+        ;;
+      *)
+        if _validate_ssh_port "$SSH_PORT"; then break
+        else _prt_warning_nl "Invalid port number."; fi
+        ;;
+    esac
   done
 
-  [ -d "/etc/ssh/sshd_config.d" ] || mkdir -p /etc/ssh/sshd_config.d
-  tee /etc/ssh/sshd_config.d/99-hardening.conf > /dev/null << EOF
+  # ssh user allowlist
+	local _users
+	while true; do
+		printf '%s' "Enter allowed users (empty for current user): "
+		read -r _users
+		if [ -z "${_users-}" ]; then
+			SSH_USERS=( "${SUDO_USER:-$USER}" )
+			break
+		else
+      local -a _allow_users=()
+			readarray -td ' ' _allow_users < <(printf '%s' "$_users")
+			for _user in "${_allow_users[@]}"; do
+				if _validate_ssh_allow_users "$_user"; then
+					SSH_USERS+=("$_user")
+				else
+					printf "Invalid user name '%s'\n" "$_user"
+				fi
+			done
+			break
+		fi
+	done
+
+  # issue
+  local _issue="/etc/issue.net"
+  local _tmp_issue
+  _tmp_issue=$(mktemp /tmp/issue_XXXXXX)
+  trap 'rm -f "$_tmp_issue"' EXIT
+
+  cat << EOT > "$_tmp_issue"
+ * All attempts are logged and reviewed
+EOT
+
+  # only update if the file doesn't exist or has changed
+  if [ ! -f "$_issue" ] || { [ -f "$_issue" ] &&
+    ! cmp -s "$_tmp_issue" "$_issue"; }; then
+    _prt_status_msg "CHANGED "
+    _install_file "$_tmp_issue" "$_issue"
+  fi
+  rm -f "$_tmp_issue"
+
+  # actual sshd config
+  local _ssh_config="${_sshd_config_dir}/99-hardening.conf"
+  local _tmp_ssh_config
+  _tmp_ssh_config=$(mktemp /tmp/ssh_hardening_XXXXXX)
+  trap 'rm -f "$_tmp_ssh_config"' EXIT
+
+  cat << EOT > "$_tmp_ssh_config"
 Port $SSH_PORT
+AllowUsers ${SSH_USERS[*]}
+UsePAM yes
+
 PermitRootLogin no
-PasswordAuthentication no
 PubkeyAuthentication yes
+AuthenticationMethods publickey
+KbdInteractiveAuthentication no
+PasswordAuthentication no
+PermitEmptyPasswords no
+
 MaxAuthTries 3
+MaxSessions 5
+MaxStartups 10:30:60
+LoginGraceTime 20
 ClientAliveInterval 300
+
+AllowAgentForwarding no
+AllowTcpForwarding local
+GatewayPorts no
+PermitTunnel no
 X11Forwarding no
+
 PrintMotd no
 Banner /etc/issue.net
-EOF
+EOT
 
-  tee /etc/issue.net > /dev/null << EOF
-
- * All attempts are logged and reviewed
-
-EOF
-
-  echo "Reloading systemd and restarting SSH service..."
-  systemctl daemon-reload
-  systemctl restart sshd.service
-  sleep 5
-
-  _fetch_ssh_port
-  printf "Verifying root SSH login is disabled... "
-  if [ $SSH_PORT -eq 22 ]; then
-    : "Root SSH login is still possible! Check configuration."
-  else
-    : "Completed: Root SSH login is disabled."
+  # only update if the file doesn't exist or has changed
+  if [ ! -f "$_ssh_config" ] || { [ -f "$_ssh_config" ] &&
+    ! cmp -s "$_tmp_ssh_config" "$_ssh_config"; }; then
+    _prt_status_msg "CHANGED "
+    _install_file "$_tmp_ssh_config" "$_ssh_config"
+    sshd -t
+    _install_systemd_unit sshd.service
+    sleep 5
   fi
-  _prt_cleared_msg "$_"
+
+  rm -f "$_tmp_ssh_config"
+  _prt_cleared_msg
 }
 
-_setup_firewall() {
-  _prt_init_msg "Configuring UFW firewall..."
+#----- nftables
 
-  if ! dpkg -l ufw | grep -q ^ii; then
-    local _ufw_warning_msg="UFW package is not installed. Install the hardening packages?"
-    if _confirm "$_ufw_warning_msg"; then _install_hardening_pkg; else return 0; fi
+function _test_nftables_config_file() {
+  local _nftables_config_file="/etc/nftables.conf"
+  if [ ! -f "$_nftables_config_file" ]; then
+    _prt_error "'${_nftables_config_file}' file not found"
   fi
 
-  if ufw status | grep -q "Status: active"; then
-    echo "UFW is already enabled."
-  else
-    echo "Configuring UFW default policies..."
-    ufw default deny incoming
-    ufw default allow outgoing
-  fi
+  # check syntax
+  _prt_init_msg "Checking 'nftables' config file syntax... "
+  nft -c -f "$_nftables_config_file"
+  _prt_cleared_msg
 
-  _fetch_ssh_port
-  if [ "$SSH_PORT" -eq 22 ]; then
-    local _ssh_warning_msg="SSH port is setup to default (22/tcp). Set up SSH hardening?"
-    if _confirm "$_ssh_warning_msg"; then _configure_ssh; fi
-  fi
+  # load rules
+  _prt_init_msg "Loading 'nftables' rules... "
+  nft -f "$_nftables_config_file"
+  _prt_cleared_msg
 
-  if ! ufw status | grep -qw "$SSH_PORT/tcp"; then
-    echo "Adding SSH rule for port $SSH_PORT..."
-    ufw allow "$SSH_PORT"/tcp comment 'SSH'
-  else
-    echo "SSH rule for port $SSH_PORT already exists."
-  fi
-
-  if ! ufw status | grep -qw "80/tcp"; then
-    ufw allow http comment 'HTTP'
-    echo "HTTP traffic allowed."
-  else
-    echo "HTTP rule already exists."
-  fi
-
-  if ! ufw status | grep -qw "443/tcp"; then
-    ufw allow https comment 'HTTPS'
-    echo "HTTPS traffic allowed."
-  else
-    echo "HTTPS rule already exists."
-  fi
-
-  echo "Enabling firewall..."
-  if ! ufw --force enable; then
-    _prt_error "Failed to enable UFW: Check 'journalctl -u ufw' for details."
-  fi
-
-  if ufw status | grep -q "Status: active"; then
-    _prt_cleared_msg "Completed: Firewall is active."
-  else
-    _prt_error "UFW failed to activate: Check 'journalctl -u ufw' for details."
-  fi
+  # list rules
+  _prt_info_nl_msg_nl "+ NFTABLES CONFIG FILE RULES:"
+  nft list ruleset
 }
 
-_setup_fail2ban() {
+function _setup_nftables() {
+  _prt_init_msg "Configuring nftables firewall... "
+  if ! _check_installed_pkg nftables; then
+    _install_single_pkg nftables
+  fi
+
+  local _nftables_config_file="/etc/nftables.conf"
+  local _tmp_nftables_config_file
+  _tmp_nftables_config_file=$(mktemp /tmp/nftables.conf_XXXXXX)
+  trap 'rm -f "$_tmp_nftables_config_file"' EXIT
+
+  _fetch_ssh_port
+  cat << EOT > "$_tmp_nftables_config_file"
+#!/usr/sbin/nft -f
+
+flush ruleset
+
+table inet filter {
+  chain input {
+    type filter hook input priority 0; policy drop;
+
+    # allow already established connections
+    ct state established,related accept
+
+    # allow loopback traffic
+    iif "lo" accept
+
+    # allow ssh admin
+    tcp dport $SSH_PORT accept
+
+    # HTTP01 - allow web traffic ports on development
+    tcp dport { 80, 443 } accept
+
+    # DNS01 - allow https web traffic on production
+    # tcp dport 443 accept
+  }
+
+  chain forward {
+    type filter hook forward priority 0; policy drop;
+  }
+
+  chain output {
+    type filter hook output priority 0; policy accept;
+  }
+}
+EOT
+
+  if [ ! -f "$_nftables_config_file" ] ||
+    { [ -f "$_nftables_config_file" ] &&
+      ! cmp -s "$_tmp_nftables_config_file" "$_nftables_config_file"; }; then
+    _prt_status_msg "CHANGED "
+    _install_file "$_tmp_nftables_config_file" "$_nftables_config_file"
+    _install_systemd_unit nftables
+    sleep 2
+  fi
+
+  rm -f "$_tmp_nftables_config_file"
+  _prt_cleared_msg
+}
+
+#----- fail2ban conf
+
+function _setup_fail2ban() {
   _prt_init_msg "Configuring Fail2Ban..."
-
-  if ! dpkg -l fail2ban | grep -q ^ii; then
-    local _ufw_warning_msg="UFW package is not installed. Install the hardening packages?"
-    if _confirm "$_ufw_warning_msg"; then _install_hardening_pkg; else return 0; fi
+  if ! _check_installed_pkg nftables; then
+    _setup_nftables
   fi
 
-  local UFW_PROBES_CONFIG
-  UFW_PROBES_CONFIG=$(cat << EOF
-[Definition]
-# This regex looks for the standard "[UFW BLOCK]" message in /var/log/ufw.log
-failregex = \[UFW BLOCK\] IN=.* OUT=.* SRC=<HOST>
-ignoreregex =
-EOF
-  )
+  local _jail_local_config="/etc/fail2ban/jail.local"
+  local _tmp_jail_local_config
+  _tmp_jail_local_config=$(mktemp /tmp/jail.local_XXXXXX)
+  trap 'rm -f "$_tmp_jail_local_config"' EXIT
 
-  _fetch_ssh_port
-  if [ "$SSH_PORT" -eq 22 ]; then
-    local _ssh_warning_msg="SSH port is setup to default (22/tcp). Would you like to harden the SSH config?"
-    if _confirm "$_ssh_warning_msg"; then _configure_ssh; fi
-  fi
-
-  local JAIL_LOCAL_CONFIG
-  JAIL_LOCAL_CONFIG=$(cat << EOF
+  cat << EOF > "$_tmp_jail_local_config"
 [DEFAULT]
-ignoreip = 127.0.0.1/8 ::1
-bantime = -1
-findtime = 10m
+ignoreip = 127.0.0.1/8 ::1/128
+banaction = nftables-multiport
+chain = input
+bantime = 24h
+findtime = 600
 maxretry = 3
-banaction = ufw
+
+bantime.increment = true
+bantime.rndtime = 30m
+bantime.maxtime = 60d
+bantime.factor = 2
+
+dbpurgeage = 30d
 
 [sshd]
 enabled = true
-port = $SSH_PORT
+port = ssh
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 6
+mode = aggresive
 
-# This jail monitors UFW logs for rejected packets (port scans, etc.).
-[ufw-probes]
+[postfix]
 enabled = true
-port = all
-filter = ufw-probes
-logpath = /var/log/ufw.log
+port = smtp,ssmtp
+filter = postfix
+logpath = /var/log/mail.log
+ignoreip = 127.0.0.1/8 ::1/128
+
 EOF
-  )
 
-  UFW_FILTER_PATH="/etc/fail2ban/filter.d/ufw-probes.conf"
-  JAIL_LOCAL_PATH="/etc/fail2ban/jail.local"
-
-  # This checks if the on-disk files are already identical to our desired configuration.
-  if [[ -f "$UFW_FILTER_PATH" && -f "$JAIL_LOCAL_PATH" ]] &&
-    cmp -s "$UFW_FILTER_PATH" <<< "$UFW_PROBES_CONFIG" &&
-    cmp -s "$JAIL_LOCAL_PATH" <<< "$JAIL_LOCAL_CONFIG"; then
-    _prt_cleared_msg "Fail2Ban is already configured correctly."
-    return 0
+  if [ ! -f "$_jail_local_config" ] ||
+    { [ -f "$_jail_local_config" ] &&
+      ! cmp -s "$_tmp_jail_local_config" "$_jail_local_config"; }; then
+    _prt_status_msg "CHANGED "
+    _install_file "$_tmp_jail_local_config" "$_jail_local_config"
+    _install_systemd_unit fail2ban
+    sleep 2
   fi
 
-  # If the check above fails, we write the correct configuration files.
-  echo "Applying new Fail2Ban configuration..."
-
-  [ -d "/etc/fail2ban/filter.d" ] || mkdir -p /etc/fail2ban/filter.d
-  echo "$UFW_PROBES_CONFIG" > "$UFW_FILTER_PATH"
-  echo "$JAIL_LOCAL_CONFIG" > "$JAIL_LOCAL_PATH"
-
-  # --- Ensure the log file exists BEFORE restarting the service ---
-  if [ ! -f "/var/log/ufw.log" ]; then
-    touch /var/log/ufw.log
-    echo "Created empty /var/log/ufw.log to ensure Fail2Ban starts correctly."
-  fi
-
-  # --- Restart and Verify Fail2ban ---
-  echo "Enabling and restarting Fail2Ban to apply new rules..."
-  systemctl enable fail2ban
-  systemctl restart fail2ban
-  sleep 2
-
-  if systemctl is-active --quiet fail2ban; then
-    fail2ban-client status | tee -a /var/log/ufw.log
-    : "Completed: Fail2Ban is active with the new configuration."
-  else
-    : "Fail2Ban service failed to start: Check 'journalctl -u fail2ban' for errors."
-  fi
-  _prt_cleared_msg "$_"
+  rm -f "$_tmp_jail_local_config"
+  _prt_cleared_msg
 }
 
-_setup_autoupdates() {
-  _prt_init_msg "Configuring unattended upgrades..."
-  if ! dpkg -l unattended-upgrades | grep -q ^ii; then
-    _prt_error "unattended-upgrades package is not installed."
-  fi
+#----- kernel flags conf
 
-  # Check for existing unattended-upgrades configuration
-  if [ -f "/etc/apt/apt.conf.d/50unattended-upgrades" ] &&
-    grep -q "Unattended-Upgrade::Allowed-Origins" /etc/apt/apt.conf.d/50unattended-upgrades; then
-      echo "Existing unattended-upgrades configuration found."
-      : "Verify with 'cat /etc/apt/apt.conf.d/50-unattended-upgrades'."
-  else
-    echo "unattended-upgrades unattended-upgrades/enable_auto_updates boolean true" | debconf-set-selections
-    if DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -f noninteractive unattended-upgrades; then
-      : "Completed: Automatic security updates enabled."
-    else
-      : "Files created but couldn't set up unattended upgrades."
-    fi
-  fi
-  _prt_cleared_msg "$_"
-}
 
-_setup_kernel_hardening() {
-  _prt_init_msg "Setting up Kernel Parameter Hardening (sysctl)..."
+# Recommended kernel security settings:
+# https://www.kernel.org/doc/Documentation/sysctl/
+function _setup_kernel_hardening() {
+  _prt_init_msg "Installing kernel hardening... "
 
-  local KERNEL_HARDENING_CONFIG
-  KERNEL_HARDENING_CONFIG=$(mktemp)
-  tee "$KERNEL_HARDENING_CONFIG" > /dev/null << EOF
-# Recommended Security Settings
-# For details, see: https://www.kernel.org/doc/Documentation/sysctl/
+  local _kernel_config="/etc/sysctl.d/99-kernel-hardening.conf"
+  local _tmp_kernel_config
+  _tmp_kernel_config=$(mktemp /tmp/99-kernel-hardening.conf_XXXXXX)
+  trap 'rm -f "$_tmp_kernel_config"' EXIT
 
-# --- IPV4 Networking ---
-# Protect against IP spoofing
+  cat << EOT > "$_tmp_kernel_config"
+#----- ipv4 networking
+
+# protect against IP spoofing
 net.ipv4.conf.default.rp_filter=1
 net.ipv4.conf.all.rp_filter=1
-# Block SYN-FLOOD attacks
+
+# block SYN-FLOOD attacks
 net.ipv4.tcp_syncookies=1
-# Ignore ICMP redirects
+
+# ignore ICMP redirects
+net.ipv4.conf.all.send_redirects=0
 net.ipv4.conf.all.accept_redirects=0
+net.ipv4.conf.all.secure_redirects=0
+net.ipv4.conf.default.send_redirects=0
 net.ipv4.conf.default.accept_redirects=0
-net.ipv4.conf.all.secure_redirects=1
-net.ipv4.conf.default.secure_redirects=1
-# Ignore source-routed packets
+net.ipv4.conf.default.secure_redirects=0
+net.ipv4.icmp_echo_ignore_broadcasts=1
+
+# ignore source-routed packets
 net.ipv4.conf.all.accept_source_route=0
 net.ipv4.conf.default.accept_source_route=0
-# Log martian packets (packets with impossible source addresses)
+
+# log martian packets
+# (packets with impossible source addresses)
 net.ipv4.conf.all.log_martians=1
 net.ipv4.conf.default.log_martians=1
 
-# --- IPV6 Networking (if enabled) ---
+#----- ipv6 Networking
 net.ipv6.conf.all.accept_redirects=0
 net.ipv6.conf.default.accept_redirects=0
 net.ipv6.conf.all.accept_source_route=0
 net.ipv6.conf.default.accept_source_route=0
 
-# --- Kernel Security ---
-# Enable ASLR (Address Space Layout Randomization) for better security
+#----- kernel security
+# https://www.kernel.org/doc/Documentation/sysctl/kernel.txt
+
+# enable ASLR (Address Space Layout Randomization)
 kernel.randomize_va_space=2
-# Restrict access to kernel pointers in /proc to prevent leaks
+
+# restrict access to /proc kernel pointers
+# (replaces values by a 0 when printing with %pK)
 kernel.kptr_restrict=2
-# Restrict access to dmesg for unprivileged users
+
+# restrict access to dmesg (message bus) for unprivileged users
 kernel.dmesg_restrict=1
-# Restrict ptrace scope to prevent process injection attacks
+
+# restrict ptrace scope to prevent process injection attacks
 kernel.yama.ptrace_scope=1
 
-# --- Filesystem Security ---
-# Protect against TOCTOU (Time-of-Check to Time-of-Use) race conditions
+# disables reloading a new kernel on reboot
+# bypassing the usual bootloader and hardware initialization stages
+# https://man.archlinux.org/man/kexec_file_load.2.en
+kernel.kexec_load_disabled=1
+
+#----- Filesystem Security
+
+# protect against TOCTOU (Time-of-Check to Time-of-Use) race conditions
 fs.protected_hardlinks=1
 fs.protected_symlinks=1
-EOF
 
-  local SYSCTL_CONF_FILE="/etc/sysctl.d/99-du-hardening.conf"
+# ensure disable privileged process coredumps
+# see: https://serverfault.com/questions/56800/on-redhat-what-does-kernel-suid-dumpable-1-mean
+# see: https://en.wikipedia.org/wiki/Setuid
+fs.suid_dumpable=0
+EOT
 
   # only update if the file doesn't exist or has changed
-  if [ -f "$SYSCTL_CONF_FILE" ] && cmp -s "$KERNEL_HARDENING_CONFIG" "$SYSCTL_CONF_FILE"; then
-    _prt_cleared_msg "Kernel security settings are already configured correctly."
-    rm -f "$KERNEL_HARDENING_CONFIG"
-    return 0
+
+  if [ ! -f "$_kernel_config" ] || { [ -f "$_kernel_config" ] &&
+    ! cmp -s "$_tmp_kernel_config" "$_kernel_config"; }; then
+    _prt_status_msg "CHANGED "
+    _install_file "$_tmp_kernel_config" "$_kernel_config"
+    sysctl --load /etc/sysctl.d/99-kernel-hardening.conf
   fi
 
-  echo "Applying settings to $SYSCTL_CONF_FILE..."
-  mv "$KERNEL_HARDENING_CONFIG" "$SYSCTL_CONF_FILE"
-  chmod 644 "$SYSCTL_CONF_FILE"
-  if sysctl -p "$SYSCTL_CONF_FILE" > /dev/null 2>&1; then
-    : "Completed: Kernel security settings applied successfully."
-  else
-    : "Failed to apply kernel settings: Check for kernel compatibility."
-  fi
-  _prt_cleared_msg "$_"
+  rm -f "$_tmp_kernel_config"
+  _prt_cleared_msg
 }
 
-_setup_timesync() {
-  _prt_init_msg "Ensuring chrony is active..."
+#----- docker engine conf
 
-  if ! dpkg -l chrony | grep -q ^ii; then
-    local _ufw_warning_msg="Chrony package is not installed. Install it?"
-    if _confirm "$_ufw_warning_msg"; then 
-      if ! apt-get install -y -qq --no-install-recommends chrony; then
-        _prt_error "Failed to install the chrony package."
-      fi
-    else return 0; fi
-  fi
-
-  systemctl enable --now chrony
-  sleep 2
-
-  if systemctl is-active --quiet chrony; then
-    _prt_cleared_msg "Chrony is active for time synchronization."
-  else
-    _prt_error "Chrony service failed to start."
-  fi
-}
-
-DOCKER_PKG_REMOVE=(
-  docker
-  docker-engine
-  docker.io
-  docker-ce
-  docker-ce-cli
-  containerd
-  containerd.io
-  docker-buildx-plugin
-  docker-compose-plugin
-  docker-compose
-  docker-doc
-  podman-docker
-  runc
-)
-
-DOCKER_PKG=(
-  docker-ce
-  docker-ce-cli
-  containerd.io
-  docker-buildx-plugin
-  docker-compose-plugin
-)
-
-# https://docs.docker.com/engine/install/debian/
-_setup_docker_engine() {
+function _setup_docker_engine() {
   _prt_init_msg "Setting up docker engine..."
-
   if systemctl is-active --quiet docker; then
     _prt_cleared_msg "Docker already installed and running."
+
+    getent group docker > /dev/null || groupadd docker
+    if ! groups "$SUDO_USER" | grep -qw docker; then
+      usermod -aG docker "$SUDO_USER"
+      _prt_info_msg_nl "Adding '$SUDO_USER' to docker group..."
+    fi
     return 0
   fi
 
-  echo "Removing old docker packages..."
-  apt-get remove -y -qq "${DOCKER_PKG_REMOVE[@]}" 2> /dev/null || true
+  # https://docs.docker.com/engine/install/debian/
+  local _keyrings_dir="/etc/apt/keyrings"
+  local _docker_keys="${_keyrings_dir}/docker.asc"
+  local _docker_gpg_url="https://download.docker.com/linux/debian/gpg"
 
-  _update_system
-  if ! apt-get install -y -qq --no-install-recommends ca-certificates curl; then
-    _prt_error "Failed to install one or more packages."
+  _prt_info_msg_nl "Removing old docker packages..."
+  if ! apt-get remove -y -qq "${DOCKER_PKG_REMOVE[@]}" 2> /dev/null; then
+    _prt_error "Couldn't remove 'DOCKER_PKG_REMOVE' list"
   fi
 
-  install -m 0755 -d /etc/apt/keyrings
-  echo "Adding Docker's official GPG key and repository..."
-  curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
-  chmod a+r /etc/apt/keyrings/docker.asc
+  _update_system
+  if ! _check_installed_pkg ca-certificates; then
+    _install_single_pkg ca-certificates
+  fi
+  if ! _check_installed_pkg curl; then
+    _install_single_pkg curl
+  fi
+
+  _install_directory "$_keyrings_dir"
+  _prt_info_msg_nl "Adding Docker's official GPG key and repository..."
+  curl -fsSL "${_docker_gpg_url}" -o "${_docker_keys}"
+  chmod a+r "${_docker_keys}"
 
   # Add the repository to Apt sources:
-  if [ ! -f "/etc/apt/sources.list.d/docker.sources" ]; then
-    echo "Adding Docker sources to /etc/apt/sources.list.d/..."
-    tee /etc/apt/sources.list.d/docker.sources > /dev/null << EOF
+  local _docker_dir="/etc/docker"
+  local _docker_daemon_conf="${_docker_dir}/daemon.json"
+  local _docker_sources="/etc/apt/sources.list.d/docker.sources"
+  local _tmp_docker_sources _tmp_docker_daemon_conf
+
+  if [ ! -f "$_docker_sources" ]; then
+    _check_debian_version
+    cat << EOT > "$_docker_sources"
 Types: deb
 URIs: https://download.docker.com/linux/debian
-Suites: $VERSION_CODENAME
+Suites: ${VERSION_CODENAME}
 Components: stable
-Signed-By: /etc/apt/keyrings/docker.asc
-EOF
+Architectures: $(dpkg --print-architecture)
+Signed-By: ${_docker_keys}
+EOT
+    _update_system
   fi
 
-  _update_system
-  echo "Installing Docker packages..."
-  if ! apt-get install -y -qq "${DOCKER_PKG[@]}"; then
-    _prt_error "Failed to install one or more docker packages."
-  fi
-
-  local NEW_DOCKER_CONFIG
-  NEW_DOCKER_CONFIG=$(mktemp)
-  tee "$NEW_DOCKER_CONFIG" > /dev/null << EOF
+  _install_docker_pkg
+  _tmp_docker_daemon_conf=$(mktemp /tmp/docker_config_XXXXXX)
+  trap 'rm -f "$_tmp_docker_daemon_conf"' EXIT
+  cat << EOT > "$_tmp_docker_daemon_conf"
 {
   "log-driver": "json-file",
   "log-opts": { "max-size": "10m", "max-file": "3" },
   "live-restore": true
 }
-EOF
+EOT
 
-  [ -d "/etc/docker" ] || mkdir -p /etc/docker
-  if [ -f "/etc/docker/daemon.json" ] && cmp -s "$NEW_DOCKER_CONFIG" /etc/docker/daemon.json; then
-    echo "Docker daemon already configured."
-    rm -f "$NEW_DOCKER_CONFIG"
-  else
-    echo "Configuring Docker daemon..."
-    mv "$NEW_DOCKER_CONFIG" /etc/docker/daemon.json
-    chmod 644 /etc/docker/daemon.json
+  _install_directory "$_docker_dir"
+  if [ ! -f "$_docker_daemon_conf" ] || { [ -f "$_docker_daemon_conf" ] &&
+    ! cmp -s "$_tmp_docker_daemon_conf" "$_docker_daemon_conf"; }; then
+    _prt_status_msg "CHANGED "
+    _install_file "$_tmp_docker_daemon_conf" "$_docker_daemon_conf"
   fi
 
-  systemctl daemon-reload
-  systemctl enable --now docker
+  rm -f "$_tmp_docker_daemon_conf"
+  _install_systemd_unit docker
 
   getent group docker > /dev/null || groupadd docker
   if ! groups "$SUDO_USER" | grep -qw docker; then
-    printf "%s " "Adding '$SUDO_USER' to docker group..."
     usermod -aG docker "$SUDO_USER" && echo "Done."
-  else
-    echo "User '$SUDO_USER' is already in docker group."
+    _prt_info_msg_nl "Adding '$SUDO_USER' to docker group..."
   fi
-  _prt_cleared_msg "Completed: Docker engine up and running."
+
+  _prt_cleared_msg
 }
 
-_cleanup() {
-  echo "Running system update and cleanup..."
+function _run_cleanup() {
+  _update_system
+  _clean_system
+  systemctl daemon-reload ||
+    _prt_error "Reload of systemd daemons failed."
 
-  if ! apt-get update -y -qq; then
-    echo "Updating package lists failed during final cleanup."
-    return 1
-  fi
-
-  if ! apt-get --purge autoremove -y -qq ||
-     ! apt-get autoclean -y -qq ||
-     ! apt-get clean -y -qq; then
-    echo "System cleanup failed on one or more commands."
-    return 1
-  fi
-  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-  if systemctl daemon-reload; then
-    echo "Reload of systemd daemons completed."
-    echo "Success: Final system update and cleanup complete."
-  fi
+  _prt_cleared_msg "Final system update and cleanup complete."
 }
 
-_run() {
-  if [ "$(id -u)" -ne 0 ]; then # root check
-    echo "Error: This script must be run with root privileges."
+function _run() {
+  # run-as-root check
+  if [ "$(id -u)" -ne 0 ]; then
+    _prt_warning_nl "This script must be run with root privileges."
     _prt_error "Re-run the script using 'sudo -E'"
   fi
 
-  . /etc/os-release
-  printf "++\n%s\n++\n" "Starting Debian '$VERSION_CODENAME' hardening script..."
+  local _msg
+  _check_debian_version
+  _prt_info_msg_nl "Debian '${VERSION_CODENAME-}' update script"
 
-  local run_all="Run the complete installation sequentially?"
-  if _confirm "$run_all"; then
-    while [ $SSH_PORT -eq 22 ]; do
-      printf "Enter custom SSH port (1024-65535): "
-      read -r SSH_PORT
-      SSH_PORT=${SSH_PORT:-22}
-      if _validate_ssh_port "$SSH_PORT"; then break
-      else echo "Invalid port number."; fi
-    done
+  _msg="Run the complete installation sequentially?"
+  if _confirm "$_msg"; then
+    _configure_debian_sources
     _update_system
     _install_core_pkg
-    _update_timezone
     _update_locale
-    _install_hardening_pkg
-    _setup_ssh_hardening
-    _setup_firewall
+    _setup_systemd_resolved
+    _setup_systemd_timesync
+    _update_timezone
+    _setup_unattended_upgrades
+    _setup_ssh_config
+    _setup_nftables
     _setup_fail2ban
-    _setup_autoupdates
     _setup_kernel_hardening
-    _setup_timesync
     _setup_docker_engine
-    _cleanup
-    return 0
+
+  else
+    if _confirm "Update Debian sources?"
+    then _configure_debian_sources; fi
+    if _confirm "Update system packages?"
+    then _update_system; fi
+    if _confirm "Install core packages?"
+    then _install_core_pkg; fi
+    if _confirm "Update locales?"
+    then _update_locale; fi
+    if _confirm "Install systemd-resolved?"
+    then _setup_systemd_resolved; fi
+    if _confirm "Install systemd-timesyncd?"
+    then _setup_systemd_timesync; fi
+    if _confirm "Update timezone?"
+    then _update_timezone; fi
+    if _confirm "Install unattended upgrades?"
+    then _setup_unattended_upgrades; fi
+    if _confirm "Set up SSH config?"
+    then _setup_ssh_config; fi
+    if _confirm "Set up nftables?"
+    then _setup_nftables; fi
+    if _confirm "Set up fail2ban?"
+    then _setup_fail2ban; fi
+    if _confirm "Set up kernel hardening?"
+    then _setup_kernel_hardening; fi
+    if _confirm "Set up docker engine?"
+    then _setup_docker_engine; fi
+
+    if [ "$CLEANUP_FLAG" -eq 0 ]; then _run_cleanup; fi
   fi
-
-  local update_system="Update system packages?"
-  if _confirm "$update_system"; then _update_system; fi
-
-  local packages_core="Install core packages?"
-  if _confirm "$packages_core"; then _install_core_pkg; fi
-
-  local update_timezone="Update timezone to Europe/Stockholm?"
-  if _confirm "$update_timezone"; then _update_timezone; fi
-
-  local update_locale="Update locale to US-UTF-8?"
-  if _confirm "$update_locale"; then _update_locale; fi
-
-  local packages_hardening="Install net & hardening packages?"
-  if _confirm "$packages_hardening"; then _install_hardening_pkg; fi
-
-  local hardening_ssh="Harden the SSH config?"
-  if _confirm "$hardening_ssh"; then _setup_ssh_hardening;  fi
-
-  local setup_ufw="Install and configure UFW firewall?"
-  if _confirm "$setup_ufw"; then _setup_firewall;  fi
-
-  local setup_fail2ban="Install and configure fail2ban?"
-  if _confirm "$setup_fail2ban"; then _setup_fail2ban;  fi
-
-  local setup_autoupdates="Set up automatic updates?"
-  if _confirm "$setup_autoupdates"; then _setup_autoupdates;  fi
-
-  local hardening_kernel="Set up kernel hardening?"
-  if _confirm "$hardening_kernel"; then _setup_kernel_hardening;  fi
-
-  local setup_timesync="Set up chrony for time synchronization?"
-  if _confirm "$setup_timesync"; then _setup_timesync;  fi
-
-  local setup_docker="Install docker?"
-  if _confirm "$setup_docker"; then _setup_docker_engine;  fi
-
-  if [ "$CLEANUP_FLAG" -eq 0 ]; then _cleanup; fi
 }
 
 if [ "${#BASH_SOURCE[@]}" -eq 1 ]; then
   _run "$@"
+  return $?
 fi

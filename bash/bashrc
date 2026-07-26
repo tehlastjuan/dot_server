@@ -159,11 +159,10 @@ export LD_LIBRARY_PATH
 #----- Shell functions
 
 # cd to current dir on lf quit
-r() {
-  command -v lf &> /dev/null || {
-    printf 'r: lf binary not found\n'
-    return 1
-  }
+function r() {
+  if ! command -v lf &> /dev/null; then
+    printf 'r: lf binary not found\n'; return 1
+  fi
 
 	local lf_cd_file dir
   lf_cd_file="$(mktemp "${TMPDIR:-/tmp}/lfcd.XXXXXX")" || return
@@ -184,7 +183,7 @@ r() {
 }
 
 # get file stats
-fst() {
+function fst() {
   [[ $# -eq 1 ]] || {
     printf 'usage: fst FILE\n' >&2
     return 2
@@ -201,7 +200,7 @@ fst() {
 }
 
 # pretty-print journalctl
-jctl() {
+function jctl() {
   local cols width
   cols="$(tput cols 2>/dev/null || printf '120')"
   if (( cols < 121 )); then width=113
@@ -215,7 +214,7 @@ jctl() {
 }
 
 # file checksum
-fsum() {
+function fsum() {
   case "${1-}" in
     -h|--help|'')
       cat <<'EOF'
@@ -272,6 +271,28 @@ EOF
   printf '%s\n' "Checksum failed" && false
 }
 
+function isdist() {
+  if [ ! -f '/etc/os-release' ]; then return 1; fi
+
+  local _release _id _codename
+  _release=$(cat /etc/os-release)
+  _id=$(printf '%s' "$_release" | grep -Em1 'ID=.*')
+  _codename=$(printf '%s' "$_release" | grep -Em1 'VERSION_CODENAME=.*')
+
+  while [ $# -ne 0 ]; do
+    if [ "${_id##*=}" = "${1-}" ]; then
+      printf '%s\n' "${_id##*=}"
+      return 0
+    fi
+    if [ "${_codename##*=}" = "${1-}" ]; then
+      printf 'VERSION_CODENAME=%s\n' "${_codename##*=}"
+      return 0
+    fi
+    shift
+  done
+  return 1
+}
+
 
 #----- Completion
 
@@ -292,11 +313,6 @@ if [ -f "$XDG_CONFIG_HOME/bash/completion.d/git-completion.sh" ]; then
 fi
 if [ -f "$XDG_CONFIG_HOME/bash/completion.d/git-prompt.sh" ]; then
   . "$XDG_CONFIG_HOME/bash/completion.d/git-prompt.sh"
-fi
-
-# docker completion
-if [ -f "$XDG_CONFIG_HOME/bash/completion.d/docker-completion.sh" ]; then
-  . "$XDG_CONFIG_HOME/bash/completion.d/docker-completion.sh"
 fi
 
 # go completion
@@ -355,6 +371,15 @@ if command -v docker &> /dev/null; then
   alias dvl='docker volume ls -qf dangling=true'
   alias dvr='docker volume ls -qf dangling=true | xargs docker volume rm'
   alias dtop='docker stats $(docker ps --format="{{.Names}}")'
+  #shellcheck disable=2142
+  alias diu='docker images --format="table {{.Repository}}\\t{{.Tag}}\\t{{.ID}}\\t{{.Size}}\\t{{.CreatedSince}}" | sed '\''1d'\'' | awk '\''{print $1}'\'' | xargs -I % docker image pull %'
+
+  if [ -n "$BASH" ] && type _complete_alias &>/dev/null; then
+    complete -F _complete_alias dr
+    complete -F _complete_alias dk
+    complete -F _complete_alias dim
+    complete -F _complete_alias dih
+  fi
 fi
 
 # git

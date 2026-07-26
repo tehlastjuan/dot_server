@@ -39,13 +39,22 @@ set preview
 
 #----- commands
 
+# edit-with-sudo
+cmd edit-with-sudo ${{
+  set -- $(cat ~/.local/share/lf/files)
+  mode="$1"
+  shift
+  sudo -e "$fx"
+  rm ~/.local/share/lf/files
+  lf -remote "send clear"
+}}
+
 # Pager command
 cmd pager ${{
-  lines="$(tput lines @/dev/null || printf 40)"
-  if [ -f $f ]; then
-		f_lines="$(wc -l < "$f" 2> /dev/null || printf 0)"
-		[[ $f_lines -lt $lines ]] && exit 0
-
+  declare -i lines="$(tput lines 2> /dev/null || printf 40)"
+  if [ -f "$f" ]; then
+		declare -i f_lines=$(wc -l < "$f" 2> /dev/null || printf 0)
+		if [ $f_lines -lt "$lines" ]; then exit 0; fi
 		if command -v bat >/dev/null 2>&1; then
 			bat -- "$f" \
 			--color=always \
@@ -57,10 +66,9 @@ cmd pager ${{
 		else
 			less -iWQMRX~ --no-vbell "$f"
 		fi
-	elif [[ -d "$f" ]]; then
+	elif [ -d "$f" ]; then
 		ls -la -- "$f" | less -iWQMRX~ --no-vbell
-	else exit 1
-	fi
+	else exit 1; fi
 }}
 
 # Replace open command with robust selection of openers
@@ -77,6 +85,14 @@ cmd open ${{
 cmd quit-and-cd &{{
 	printf '%s\n' "$PWD" > $LF_CD_FILE
 	lf -remote "send $id quit"
+}}
+
+cmd toggle-preview %{{
+	if [ "$lf_preview" = true ]; then
+		lf -remote "send $id :set preview false; set ratios 1:5"
+	else
+		lf -remote "send $id :set preview true; set ratios 1:2:3"
+	fi
 }}
 
 # `set preview true` is a hack used to reload the preview
@@ -141,6 +157,7 @@ map <lt>
 map <gt>
 map <tab>
 map <c-b>
+map <c-f>
 map <c-h>
 map <c-i>
 map <c-j>
@@ -186,6 +203,7 @@ map ff filter
 
 map e open
 map E $$EDITOR -- "$f"
+map S edit-with-sudo
 
 map i pager
 map I rename
