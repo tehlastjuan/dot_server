@@ -567,7 +567,7 @@ function _setup_unattended_upgrades() {
 
   if [ ! -f "$_uup_conf_local" ]; then
     _install_file "$_uup_conf" "$_uup_conf_local"
-    if confirm "Edit '${_uup_conf_local}' file?"; then
+    if _confirm "Edit '${_uup_conf_local}' file?"; then
       $EDITOR "$_uup_conf_local"
     fi
   fi
@@ -635,7 +635,7 @@ function _setup_ssh_config() {
 
   # user-defined ssh port
   while [ $SSH_PORT -eq 22 ]; do
-    printf "Enter custom SSH port (1024-65535): "
+    printf "\nEnter custom SSH port (1024-65535): "
     read -r SSH_PORT
     case "${SSH_PORT-}" in
       "") SSH_PORT=22 ;&
@@ -674,6 +674,8 @@ function _setup_ssh_config() {
 	done
 
   # issue
+  _prt_info_msg_nl "Updating '/etc/issue.net'"
+
   local _issue="/etc/issue.net"
   local _tmp_issue
   _tmp_issue=$(mktemp /tmp/issue_XXXXXX)
@@ -892,7 +894,7 @@ function _setup_kernel_hardening() {
   local _kernel_config="/etc/sysctl.d/99-kernel-hardening.conf"
   local _tmp_kernel_config
   _tmp_kernel_config=$(mktemp /tmp/99-kernel-hardening.conf_XXXXXX)
-  trap 'rm -f "$_tmp_kernel_config"' EXIT
+  trap '$(rm -f "${_tmp_kernel_config-}")' EXIT
 
   cat << EOT > "$_tmp_kernel_config"
 #----- ipv4 networking
@@ -1080,6 +1082,7 @@ function _run() {
   local _msg
   _check_debian_version
   _prt_info_nl_msg_nl "Debian '${VERSION_CODENAME-}' update script"
+  _prt_msg ""
 
   _msg="Run the complete installation sequentially?"
   if _confirm "$_msg"; then
@@ -1096,7 +1099,6 @@ function _run() {
     _setup_fail2ban
     _setup_kernel_hardening
     _setup_docker_engine
-
   else
     if _confirm "Update Debian sources?"
     then _configure_debian_sources; fi
@@ -1124,12 +1126,12 @@ function _run() {
     then _setup_kernel_hardening; fi
     if _confirm "Set up docker engine?"
     then _setup_docker_engine; fi
-
-    if [ "$CLEANUP_FLAG" -eq 0 ]; then _run_cleanup; fi
   fi
+
+  if [ "$CLEANUP_FLAG" -eq 0 ]; then _run_cleanup; fi
 }
 
 if [ "${#BASH_SOURCE[@]}" -eq 1 ]; then
   _run "$@"
-  return $?
+  exit $?
 fi
