@@ -1043,10 +1043,16 @@ function _install_docker_engine() {
   local _keyrings_dir="/etc/apt/keyrings"
   local _docker_keys="${_keyrings_dir}/docker.asc"
   local _docker_gpg_url="https://download.docker.com/linux/debian/gpg"
+  local -a _docker_pkg_remove
 
   _prt_info_msg_nl "Removing old docker packages..."
-  if ! apt-get remove -y -qq "${DOCKER_PKG_REMOVE[@]}" 2> /dev/null; then
-    _prt_error "Couldn't remove 'DOCKER_PKG_REMOVE' list"
+  for _pkg in "${DOCKER_PKG_REMOVE[@]}"; do
+    if dpkg-query -W "$_pkg"; then _docker_pkg_remove+=("$_pkg"); fi
+  done
+  if [ "${#_docker_pkg_remove[@]}" -gt 0 ]; then
+    if ! apt-get remove -y -qq "${_docker_pkg_remove[@]}" 2> /dev/null; then
+      _prt_error "Couldn't remove 'DOCKER_PKG_REMOVE' list"
+    fi
   fi
 
   _update_system
