@@ -422,9 +422,14 @@ function _install_systemd_resolved() {
   _ori_resolved_conf=$(mktemp /tmp/ori_resolved.conf_XXXXXX)
   _ori_header_resolved_conf=$(mktemp /tmp/ori_header_resolved.conf_XXXXXX)
 
-  trap '$(rm -f "$_tmp_resolved_conf")' EXIT
-  trap '$(rm -f "$_ori_resolved_conf")' EXIT
-  trap '$(rm -f "$_ori_header_resolved_conf")' EXIT
+  trap '
+  [ -f "${_tmp_resolved_conf-}" ] &&
+    rm -f "${_tmp_resolved_conf-}";
+  [ -f "${_ori_resolved_conf-}" ] &&
+    rm -f "${_ori_resolved_conf-}";
+  [ -f "${_ori_header_resolved_conf-}" ] &&
+    rm -f "${_ori_header_resolved_conf-}"
+  ' EXIT
 
   if [ -f "$_resolved_conf" ]; then
     cat "$_resolved_conf" |
@@ -523,9 +528,14 @@ function _install_systemd_timesync() {
   _ori_timesyncd_conf=$(mktemp /tmp/ori_timesyncd.conf_XXXXXX)
   _ori_header_timesyncd_conf=$(mktemp /tmp/ori_header_timesyncd.conf_XXXXXX)
 
-  trap '$(rm -f "${_tmp_timesyncd_conf-}")' EXIT
-  trap '$(rm -f "${_ori_timesyncd_conf-}")' EXIT
-  trap '$(rm -f "${_ori_header_timesyncd_conf-}")' EXIT
+  trap '
+  [ -f "${_tmp_timesyncd_conf-}" ] &&
+    rm -f "${_tmp_timesyncd_conf-}";
+  [ -f "${_ori_timesyncd_conf-}" ] &&
+    rm -f "${_ori_timesyncd_conf-}";
+  [ -f "${_ori_header_timesyncd_conf-}" ] &&
+    rm -f "${_ori_header_timesyncd_conf-}"
+  ' EXIT
 
   if [ -f "$_timesyncd_conf" ]; then
     cat "$_timesyncd_conf" |
@@ -625,7 +635,9 @@ function _install_unattended_upgrades() {
 
   local _tmp_daily_timer_override
   _tmp_daily_timer_override=$(mktemp /tmp/override.conf_XXXXXX)
-  trap '$(rm -f "$_tmp_daily_timer_override")' EXIT
+  trap '[ -f "${_tmp_daily_timer_override-}" ] &&
+    rm -f "${_tmp_daily_timer_override-}"' EXIT
+
   cat << EOT > "$_tmp_daily_timer_override"
 [Timer]
 OnCalendar=
@@ -640,7 +652,9 @@ EOT
 
   local _tmp_upgrade_timer_override
   _tmp_upgrade_timer_override=$(mktemp /tmp/override.conf_XXXXXX)
-  trap '$(rm -f "$_tmp_upgrade_timer_override")' EXIT
+  trap '[ -f "${_tmp_upgrade_timer_override-}" ] &&
+    rm -f "${_tmp_upgrade_timer_override-}"' EXIT
+
   cat << EOT > "$_tmp_upgrade_timer_override"
 [Timer]
 OnCalendar=
@@ -724,7 +738,8 @@ function _setup_ssh_config() {
   local _issue="/etc/issue.net"
   local _tmp_issue
   _tmp_issue=$(mktemp /tmp/issue_XXXXXX)
-  trap '$(rm -f "$_tmp_issue")' EXIT
+  trap '[ -f "${_tmp_issue-}" ] &&
+    rm -f "${_tmp_issue-}"' EXIT
 
   cat << EOT > "$_tmp_issue"
 
@@ -743,7 +758,8 @@ EOT
   local _ssh_config="${_sshd_config_dir}/99-hardening.conf"
   local _tmp_ssh_config
   _tmp_ssh_config=$(mktemp /tmp/ssh_hardening_XXXXXX)
-  trap '$(rm -f "$_tmp_ssh_config")' EXIT
+  trap '[ -f "${_tmp_ssh_config-}" ] &&
+    rm -f "${_tmp_ssh_config-}"' EXIT
 
   cat << EOT > "$_tmp_ssh_config"
 Port $SSH_PORT
@@ -818,7 +834,8 @@ function _setup_nftables() {
   local _nftables_config_file="/etc/nftables.conf"
   local _tmp_nftables_config_file
   _tmp_nftables_config_file=$(mktemp /tmp/nftables.conf_XXXXXX)
-  trap '$(rm -f "$_tmp_nftables_config_file")' EXIT
+  trap '[ -f "${_tmp_nftables_config_file-}" ] &&
+    rm -f "${_tmp_nftables_config_file-}"' EXIT
 
   _fetch_ssh_port
   cat << EOT > "$_tmp_nftables_config_file"
@@ -885,7 +902,8 @@ function _setup_fail2ban() {
   local _jail_local_config="/etc/fail2ban/jail.local"
   local _tmp_jail_local_config
   _tmp_jail_local_config=$(mktemp /tmp/jail.local_XXXXXX)
-  trap '$(rm -f "$_tmp_jail_local_config")' EXIT
+  trap '[ -f "${_tmp_jail_local_config-}" ] &&
+    rm -f "${_tmp_jail_local_config-}"' EXIT
 
   cat << EOF > "$_tmp_jail_local_config"
 [DEFAULT]
@@ -940,7 +958,8 @@ function _setup_kernel_hardening() {
   local _kernel_config="/etc/sysctl.d/99-kernel-hardening.conf"
   local _tmp_kernel_config
   _tmp_kernel_config=$(mktemp /tmp/99-kernel-hardening.conf_XXXXXX)
-  trap '$(rm -f "${_tmp_kernel_config-}")' EXIT
+  trap '[ -f "${_tmp_kernel_config-}" ] &&
+    rm -f "${_tmp_kernel_config-}"' EXIT
 
   # Recommended kernel security settings:
   # https://www.kernel.org/doc/Documentation/sysctl/
@@ -1043,11 +1062,11 @@ function _install_docker_engine() {
   local _keyrings_dir="/etc/apt/keyrings"
   local _docker_keys="${_keyrings_dir}/docker.asc"
   local _docker_gpg_url="https://download.docker.com/linux/debian/gpg"
-  local -a _docker_pkg_remove
+  local -a _docker_pkg_remove=()
 
   _prt_info_msg_nl "Removing old docker packages..."
   for _pkg in "${DOCKER_PKG_REMOVE[@]}"; do
-    if dpkg-query -W "$_pkg"; then _docker_pkg_remove+=("$_pkg"); fi
+    if dpkg-query -W "$_pkg" &> /dev/null; then _docker_pkg_remove+=("$_pkg"); fi
   done
   if [ "${#_docker_pkg_remove[@]}" -gt 0 ]; then
     if ! apt-get remove -y -qq "${_docker_pkg_remove[@]}" 2> /dev/null; then
@@ -1089,7 +1108,9 @@ EOT
 
   _install_docker_pkg
   _tmp_docker_daemon_conf=$(mktemp /tmp/docker_config_XXXXXX)
-  trap '$(rm -f "$_tmp_docker_daemon_conf")' EXIT
+  trap '[ -f "${_tmp_docker_daemon_conf-}" ] &&
+    rm -f "${_tmp_docker_daemon_conf-}"' EXIT
+
   cat << EOT > "$_tmp_docker_daemon_conf"
 {
   "log-driver": "json-file",
