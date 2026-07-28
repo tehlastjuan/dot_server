@@ -402,7 +402,7 @@ function _update_locale() {
 
 #----- systemd-resolved conf
 
-function _setup_systemd_resolved() {
+function _install_systemd_resolved() {
   _prt_init_msg "Configuring systemd-resolved... "
   if ! _check_installed_pkg systemd-resolved; then
     _install_single_pkg systemd-resolved
@@ -502,7 +502,7 @@ EOT
   _prt_cleared_msg
 }
 
-function _setup_systemd_timesync() {
+function _install_systemd_timesync() {
   _prt_init_msg "Configuring systemd-timesyncd... "
   if ! _check_installed_pkg systemd-timesyncd; then
     _install_single_pkg systemd-timesyncd
@@ -590,14 +590,13 @@ function _update_timezone() {
 
 #----- unattended upgrades conf
 
-function _setup_unattended_upgrades() {
+function _install_unattended_upgrades() {
   _prt_init_msg "Configuring unattended upgrades... "
   if ! _check_installed_pkg unattended-upgrades; then
     _install_single_pkg unattended-upgrades
   fi
 
-  printf "unattended-upgrades unattended-upgrades/enable_auto_updates boolean true" |
-    debconf-set-selections
+  printf "unattended-upgrades unattended-upgrades/enable_auto_updates boolean true" | debconf-set-selections
   if ! (DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -f noninteractive unattended-upgrades); then
     _prt_error "Failed installing unattended upgrades."
   fi
@@ -1125,49 +1124,165 @@ function _run() {
   _prt_info_nl_msg_nl "----- Debian '${VERSION_CODENAME-}' update script"
   printf '\n'
 
-  _msg="Run the complete installation sequentially?"
-  if _confirm "$_msg"; then
-    _configure_debian_sources
-    _update_system
-    _install_core_pkg
-    _update_locale
-    _setup_systemd_resolved
-    _setup_systemd_timesync
-    _update_timezone
-    _setup_unattended_upgrades
-    _setup_ssh_config
-    _setup_nftables
-    _setup_fail2ban
-    _setup_kernel_hardening
-    _setup_docker_engine
-  else
-    if _confirm "Update Debian sources?"
-    then _configure_debian_sources; fi
-    if _confirm "Update system packages?"
-    then _update_system; fi
-    if _confirm "Install core packages?"
-    then _install_core_pkg; fi
-    if _confirm "Update locales?"
-    then _update_locale; fi
-    if _confirm "Install systemd-resolved?"
-    then _setup_systemd_resolved; fi
-    if _confirm "Install systemd-timesyncd?"
-    then _setup_systemd_timesync; fi
-    if _confirm "Update timezone?"
-    then _update_timezone; fi
-    if _confirm "Install unattended upgrades?"
-    then _setup_unattended_upgrades; fi
-    if _confirm "Set up SSH config?"
-    then _setup_ssh_config; fi
-    if _confirm "Set up nftables?"
-    then _setup_nftables; fi
-    if _confirm "Set up fail2ban?"
-    then _setup_fail2ban; fi
-    if _confirm "Set up kernel hardening?"
-    then _setup_kernel_hardening; fi
-    if _confirm "Set up docker engine?"
-    then _setup_docker_engine; fi
-  fi
+  case "${1-}" in
+    -h|--help)
+      cat << EOT
+update-debian.sh
+
+usage: update-debian.sh [OPTS]
+options:
+  -i, install
+  options:
+    core
+    resolved
+    timesync
+    unattended
+
+  -s, setup
+  options:
+    ssh
+    nftables
+    fail2ban
+    kernel-hardening
+    docker
+
+  -u, update
+  options:
+    locale
+    timezone
+    system
+
+EOT
+      ;;
+    -i|'install')
+      shift
+      case "${1-}" in
+        -h|--help)
+          cat << EOT
+core
+resolved
+timesync
+unattended
+
+EOT
+          ;;
+        'core')
+          _install_core_pkg
+          ;;
+        'resolved')
+          _install_systemd_resolved
+          ;;
+        'timesync')
+          _install_systemd_timesync
+          ;;
+        'unattended')
+          _install_unattended_upgrades
+          ;;
+        *) return 1 ;;
+      esac
+      ;;
+    -s|'setup')
+      case "${1-}" in
+        -h|--help)
+          cat << EOT
+ssh
+nftables
+fail2ban
+kernel-hardening
+docker
+
+EOT
+          ;;
+        'deb-sources')
+          _configure_debian_sources
+          ;;
+        'ssh')
+          _setup_ssh_config
+          ;;
+        'nftables')
+          _setup_nftables
+          ;;
+        'fail2ban')
+          _setup_fail2ban
+          ;;
+        'kernel-hardening')
+          _setup_kernel_hardening
+          ;;
+        'docker')
+          _setup_docker_engine
+          ;;
+        *) return 1 ;;
+      esac
+      ;;
+      -u|'update')
+      shift
+      case "${1-}" in
+        -h|--help)
+          cat << EOT
+locale
+timezone
+system
+
+EOT
+          ;;
+        'locale')
+          _update_locale
+          ;;
+        'timezone')
+          _update_timezone
+          ;;
+        'system'|*)
+          _update_system
+          ;;
+      esac
+      ;;
+
+    *)
+      _msg="Run the complete installation sequentially?"
+      if _confirm "$_msg"; then
+        _configure_debian_sources
+        _update_system
+        _install_core_pkg
+        _update_locale
+        _install_systemd_resolved
+        _install_systemd_timesync
+        _update_timezone
+        _install_unattended_upgrades
+        _setup_ssh_config
+        _setup_nftables
+        _setup_fail2ban
+        _setup_kernel_hardening
+        _setup_docker_engine
+      else
+        if _confirm "Update Debian sources?"
+        then _configure_debian_sources; fi
+        if _confirm "Update system packages?"
+        then _update_system; fi
+        if _confirm "Install core packages?"
+        then _install_core_pkg; fi
+        if _confirm "Update locales?"
+        then _update_locale; fi
+        if _confirm "Install systemd-resolved?"
+        then _install_systemd_resolved; fi
+        if _confirm "Install systemd-timesyncd?"
+        then _install_systemd_timesync; fi
+        if _confirm "Update timezone?"
+        then _update_timezone; fi
+        if _confirm "Install unattended upgrades?"
+        then _install_unattended_upgrades; fi
+        if _confirm "Set up SSH config?"
+        then _setup_ssh_config; fi
+        if _confirm "Set up nftables?"
+        then _setup_nftables; fi
+        if _confirm "Set up fail2ban?"
+        then _setup_fail2ban; fi
+        if _confirm "Set up kernel hardening?"
+        then _setup_kernel_hardening; fi
+        if _confirm "Set up docker engine?"
+        then _setup_docker_engine; fi
+      fi
+      ;;
+  esac
 
   if [ "$CLEANUP_FLAG" -eq 0 ]; then _run_cleanup; fi
 }
