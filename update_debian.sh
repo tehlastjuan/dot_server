@@ -251,7 +251,15 @@ function _install_systemd_unit() {
   systemctl status "${1-}" --no-pager
 }
 
-#----- 
+#----- main functions
+
+function _check_sudo {
+  # run-as-root check
+  if [ "$(id -u)" -ne 0 ]; then
+    _prt_warning_nl "This script must be run with root privileges."
+    _prt_error "Re-run the script using 'sudo -E'"
+  fi
+}
 
 function _check_debian_version() {
   . /etc/os-release
@@ -1113,17 +1121,8 @@ function _run_cleanup() {
 }
 
 function _run() {
-  # run-as-root check
-  if [ "$(id -u)" -ne 0 ]; then
-    _prt_warning_nl "This script must be run with root privileges."
-    _prt_error "Re-run the script using 'sudo -E'"
-  fi
-
-  local _msg
   _check_debian_version
-  _prt_info_nl_msg_nl "----- Debian '${VERSION_CODENAME-}' update script"
 
-  shift 3
   case "${1-}" in
     -h|--help)
       cat << EOT
@@ -1152,7 +1151,7 @@ EOT
       return 0
       ;;
     -i|'install')
-      shift
+      _check_sudo; shift
       case "${1-}" in
         -h|--help)
           cat << EOT
@@ -1184,6 +1183,7 @@ EOT
       esac
       ;;
     -s|'setup')
+      _check_sudo; shift
       case "${1-}" in
         -h|--help)
           cat << EOT
@@ -1211,35 +1211,36 @@ EOT
       esac
       ;;
       -u|'update')
-      shift
-      case "${1-}" in
-        -h|--help)
-          cat << EOT
+        _check_sudo; shift
+        case "${1-}" in
+          -h|--help)
+            cat << EOT
 deb-sources
 locale
 timezone
 system
 
 EOT
-          return 0
-          ;;
-        'deb-sources')
-          _update_debian_sources
-          ;;
-        'locale')
-          _update_locale
-          ;;
-        'timezone')
-          _update_timezone
-          ;;
-        'system') ;&
-        *) _update_system ;;
-      esac
+            return 0
+            ;;
+          'deb-sources')
+            _update_debian_sources
+            ;;
+          'locale')
+            _update_locale
+            ;;
+          'timezone')
+            _update_timezone
+            ;;
+          'system') ;&
+          *) _update_system ;;
+        esac
       ;;
     *)
+      _check_sudo
+      _prt_info_nl_msg_nl "----- Debian '${VERSION_CODENAME-}' update script"
       printf '\n'
-      _msg="Run the complete installation?"
-      if _confirm "$_msg"; then
+      if _confirm "Run the complete installation?"; then
         _update_debian_sources
         _update_system
         _install_core_pkg
