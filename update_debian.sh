@@ -263,7 +263,7 @@ function _check_debian_version() {
   fi
 }
 
-function _configure_debian_sources() {
+function _update_debian_sources() {
   _prt_init_msg "Configuring Debian package sources... "
 
   local _deb_sources_list="/etc/apt/sources.list"
@@ -1018,7 +1018,7 @@ EOT
 
 #----- docker engine conf
 
-function _setup_docker_engine() {
+function _install_docker_engine() {
   _prt_init_msg "Setting up docker engine... "
   if systemctl is-active --quiet docker; then
     _prt_cleared_msg "Docker already installed and running."
@@ -1122,37 +1122,34 @@ function _run() {
   local _msg
   _check_debian_version
   _prt_info_nl_msg_nl "----- Debian '${VERSION_CODENAME-}' update script"
-  printf '\n'
 
+  shift 3
   case "${1-}" in
     -h|--help)
       cat << EOT
-update-debian.sh
-
 usage: update-debian.sh [OPTS]
 options:
   -i, install
-  options:
-    core
-    resolved
-    timesync
-    unattended
-
+    options:
+      core
+      docker
+      resolved
+      timesync
+      unattended
   -s, setup
-  options:
-    ssh
-    nftables
-    fail2ban
-    kernel-hardening
-    docker
-
+    options:
+      ssh
+      nftables
+      fail2ban
+      kernel-hardening
   -u, update
-  options:
-    locale
-    timezone
-    system
+    options:
+      locale
+      timezone
+      system
 
 EOT
+      return 0
       ;;
     -i|'install')
       shift
@@ -1160,14 +1157,19 @@ EOT
         -h|--help)
           cat << EOT
 core
+docker
 resolved
 timesync
 unattended
 
 EOT
+          return 0
           ;;
         'core')
           _install_core_pkg
+          ;;
+        'docker')
+          _install_docker_engine
           ;;
         'resolved')
           _install_systemd_resolved
@@ -1185,22 +1187,13 @@ EOT
       case "${1-}" in
         -h|--help)
           cat << EOT
-ssh
-nftables
 fail2ban
 kernel-hardening
-docker
+nftables
+ssh
 
 EOT
-          ;;
-        'deb-sources')
-          _configure_debian_sources
-          ;;
-        'ssh')
-          _setup_ssh_config
-          ;;
-        'nftables')
-          _setup_nftables
+          return 0
           ;;
         'fail2ban')
           _setup_fail2ban
@@ -1208,8 +1201,11 @@ EOT
         'kernel-hardening')
           _setup_kernel_hardening
           ;;
-        'docker')
-          _setup_docker_engine
+        'nftables')
+          _setup_nftables
+          ;;
+        'ssh')
+          _setup_ssh_config
           ;;
         *) return 1 ;;
       esac
@@ -1219,11 +1215,16 @@ EOT
       case "${1-}" in
         -h|--help)
           cat << EOT
+deb-sources
 locale
 timezone
 system
 
 EOT
+          return 0
+          ;;
+        'deb-sources')
+          _update_debian_sources
           ;;
         'locale')
           _update_locale
@@ -1231,16 +1232,15 @@ EOT
         'timezone')
           _update_timezone
           ;;
-        'system'|*)
-          _update_system
-          ;;
+        'system') ;&
+        *) _update_system ;;
       esac
       ;;
-
     *)
-      _msg="Run the complete installation sequentially?"
+      printf '\n'
+      _msg="Run the complete installation?"
       if _confirm "$_msg"; then
-        _configure_debian_sources
+        _update_debian_sources
         _update_system
         _install_core_pkg
         _update_locale
@@ -1252,10 +1252,10 @@ EOT
         _setup_nftables
         _setup_fail2ban
         _setup_kernel_hardening
-        _setup_docker_engine
+        _install_docker_engine
       else
         if _confirm "Update Debian sources?"
-        then _configure_debian_sources; fi
+        then _update_debian_sources; fi
         if _confirm "Update system packages?"
         then _update_system; fi
         if _confirm "Install core packages?"
@@ -1279,7 +1279,7 @@ EOT
         if _confirm "Set up kernel hardening?"
         then _setup_kernel_hardening; fi
         if _confirm "Set up docker engine?"
-        then _setup_docker_engine; fi
+        then _install_docker_engine; fi
       fi
       ;;
   esac
