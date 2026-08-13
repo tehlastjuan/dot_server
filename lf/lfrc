@@ -122,7 +122,7 @@ cmd on-select         set user_preview_offset 1
 cmd reload-conf       $lf -remote "send $id source ~/.config/lf/lfrc"
 cmd cd-back           $lf -remote "send $id cd \"$OLDPWD\""
 
-cmd clear-all         :clear; visual-clear; select-clear
+cmd clear-all         :clear; select-clear
 cmd select-all        :unselect; invert
 cmd select-clear      :select-all; unselect
 
@@ -235,28 +235,33 @@ map <c-n> scroll-preview -16
 cmap <tab> cmd-menu-complete
 cmap <backtab> cmd-menu-complete-back
 
-cmap <backspace> cmd-left
 cmap <left> cmd-left
 cmap <right> cmd-right
 cmap <c-h> cmd-left
 cmap <c-l> cmd-right
 
-cmap <c-left> cmd-word-back
-cmap <c-right> cmd-word
+cmap <c-backspace> cmd-word-back
+cmap <c-backspace2> cmd-word-back
+
 cmap <c-b> cmd-word-back
 cmap <c-n> cmd-word
 
-cmap <c-home> cmd-home
-cmap <c-end> cmd-end
-cmap <home> cmd-home
-cmap <end> cmd-end
-cmap <c-^> cmd-home
+cmap <c-w> cmd-word
+
 cmap <c-e> cmd-end
 
+cmap <c-^> cmd-home
+cmap <c-0> cmd-end
+
 cmap <c-delete> cmd-delete-word
-cmap <c-backspace2> cmd-delete-back
 cmap <c-d> cmd-delete-word
+
+cmap <backspace2> cmd-delete-back
+cmap <c-backspace2> cmd-delete-word-back
+
+cmap <delete> cmd-delete
 cmap <c-x> cmd-delete
+
 cmap <c-y> cmd-yank
 
 # # vim: set ts=2 sw=2 tw=80 noet :
