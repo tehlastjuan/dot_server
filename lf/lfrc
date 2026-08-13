@@ -235,32 +235,27 @@ map <c-n> scroll-preview -16
 cmap <tab> cmd-menu-complete
 cmap <backtab> cmd-menu-complete-back
 
+cmap <backspace> cmd-left
 cmap <left> cmd-left
 cmap <right> cmd-right
 cmap <c-h> cmd-left
-cmap <c-l> cmd-right
+cmap <c-l> cmd-right # TERM's backspace
 
-cmap <c-backspace> cmd-word-back
-cmap <c-backspace2> cmd-word-back
+cmap <up> cmd-history-prev
+cmap <down> cmd-history-next
 
 cmap <c-b> cmd-word-back
 cmap <c-n> cmd-word
 
-cmap <c-w> cmd-word
-
+cmap <c-w> cmd-home
 cmap <c-e> cmd-end
 
-cmap <c-^> cmd-home
-cmap <c-0> cmd-end
-
-cmap <c-delete> cmd-delete-word
-cmap <c-d> cmd-delete-word
+cmap <c-t> cmd-transpose-word
 
 cmap <backspace2> cmd-delete-back
-cmap <c-backspace2> cmd-delete-word-back
-
 cmap <delete> cmd-delete
 cmap <c-x> cmd-delete
+cmap <c-d> cmd-delete-end
 
 cmap <c-y> cmd-yank
 
