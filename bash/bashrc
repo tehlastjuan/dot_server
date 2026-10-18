@@ -373,6 +373,7 @@ if command -v docker &> /dev/null; then
   alias dtop='docker stats $(docker ps --format="{{.Names}}")'
   #shellcheck disable=2142
   alias diu='docker images --format="table {{.Repository}}\\t{{.Tag}}\\t{{.ID}}\\t{{.Size}}\\t{{.CreatedSince}}" | sed '\''1d'\'' | awk '\''{print $1}'\'' | xargs -I % docker image pull %'
+  alias dpull='docker images --format="{{.Repository}}:{{.Tag}}" | xargs -I % docker pull %'
 
   if [ -n "$BASH" ] && type _complete_alias &>/dev/null; then
     complete -F _complete_alias dr
