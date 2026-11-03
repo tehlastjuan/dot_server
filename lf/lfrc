@@ -39,6 +39,117 @@ set preview
 
 #----- commands
 
+# bulk-rename
+cmd bulk-rename ${{
+	command -v paste &> /dev/null || exit 1
+	old="$(mktemp)"
+	new="$(mktemp)"
+	if [ -n "$fs" ]; then
+		fs="$(basename -a -- $fs)"
+	else
+		fs="$(ls)"
+	fi
+	printf '%s\n' "$fs" > "$old"
+	printf '%s\n' "$fs" > "$new"
+	$EDITOR "$new"
+	[ "$(wc -l < "$new")" -ne "$(wc -l < "$old")" ] && exit
+	paste "$old" "$new" | while IFS= read -r names; do
+			src="$(printf '%s' "$names" | cut -f1)"
+			dst="$(printf '%s' "$names" | cut -f2)"
+			if [ "$src" = "$dst" ] ||
+				[ -e "$dst" ]; then continue; fi
+			mv -- "$src" "$dst"
+	done
+	rm -rf -- "$old" "$new"
+	lf -remote "send $id unselect"
+}}
+
+# y (select for copy) and P to paste symlink
+cmd create-symlink %{{
+	set -- $(cat ~/.local/share/lf/files)
+	mode="$1"
+	shift
+	if [ "$#" -lt 1 ]; then
+		lf -remote "send $id echoerr no files to link"
+		exit
+	fi
+	ln -sr -t . -- "$@"
+}}
+
+# search in files w/ fzf
+cmd fzf-search ${{
+	command -v fzf &> /dev/null || exit 1
+	declare -a preview=(
+	  'declare -i lines=${FZF_PREVIEW_LINES};'
+		'declare -i line=$(printf "%s" {2});'
+		'declare -i center=$(( (lines - 3) / 2));'
+		'if [ $line -lt $center ]; then center=$line; fi;'
+		'declare -i start=$(( line - center ));'
+		'declare -i end=$(( lines + start ));'
+	)
+
+  if command -v bat &> /dev/null; then
+		preview+=(
+			'bat --color=always --theme=TwoDark'
+			'--number --tabs=2 --wrap=auto'
+			'{1} --highlight-line $line'
+			'--line-range $start:$end'
+		)
+	else
+		preview+=('sed -n "${start},+${end}p" {1}')
+	fi
+
+	if command -v rg &> /dev/null; then
+    IFS=$'\'' read -r cmd <<- EOT
+rg \
+--vimgrep \
+--follow \
+--hidden \
+--no-ignore-vcs \
+--smart-case \
+--glob '!**/.cache/*' \
+--glob '!**/.bare/*' \
+--glob '!**/.git/*' \
+--glob '!.bare' \
+--glob '!.git' \
+-- \
+{q}
+EOT
+	else
+    IFS=$'\'' read -r cmd <<- EOT
+grep \
+--dereference-recursive \
+--binary-files=without-match \
+--line-number \
+--with-filename \
+--exclude '!**/.cache/*' \
+--exclude '!**/.bare/*' \
+--exclude '!**/.git/*' \
+--exclude '!.bare' \
+--exclude '!.git' \
+-- \
+{q} \
+.
+EOT
+	fi
+
+	if [[ $PWD == "$HOME" ]]; then work_dir="~"
+	else work_dir="${PWD##${HOME}/}"; fi
+
+	if ! fzf \
+		--header="Search in files: ${work_dir}" \
+		--delimiter=: \
+		--disabled \
+		--preview-window 'right,~3,+{2}+3/2' \
+		--bind="start:reload([ -n {q} ] && $cmd || true)" \
+		--bind="change:reload([ -n {q} ] && $cmd || true)" \
+		--bind='enter:become(lf -remote "send $id select \"$(printf "%s" {1} | sed '\''s/\\/\\\\/g;s/"/\\"/g'\'')\"")' \
+		--preview="~/.config/lf/clean; $preview"; then
+		exit 0
+	fi
+}}
+
+
 # edit-with-sudo
 cmd edit-with-sudo ${{
   set -- $(cat ~/.local/share/lf/files)
@@ -49,7 +160,7 @@ cmd edit-with-sudo ${{
   lf -remote "send clear"
 }}
 
-# Pager command
+# pager command
 cmd pager ${{
   declare -i lines="$(tput lines 2> /dev/null || printf 40)"
   if [ -f "$f" ]; then
@@ -68,31 +179,30 @@ cmd pager ${{
 		fi
 	elif [ -d "$f" ]; then
 		ls -la -- "$f" | less -iWQMRX~ --no-vbell
-	else exit 1; fi
+	else
+		exit 1
+	fi
 }}
 
-# Replace open command with robust selection of openers
+# open command
 cmd open ${{
+	if ! command -v file &> /dev/null; then exit 1; fi
+
 	case $(file --dereference --mime-type --brief -- "$f") in
-		application/json|text/*)
-			"${EDITOR:-vim}" -- "$f"
+		application/json|text/*) "${EDITOR:-vim}" -- "$f" ;;
+		*)
+			if ! command -v xdg-open &> /dev/null; then
+				exit 1
+			fi
+			xdg-open "$fx"
 			;;
-		*) exit 1 ;;
 	esac
 }}
 
 # helper to cd to curr dir on quit
 cmd quit-and-cd &{{
-	printf '%s\n' "$PWD" > $LF_CD_FILE
+	pwd > $LF_CD_FILE
 	lf -remote "send $id quit"
-}}
-
-cmd toggle-preview %{{
-	if [ "$lf_preview" = true ]; then
-		lf -remote "send $id :set preview false; set ratios 1:5"
-	else
-		lf -remote "send $id :set preview true; set ratios 1:2:3"
-	fi
 }}
 
 # `set preview true` is a hack used to reload the preview
@@ -114,6 +224,19 @@ cmd scroll-preview &{{
 	lf -remote "send $id :set user_preview_offset $offset; set preview true"
 }}
 
+# preview toggle
+cmd toggle-preview %{{
+	case "$lf_preview" in
+		true)
+			lf -remote "send $id :set preview false; set ratios 1:5"
+			;;
+		false)
+			lf -remote "send $id :set preview true; set ratios 1:2:3"
+			;;
+		*) exit 1 ;;
+	esac
+}}
+
 
 #----- command shortcuts
 
@@ -122,14 +245,15 @@ cmd on-select         set user_preview_offset 1
 cmd reload-conf       $lf -remote "send $id source ~/.config/lf/lfrc"
 cmd cd-back           $lf -remote "send $id cd \"$OLDPWD\""
 
-cmd clear-all         :clear; select-clear
-cmd select-all        :unselect; invert
 cmd select-clear      :select-all; unselect
+cmd select-all        :unselect; invert
+cmd clear-all         :clear; visual-clear; select-clear; setfilter
 
 cmd sort-by-extension :set sortby ext; set info size:time
 cmd sort-by-natural   :set sortby natural; set info size:time;
 cmd sort-by-size      :set sortby size; set info size:time;
 cmd sort-by-time      :set sortby time; set info size:time;
+cmd sort-reverse      :set reverse!
 
 
 #----- key mappings
@@ -199,14 +323,18 @@ map dd cut
 map dD delete
 map yy copy
 map pp paste
+
 map ff filter
+map fF fzf-search
 
 map e open
 map E $$EDITOR -- "$f"
 map S edit-with-sudo
 
 map i pager
-map I rename
+
+map II rename
+map IR bulk-rename
 
 # show documentation
 map g? $lf -doc | less
@@ -235,27 +363,36 @@ map <c-n> scroll-preview -16
 cmap <tab> cmd-menu-complete
 cmap <backtab> cmd-menu-complete-back
 
-cmap <backspace> cmd-left
 cmap <left> cmd-left
 cmap <right> cmd-right
+cmap <down> cmd-history-next
+cmap <up> cmd-history-prev
+
 cmap <c-h> cmd-left
 cmap <c-l> cmd-right # TERM's backspace
+cmap <c-j> cmd-left
+cmap <c-k> cmd-right
 
-cmap <up> cmd-history-prev
-cmap <down> cmd-history-next
+cmap <c-left> cmd-word-back
+cmap <c-right> cmd-word
+cmap <c-down> cmd-home
+cmap <c-up> cmd-end
 
-cmap <c-b> cmd-word-back
-cmap <c-n> cmd-word
-
-cmap <c-w> cmd-home
-cmap <c-e> cmd-end
+cmap <c-w> cmd-word-back
+cmap <c-e> cmd-word
+cmap <c-b> cmd-home
+cmap <c-n> cmd-end
 
 cmap <c-t> cmd-transpose-word
 
-cmap <backspace2> cmd-delete-back
+cmap <backspace> cmd-delete-back
 cmap <delete> cmd-delete
+
+cmap <c-backspace> cmd-delete-word-back
+cmap <c-delete> cmd-delete-word
+
+cmap <c-d> cmd-delete-word
 cmap <c-x> cmd-delete
-cmap <c-d> cmd-delete-end
 
 cmap <c-y> cmd-yank
 
